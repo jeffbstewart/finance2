@@ -1,6 +1,8 @@
 # Design: the Plaid investments pipeline
 
-**Status:** Draft for Jeff's review.
+**Status:** Accepted with rulings (Jeff, 2026-07-17) — see decisions
+inline; the only remaining open question is which Plaid institution
+entries match the real account relationships.
 **Date:** 2026-07-17.
 **Relates to:** Decision 0 corollaries 1–2
 ([decisions/0-implementation-language.md](../../decisions/0-implementation-language.md)),
@@ -24,7 +26,11 @@ it, and have finance2 only consume it?**
 
 ## Recommendation up front
 
-**Adopt the proto-export architecture.** bankferry (Go) remains the only
+**Adopt the proto-export architecture.** *(Decided: yes — Jeff,
+2026-07-17, with the rulings noted inline below: proto lives with the
+writer in bankferry, no large bankferry refactoring, no JVM
+security-key support, file-drop handoff configured in `.env`,
+duplicated proto with no sync tooling for now, single Plaid account.)* bankferry (Go) remains the only
 program that ever holds Plaid credentials or calls Plaid; it grows an
 investments fetcher that emits a proto-typed snapshot file; finance2
 imports that file and never touches Plaid, its secrets, or the keyring.
@@ -39,8 +45,8 @@ earlier shared-keyring idea):
    Plaid credentials *at all*. The only guard needed is the one that
    already exists (touchvault security-key seal + refuse-under-agent
    markers in bankferry). **Corollary 1's "JVM implementation of
-   security-key-guarded credential handling" becomes unnecessary** —
-   proposed amendment, Jeff's call.
+   security-key-guarded credential handling" is rescinded** —
+   confirmed by Jeff, 2026-07-17.
 2. **One Plaid client, one language.** All Plaid API surface stays in Go
    next to the proven code: the plaid-go Link lifecycle, the
    decimal-safe raw-JSON data client (`json.Number` — the official SDKs
@@ -112,47 +118,40 @@ before any operation that could consume a slot.
 
 ## Component design
 
-All Plaid-facing components are Go, in bankferry-land. finance2's only
-Plaid artifact is the proto contract and its importer.
+*(Ruling, Jeff 2026-07-17: **no large refactorings**. The A/B
+extraction into reusable packages proposed in the draft is dropped —
+the concerns below remain the map of responsibilities, but they stay
+where they are inside bankferry. The work is exactly two additions:
+request the Investments product at enrollment, and a separate export
+command.)*
 
-### A. Credential custody (exists; extract, don't rewrite)
+All Plaid-facing components are Go, inside bankferry. finance2's only
+Plaid artifacts are its copy of the proto contract and its importer.
 
-What bankferry has today: sandbox secret in the OS keyring; production
-secret sealed in a touchvault vault behind a FIDO2 security-key touch
-(ciphertext in bankferry's SQLite); client ID in keyring;
-refuse-under-agent markers on the human-presence path. **Design change:
-none functionally.** Work: extract `apikey.go`/`hardwarekey.go`/
-`plaid.go` into a reusable Go package so B–D consume an interface
-(`CredentialSource`) instead of bankferry internals.
+### A. Credential custody (exists; unchanged)
 
-### B. Item enrollment & item-credential storage (extract from bankferry, extend)
+What bankferry has today stays as-is: sandbox secret in the OS keyring;
+production secret sealed in a touchvault vault behind a FIDO2
+security-key touch (ciphertext in bankferry's SQLite); client ID in
+keyring; refuse-under-agent markers on the human-presence path.
 
-Extracted from bankferry's `plaid/` package (Link-token creation, the
-guarded loopback Link/OAuth server, public-token exchange, keyring item
-storage with JSON-versioned entries, update-mode re-link, encrypted
-token backup) into a reusable Go module — working name **plaid-enroll**
-— used by bankferry and by any future enrollment need. Extensions:
+### B. Item enrollment & item-credential storage (exists; one addition)
 
-- **Products per item:** enrollment requests `investments` (and
-  `transactions` where the same institution serves both). Product mix is
-  per-item configuration, not hard-coded.
-- **Item registry:** a small queryable inventory (institution, entry
-  name, products, environment, link date, last-verified) so both
-  fetchers and the human can see what exists. Lives beside the keyring
-  entries; contains no secrets.
-- **Slot-budget guard:** displays remaining trial slots and requires
-  explicit human confirmation before Link-token creation in production.
-- Keyring convention stays exactly bankferry's (service `"bankferry"`,
-  `plaid-item-<env>-<itemID>`, versioned JSON) — nothing else reads it
-  anymore under this design, so there is no cross-language migration.
+bankferry's existing Link flow, guarded loopback Link/OAuth server,
+public-token exchange, keyring item storage, update-mode re-link, and
+encrypted token backup all stay in place. The one change: **add
+`investments` to the products requested** when linking (alongside
+`transactions` where the institution serves both; existing items reach
+the same state via update-mode re-link). Slot discipline stays a human
+process: production Link runs are deliberate, security-key-gated, and
+budgeted (~3 of ~10 slots planned) — no new tooling built for it.
 
-### C. Transactions fetch (exists)
+### C. Transactions fetch (exists; unchanged)
 
-bankferry's current sync-cursor pipeline (`/transactions/sync` → OFX),
-refactored only to consume A and B through their extracted interfaces.
-No behavior change.
+bankferry's current sync-cursor pipeline (`/transactions/sync` → OFX).
+No behavior change, no refactor.
 
-### D. Investments fetch → proto export (new, Go, lives in bankferry)
+### D. Investments fetch → proto export (new command in bankferry)
 
 A new bankferry subcommand (working name `bankferry investments export`):
 
@@ -161,8 +160,11 @@ A new bankferry subcommand (working name `bankferry investments export`):
   via the **raw-JSON decimal-safe client pattern** (`json.Number`, never
   the SDK's float fields).
 - Emits one **`InvestmentsSnapshot`** proto file per run (binary proto +
-  optional JSON debug form) to a configured output directory —
-  the OFX model, aimed at finance2 instead of GnuCash.
+  optional JSON debug form) to an output directory **configured in
+  bankferry's `.env`** — the OFX model, aimed at finance2 instead of
+  GnuCash. finance2's importer reads from a directory configured in
+  *its* `.env`; pointing both at the same path is the deployment
+  convention (file drop — ruling on draft question 3).
 - Snapshot semantics: full state per run (holdings are levels, not
   deltas); investment transactions carry a fetch window. finance2
   reconciles; bankferry stays stateless beyond fetch bookkeeping.
@@ -177,16 +179,16 @@ manual pick; staleness surfaces in reporting like manual prices do.
 
 ## The proto contract
 
-**Ownership:** the `.proto` lives in **finance2** (`proto/`), the public
-repo whose importer defines the need — proposed file
-`proto/plaid_snapshot.proto`. bankferry consumes it.
+**Ownership (ruling, Jeff 2026-07-17):** the `.proto` lives **with the
+writer, in bankferry** — that copy is the primary source of the
+contract. finance2 carries a **duplicate copy** for its own codegen.
 
-**Cross-repo sync (pick one):**
-- *(leaning)* **Vendored copy + CI drift check**: bankferry commits a
-  copy; a CI step curls the finance2 raw file and fails on checksum
-  mismatch. Zero infrastructure, obvious failure mode.
-- Buf Schema Registry (BSR): cleaner dependency semantics, one more
-  external service/account.
+**Cross-repo sync (ruling):** plain duplication, no registry and no CI
+drift check for now — skew is expected to be rare. Convention: any
+contract change lands in bankferry first, and the same PR's description
+notes that finance2's copy must be updated; `schema_version` bumps on
+any breaking change so a stale reader fails loudly rather than
+misreads.
 
 **Shape (to be refined in the contract PR — field-level review is its
 own step):**
@@ -241,27 +243,41 @@ public-repo hygiene goal.
 
 1. **Coverage verification** (sandbox directory query + dashboard
    check) — gates everything; zero slot cost.
-2. **Contract PR**: `proto/plaid_snapshot.proto` in finance2 + this
-   design's field-level refinement; agree before any fetch code.
-3. **bankferry PRs**: extract A and B (plaid-enroll), add Investments
-   product support + slot-budget guard, then the D exporter.
+2. **Contract PR in bankferry**: `plaid_snapshot.proto` (primary
+   source) + field-level refinement of the shape above; agreed before
+   any fetch code. finance2 duplicates the file when its importer work
+   starts.
+3. **bankferry PRs**: add the Investments product to enrollment, then
+   the D export command. No refactoring beyond what those two changes
+   require.
 4. **Production links**, human-initiated, value order: Vanguard →
    Schwab (pending OAuth gating) → Morgan Stanley.
 5. **finance2 importer (E)** lands with Phase 3/4 schema work.
 
-## Open questions for Jeff
+## Rulings and open questions
 
-1. **Amend corollary 1?** Under proto export, the JVM security-key
-   guard is unneeded — the guard stays Go/touchvault-only. Confirm.
-2. **Institution entries:** which Plaid entry matches each real
-   relationship — Vanguard brokerage vs "My Vanguard Plan" for the
-   401(k)? Which of the three Morgan Stanley entries?
-3. **Snapshot handoff:** shared directory on the same host, or should
-   the exporter also support pushing to finance2's import endpoint
-   later? (Design assumes file drop; nothing precludes adding a push.)
-4. **Proto sync mechanism:** vendored-copy-with-CI-check (leaning) vs
-   Buf Schema Registry?
-5. **Single Plaid account confirmed?** Proto export means finance2
-   needs no Plaid account of its own — the "coin a separate trial
-   account" plan in MODERNIZATION.md would be dropped, and Decision 8's
-   conflict dissolves. Confirm.
+Rulings (Jeff, 2026-07-17) on the draft's five questions:
+
+1. **Corollary 1 rescinded** — no JVM security-key support; credential
+   guarding stays Go/touchvault-only in bankferry.
+2. **Contract agreed** — with the primary source living with the
+   writer, in bankferry (not finance2 as drafted).
+3. **Snapshot handoff: file drop**, output/input locations configured
+   in each project's `.env`.
+4. **Proto sync: duplicate the file in both projects** for now; no
+   registry, no CI check — skew expected to be rare.
+5. **Single Plaid account: yes** — finance2 coins no account of its
+   own; MODERNIZATION.md's separate-trial-account plan is dropped.
+
+Additional ruling: **no large bankferry refactorings** — the draft's
+extraction of credential custody and enrollment into reusable packages
+is dropped; Decision 0 corollary 2 shrinks to "add Investments to
+enrollment + a separate export command."
+
+Still open:
+
+- **Institution entries:** which Plaid entry matches each real
+  relationship — Vanguard brokerage vs "My Vanguard Plan" for the
+  401(k)? Which of the three Morgan Stanley entries (Client Serv,
+  Alight, Solium Shareworks)? Answered by the step-1 sandbox directory
+  query plus Jeff's knowledge of the accounts.

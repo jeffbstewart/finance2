@@ -97,11 +97,15 @@ recommendation; Jeff decides. The assessment lives at
 [decisions/0-implementation-language.md](decisions/0-implementation-language.md).
 
 **Decided 2026-07-17: Kotlin**, with three corollaries recorded in the
-assessment: a JVM security-key guard for the Plaid credential (protecting
-the 10 lifetime trial slots from agent error), extraction of bankferry's
-Plaid account-linking into a reusable component, and extraction of the
-Kotlin application base (DB + Flyway + Armeria + Protocol Buffers) from
-MediaManager into a reusable foundation. **Every phase below is language-neutral until
+assessment. Two were amended the same day by the Plaid pipeline design
+([docs/design/plaid-investments-pipeline.md](docs/design/plaid-investments-pipeline.md)):
+the JVM security-key guard is rescinded (bankferry stays the sole
+Plaid credential holder and exports investment data as proto files that
+finance2 imports), and the bankferry extraction shrinks to "request the
+Investments product + a separate proto-export command." The third
+corollary stands: extraction of the Kotlin application base (DB +
+Flyway + Armeria + Protocol Buffers) from MediaManager into a reusable
+foundation. **Every phase below is language-neutral until
 Decision 0 lands**, and the Gradle-vs-go.mod, SQLDelight-vs-sqlc style
 choices all flow from it.
 
@@ -218,11 +222,13 @@ copy-paste:
     banking coverage, and varies per institution.
   - **The Euro investment**: Plaid's European offering centers on
     banking/payments, not investments — the EU holding likely stays manual.
-  - **Cost & access model**: a Plaid trial is already working in another of
-    Jeff's projects, so the access path is proven — plan is to **coin a
-    separate Plaid trial account for this project**. Confirm the trial's
-    limits cover a personal deployment (connected-item count, Investments
-    product availability) and what production graduation would cost.
+  - **Cost & access model**: a Plaid trial is already working in
+    bankferry, so the access path is proven. **Decided 2026-07-17: a
+    single shared Plaid account (bankferry's) — no separate trial for
+    finance2** (finance2 never talks to Plaid under the proto-export
+    design). Confirm the trial's limits cover the added Investments
+    items (~3 of the ~10 lifetime slots planned) and what production
+    graduation would cost.
   - **Cribbable code**: the **touchvault** and **bankferry** projects
     already implement Plaid access — reference them for Link flow, token
     exchange/storage, and API client patterns. Both are **Go** projects,
@@ -293,7 +299,7 @@ copy-paste:
 | 5 | FX rate source | ECB reference rates, leaning |
 | 6 | UI framework | Angular (current) by default; confirm before Phase 6 |
 | 7 | Proto transport (gRPC-web vs Connect) | Follows Decision 0 toolchain |
-| 8 | Portfolio composition: Plaid vs manual/CSV | Plaid trial proven elsewhere; coin a new trial account here, crib from touchvault/bankferry; evaluate Investments coverage of Jeff's institutions in Phase 4 |
+| 8 | Portfolio composition: Plaid vs manual/CSV | Mechanism decided 2026-07-17: bankferry fetches Investments and exports proto snapshots finance2 imports, single shared Plaid account — see [docs/design/plaid-investments-pipeline.md](docs/design/plaid-investments-pipeline.md); Plaid-vs-manual per institution awaits the coverage verification there |
 
 ## Baseline facts (recorded 2026-07-17)
 
