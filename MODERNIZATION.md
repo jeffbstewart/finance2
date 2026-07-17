@@ -93,7 +93,8 @@ should compare, concretely:
 | Public-repo accessibility | Contributor toolchain burden for each |
 
 Output: a short written assessment committed to this repo, with a
-recommendation; Jeff decides. **Every phase below is language-neutral until
+recommendation; Jeff decides. The assessment lives at
+[decisions/0-implementation-language.md](decisions/0-implementation-language.md). **Every phase below is language-neutral until
 Decision 0 lands**, and the Gradle-vs-go.mod, SQLDelight-vs-sqlc style
 choices all flow from it.
 
