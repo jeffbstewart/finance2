@@ -1,8 +1,9 @@
 # Decision 0 — Implementation language: Kotlin vs Go
 
-**Status:** Proposed — awaiting Jeff's decision.
-**Date:** 2026-07-17.
-**Recommendation: Kotlin.**
+**Status:** **Decided — Kotlin** (Jeff, 2026-07-17).
+**Date:** 2026-07-17 (assessment and decision same day).
+**Recommendation: Kotlin** — accepted, with three corollaries (see
+[Decision](#decision-2026-07-17)).
 
 Inputs: local working trees of the legacy
 [finance](https://github.com/jeffbstewart/finance) repo and the three
@@ -205,16 +206,55 @@ should not be ported (unlicensed scraping is inappropriate for a public
 repo — Phase 1/4); the legacy Google-OAuth `webcore/sso` stack is
 local sign-in only and will be replaced per Phase 5.
 
-## If Kotlin lands — immediate follow-ups
+## Decision (2026-07-17)
 
-1. Crib list from MediaManager: Gradle version catalog + protobuf block,
-   Armeria server wiring, H2/Hikari/jdbi-orm/Flyway bootstrap + test
-   base, `gen-proto.mjs` Connect-ES pipeline (with MIT attribution per
-   Phase 1).
+Jeff decided: **Kotlin.** One additional factor weighed beyond the
+assessment above: many of the portfolio calculations this app needs read
+naturally as pure functional collection pipelines —
+`holdings.map { ... }.filter { ... }.groupBy { ... }.sumOf { ... }` —
+a style Kotlin's stdlib excels at and Go, lacking generic collection
+combinators as idiom, is poor at. The allocation/rebalancing engine and
+the tax-lot reporting are exactly this shape.
+
+The decision carries three **corollaries** — committed work items, not
+options:
+
+1. **A JVM implementation of security-key-guarded Plaid credential
+   handling.** The threat model is specific: a hallucinating agent with
+   access to the Plaid credential could burn through the
+   lifetime-available **10 Plaid trial slots** by creating Items. The
+   credential must therefore be unusable without a human security-key
+   touch, as touchvault provides for bankferry today (FIDO2 seal +
+   refuse-under-agent markers). finance2 needs the equivalent guard on
+   the JVM — whether by porting touchvault's sealed-vault design, FFI to
+   the platform WebAuthn API, or another mechanism is a design task, but
+   the human-presence property is non-negotiable.
+2. **Extract bankferry's Plaid account-linking into something
+   reusable.** The Link flow, token exchange, guarded local Link/OAuth
+   server, and keyring item storage come out of bankferry into a
+   reusable component that both bankferry and finance2 enrollment use —
+   including the Investments-product extension finance2 needs.
+3. **Extract the Kotlin application base into something reusable.** The
+   DB stack (H2 + HikariCP + jdbi-orm + Flyway), the Armeria server
+   wiring (gRPC + gRPC-Web + SPA on one port), and the Protocol
+   Buffer / Connect-ES codegen pipeline come out of MediaManager into a
+   reusable foundation rather than being copy-cribbed. (The existing
+   `h2-kotlin-toolkit` / `auth-kotlin-toolkit` sibling repos are
+   candidate homes; MediaManager depends on neither today.)
+
+## Immediate follow-ups
+
+1. Execute corollary 3: extract the reusable Kotlin application base
+   from MediaManager (Gradle version catalog + protobuf block, Armeria
+   server wiring, H2/Hikari/jdbi-orm/Flyway bootstrap + test base, the
+   `gen-proto.mjs` Connect-ES pipeline), with MIT attribution per
+   Phase 1.
 2. Add the CI codegen-sync check MODERNIZATION.md requires (stricter
    than MediaManager's npm-hook approach).
-3. Resolve the Plaid account question (shared with bankferry vs separate
-   trial) before Phase 4; if shared, spec the keyring-sharing convention
-   and the bankferry Investments Link extension.
+3. Design corollary 1 (JVM security-key guard for the Plaid credential)
+   and corollary 2 (reusable Plaid-linking extraction from bankferry)
+   before Phase 4 touches Plaid; resolve the shared-account-vs-separate-
+   trial question in the same design — the 10-slot trial budget makes
+   this the highest-stakes credential in the project.
 4. Decide Phase 5 auth: adopt MediaManager's session/passkey model vs
    Google OAuth.

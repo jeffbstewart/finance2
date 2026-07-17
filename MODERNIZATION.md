@@ -94,7 +94,14 @@ should compare, concretely:
 
 Output: a short written assessment committed to this repo, with a
 recommendation; Jeff decides. The assessment lives at
-[decisions/0-implementation-language.md](decisions/0-implementation-language.md). **Every phase below is language-neutral until
+[decisions/0-implementation-language.md](decisions/0-implementation-language.md).
+
+**Decided 2026-07-17: Kotlin**, with three corollaries recorded in the
+assessment: a JVM security-key guard for the Plaid credential (protecting
+the 10 lifetime trial slots from agent error), extraction of bankferry's
+Plaid account-linking into a reusable component, and extraction of the
+Kotlin application base (DB + Flyway + Armeria + Protocol Buffers) from
+MediaManager into a reusable foundation. **Every phase below is language-neutral until
 Decision 0 lands**, and the Gradle-vs-go.mod, SQLDelight-vs-sqlc style
 choices all flow from it.
 
@@ -278,7 +285,7 @@ copy-paste:
 
 | # | Decision | Default / leaning |
 |---|---|---|
-| 0 | **Implementation language: Kotlin vs Go** | Evaluate first, cribbing MediaManager; written assessment then Jeff decides |
+| 0 | **Implementation language: Kotlin vs Go** | **Decided 2026-07-17: Kotlin** — see [decisions/0-implementation-language.md](decisions/0-implementation-language.md) |
 | 1 | License | Apache-2.0, pending Phase 1 assessment |
 | 2 | Decimal implementation (BigDecimal / library / ported bespoke type) | Decide after Phase 2 audit, downstream of Decision 0 |
 | 3 | Embedded DB engine & access layer | SQLite-family; specifics follow Decision 0 / MediaManager patterns |
