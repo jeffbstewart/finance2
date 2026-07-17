@@ -53,6 +53,22 @@ These are settled, not decision points:
 - **Secrets in `.env`** (never in code, never in git, never read by AI) —
   see goal 3 below.
 
+## Reference repositories
+
+All three reference projects are **public GitHub repos under
+[github.com/jeffbstewart](https://github.com/jeffbstewart)**:
+
+- **[MediaManager](https://github.com/jeffbstewart/MediaManager)** (Kotlin) —
+  three-tier web app; crib its DB setup and Protocol Buffer / TypeScript
+  client-side support.
+- **[touchvault](https://github.com/jeffbstewart/touchvault)** (Go) — crib
+  Plaid access patterns.
+- **[bankferry](https://github.com/jeffbstewart/bankferry)** (Go) — crib
+  Plaid access patterns.
+
+Expect them checked out as siblings of this repo (`../MediaManager`, etc.)
+when working locally; they are also clonable/readable at the URLs above.
+
 ## Decision 0 — implementation language: Kotlin vs Go
 
 Before any code lands, evaluate **rewriting the backend in Kotlin** rather
@@ -111,8 +127,9 @@ choices all flow from it.
 ### Phase 0 — Bootstrap
 
 - This document (initial commit).
-- **Decision 0** evaluation (see above) — first real task, requires both
-  finance and MediaManager trees visible to Claude.
+- **Decision 0** evaluation (see above) — first real task; reads the legacy
+  finance tree plus the three public reference repos (MediaManager,
+  touchvault, bankferry).
 - License suitability assessment (Phase 1) — **before** a LICENSE file lands.
 - `CLAUDE.md` with the collaboration model and the `.env` policy.
 - `.gitignore`, `.aiignore`, `example.env` skeleton.
