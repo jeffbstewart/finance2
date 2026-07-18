@@ -12,7 +12,8 @@ has rotted on the vine for years:
   open Dependabot PRs that cannot be merged meaningfully — piecemeal bumps
   already left `package.json` internally inconsistent.
 - One of the two price sources (IEX Cloud) shut down in August 2024; the
-  other (AlphaVantage) and the Morningstar scraper are unvalidated.
+  other (AlphaVantage) and the legacy fund-composition lookup are
+  unvalidated.
 - The domain model predates real-world requirements that now exist:
   multi-currency holdings and instruments with no public pricing.
 
@@ -168,9 +169,9 @@ given what the project touches:
   usage. The *code* can be Apache-2.0 while the repo must never commit
   provider *data*; verify no provider's ToS restricts publishing an open
   client.
-- **Scrapers**: if any HTML scraping survives (Morningstar), assess ToS
-  exposure of publishing the scraper publicly; prefer dropping scrapers for
-  supported APIs.
+- **Fund-composition sources**: any fund-composition lookup source must
+  be appropriately licensed for use, or the data manually entered;
+  nothing ships without one of the two.
 - Output: a short written assessment in-repo, then LICENSE (+ NOTICE if
   needed) lands by PR.
 

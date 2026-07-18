@@ -201,9 +201,10 @@ lifted.
 
 Language-neutral notes recorded for later phases: the legacy
 `allocation` rebalancing engine (~786 LOC + tests) is the most valuable
-business logic to port in either language; the Morningstar scraper
-should not be ported (unlicensed scraping is inappropriate for a public
-repo — Phase 1/4); the legacy Google-OAuth `webcore/sso` stack is
+business logic to port in either language; the legacy fund-composition
+lookup is not ported — any fund-composition lookup source must be
+appropriately licensed for use, or the data manually entered
+(Phase 1/4); the legacy Google-OAuth `webcore/sso` stack is
 local sign-in only and will be replaced per Phase 5.
 
 ## Decision (2026-07-17)
