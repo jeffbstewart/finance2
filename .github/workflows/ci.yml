@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Composite-build siblings: the toolkit family checks out beside
+      # finance2 (armeria-kotlin-toolkit itself includes auth-kotlin-toolkit).
+      - uses: actions/checkout@v4
+        with:
+          path: finance2
+      - uses: actions/checkout@v4
+        with:
+          repository: jeffbstewart/armeria-kotlin-toolkit
+          path: armeria-kotlin-toolkit
+      - uses: actions/checkout@v4
+        with:
+          repository: jeffbstewart/auth-kotlin-toolkit
+          path: auth-kotlin-toolkit
+      - uses: actions/checkout@v4
+        with:
+          repository: jeffbstewart/h2-kotlin-toolkit
+          path: h2-kotlin-toolkit
+      - uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      # Kotlin side: regenerates proto stubs and compiles + tests
+      # against them — contract drift on the server is a build failure.
+      - run: ./gradlew build --no-daemon
+        working-directory: finance2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+        working-directory: finance2/web-app
+      # TS side: regenerates the Connect-ES client from proto/ and
+      # typechecks — contract drift in the client is a build failure.
+      - run: npm run check
+        working-directory: finance2/web-app
+      # Dependency hygiene, CI-enforced from day one (end-state goal 2).
+      - run: npm audit
+        working-directory: finance2/web-app
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: finance2/build/reports/tests/

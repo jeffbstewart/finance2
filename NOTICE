@@ -1,0 +1,9 @@
+finance2
+Copyright 2026 Jeffrey B. Stewart
+
+This product includes code adapted from the armeria-kotlin-toolkit
+project (https://github.com/jeffbstewart/armeria-kotlin-toolkit),
+itself derived from MediaManager
+(https://github.com/jeffbstewart/MediaManager), both used under the
+MIT License, Copyright (c) 2026 Jeffrey B. Stewart
+(web-app/scripts/gen-proto.mjs).

@@ -1,0 +1,3 @@
+# Files AI assistants must never read.
+.env
+data/
