@@ -1,0 +1,20 @@
+// First service of the finance2 wire contract — proves the
+// proto → Kotlin + TypeScript pipeline end to end. Real domain
+// services arrive with Phase 3.
+syntax = "proto3";
+
+package finance;
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+message GetInfoRequest {}
+
+message GetInfoResponse {
+  // Application version, from the server build.
+  string version = 1;
+}
+
+service InfoService {
+  rpc GetInfo(GetInfoRequest) returns (GetInfoResponse);
+}

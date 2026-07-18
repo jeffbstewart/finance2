@@ -1,0 +1,22 @@
+# Secrets — never in git (see CLAUDE.md and decisions/1-license-and-ip.md)
+.env
+
+# Local data: database files, provider data, bankferry snapshot drops.
+# Provider ToS forbid committing fetched data (Decision 1).
+data/
+
+# Gradle
+.gradle/
+build/
+.kotlin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node
+web-app/node_modules/
+
+# Generated code is never committed — both sides regenerate on build
+web-app/src/proto-gen/
+
+# IDE
+.idea/
+*.iml
