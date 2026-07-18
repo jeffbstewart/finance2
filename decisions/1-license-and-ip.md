@@ -114,6 +114,16 @@ create/extend it:
 - Any copied Apache-2.0 code with its own NOTICE (touchvault/bankferry)
   → carry the relevant entries.
 
+## 8. Repository history at publication
+
+Pre-publication git history contains earlier drafts of planning
+wording that the current documents supersede. **Ruling (Jeff,
+2026-07-17): accepted risk** — no history rewrite or squash is planned
+when the repo goes public. The legacy finance repo is private and
+stays that way, so nothing referenced from history resolves to public
+code. Goal 8's hard bars (no secrets, no personal data, no
+non-redistributable assets in history) are unaffected and still hold.
+
 ## Recommendation
 
 Adopt **Apache-2.0** via the LICENSE file in this PR. Defer NOTICE per
