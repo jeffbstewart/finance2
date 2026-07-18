@@ -1,6 +1,10 @@
 # Design: the reusable Kotlin application base (Decision 0, corollary 3)
 
-**Status:** Draft for Jeff's review.
+**Status:** **Accepted** (Jeff, 2026-07-17) — every recommendation in
+the open-questions section adopted as written: name
+`armeria-kotlin-toolkit`, codegen as documented template, auth bridge
+as an optional module, public repo, toolkit changes by PR under the
+same collaboration model.
 **Date:** 2026-07-17.
 **Relates to:** Decision 0 corollary 3
 ([decisions/0-implementation-language.md](../../decisions/0-implementation-language.md)),
@@ -137,7 +141,7 @@ purely a DB concern and useful to consumers that don't use Armeria.
 4. MediaManager's own adoption of the toolkits: **out of scope** here;
    nothing in this design depends on it.
 
-## Open questions for Jeff
+## Open questions for Jeff (all answered 2026-07-17: recommendations accepted)
 
 1. **Name**: `armeria-kotlin-toolkit` (recommended — says what it is,
    matches the family naming) or something app-base flavored?
