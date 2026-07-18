@@ -94,12 +94,13 @@ generated third-party license report (MediaManager's
 `THIRD_PARTY_LICENSES.md` + OWASP dependency-check pattern covers
 this).
 
-## 6. Scrapers
+## 6. Fund-composition data
 
-The legacy Morningstar HTML scraper is **not ported** (already recorded
-in Decision 0): unlicensed scraping is inappropriate to publish in a
-public repo, independent of license choice. Fund-composition data, if
-wanted, comes from a licensed API chosen in Phase 4 or is dropped.
+The legacy fund-composition lookup is **not ported**. Any
+fund-composition lookup source must be appropriately licensed for use,
+or the data manually entered. If composition data is wanted, it comes
+from an appropriately licensed API chosen in Phase 4, or from manual
+entry.
 
 ## 7. NOTICE file policy
 
