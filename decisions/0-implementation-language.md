@@ -225,15 +225,24 @@ options:
    lifetime-available **10 Plaid trial slots** by creating Items. The
    credential must therefore be unusable without a human security-key
    touch, as touchvault provides for bankferry today (FIDO2 seal +
-   refuse-under-agent markers). finance2 needs the equivalent guard on
-   the JVM — whether by porting touchvault's sealed-vault design, FFI to
-   the platform WebAuthn API, or another mechanism is a design task, but
-   the human-presence property is non-negotiable.
+   refuse-under-agent markers).
+   > **Amended (rescinded) 2026-07-17:** under the proto-export
+   > architecture
+   > ([docs/design/plaid-investments-pipeline.md](../docs/design/plaid-investments-pipeline.md)),
+   > bankferry remains the only holder of Plaid credentials and finance2
+   > never touches them, so no JVM guard is needed. The threat model
+   > stands; the existing Go/touchvault guard covers it.
 2. **Extract bankferry's Plaid account-linking into something
    reusable.** The Link flow, token exchange, guarded local Link/OAuth
    server, and keyring item storage come out of bankferry into a
    reusable component that both bankferry and finance2 enrollment use —
    including the Investments-product extension finance2 needs.
+   > **Amended (reduced) 2026-07-17:** no large bankferry refactoring.
+   > The scope shrinks to two additions inside bankferry: request the
+   > Investments product at enrollment, and a separate command that
+   > exports an investments snapshot as proto (contract's primary
+   > source lives in bankferry; finance2 duplicates the `.proto`). See
+   > the design doc above.
 3. **Extract the Kotlin application base into something reusable.** The
    DB stack (H2 + HikariCP + jdbi-orm + Flyway), the Armeria server
    wiring (gRPC + gRPC-Web + SPA on one port), and the Protocol
@@ -251,10 +260,11 @@ options:
    Phase 1.
 2. Add the CI codegen-sync check MODERNIZATION.md requires (stricter
    than MediaManager's npm-hook approach).
-3. Design corollary 1 (JVM security-key guard for the Plaid credential)
-   and corollary 2 (reusable Plaid-linking extraction from bankferry)
-   before Phase 4 touches Plaid; resolve the shared-account-vs-separate-
-   trial question in the same design — the 10-slot trial budget makes
-   this the highest-stakes credential in the project.
+3. ~~Design corollaries 1 and 2 before Phase 4 touches Plaid~~ —
+   done 2026-07-17: the design
+   ([docs/design/plaid-investments-pipeline.md](../docs/design/plaid-investments-pipeline.md))
+   rescinded corollary 1, reduced corollary 2 (see amendments above),
+   and settled on a single shared Plaid account (bankferry's; no
+   separate trial for finance2).
 4. Decide Phase 5 auth: adopt MediaManager's session/passkey model vs
    Google OAuth.
