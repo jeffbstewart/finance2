@@ -1,0 +1,232 @@
+// PositionService: priced positions, lot detail, purchases and sales,
+// tax-deferred holdings entry, and the tax report (FUNCTIONAL_SPEC §7
+// "Positions & trades", §9.5–§9.9, §9.16; lots-by-tax-status per
+// build-scope §1).
+syntax = "proto3";
+
+package finance;
+
+import "common.proto";
+import "securities.proto";
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+// One per-ticker position. Row amounts are in the security's currency;
+// response totals are in the reporting currency, USD (build-scope §5).
+// Taxable positions aggregate lots; tax-deferred positions come from
+// the holdings table and carry their provenance.
+message PositionRow {
+  int64 security_id = 1;
+  string ticker = 2;
+  Sparkline sparkline = 3;
+  FormattedDecimal shares = 4;
+  FormattedMoney basis = 5;
+  FormattedMoney current_value = 6;
+  FormattedMoney short_term_gain = 7;
+  FormattedMoney long_term_gain = 8;
+  Provenance provenance = 9; // set for tax-deferred holdings rows
+}
+
+message ListPositionsRequest {
+  int64 account_id = 1; // 0 = portfolio-wide
+}
+
+message ListPositionsResponse {
+  repeated PositionRow positions = 1;
+  FormattedMoney total_basis = 2;
+  FormattedMoney total_value = 3;
+  FormattedMoney total_short_term_gain = 4;
+  FormattedMoney total_long_term_gain = 5;
+}
+
+message LotRow {
+  int64 lot_id = 1;
+  FormattedDate bought = 2;
+  FormattedDecimal shares = 3;
+  FormattedMoney buy_price_per_share = 4;
+  FormattedMoney current_price_per_share = 5;
+  FormattedMoney commission = 6;
+  FormattedDecimal shares_still_held = 7;
+  FormattedMoney basis = 8;
+  FormattedMoney current_value = 9;
+  FormattedMoney short_term_gain = 10;
+  FormattedMoney long_term_gain = 11;
+  // For the all-accounts view (FUNCTIONAL_SPEC §9.11).
+  int64 account_id = 12;
+  string account_name = 13;
+}
+
+message SaleRow {
+  int64 sale_id = 1;
+  FormattedDate sold = 2;
+  FormattedDecimal shares = 3;
+  FormattedMoney price_per_share = 4;
+  FormattedMoney sale_costs = 5;
+  FormattedMoney short_term_gain = 6;
+  FormattedMoney long_term_gain = 7;
+}
+
+message GetLotDetailsRequest {
+  int64 security_id = 1;
+  int64 account_id = 2; // 0 = all accounts
+  // Present cost columns in today's dollars via CPI (FUNCTIONAL_SPEC
+  // §5.7); applied at presentation time in one direction only.
+  bool inflation_adjusted = 3;
+}
+
+message GetLotDetailsResponse {
+  repeated LotRow lots = 1;
+  // The account's sale history for the ticker (FUNCTIONAL_SPEC §9.7).
+  repeated SaleRow sales = 2;
+  bool inflation_adjusted = 3;
+}
+
+message AddPurchaseRequest {
+  int64 account_id = 1;
+  int64 security_id = 2;
+  Date bought = 3;
+  Decimal shares = 4;
+  Decimal price_per_share = 5;
+  Decimal commission = 6;
+}
+
+message AddPurchaseResponse {
+  int64 lot_id = 1;
+}
+
+// A lot cannot be moved to another account or security — that would
+// corrupt its sales (guard rail §5.9; legacy defect 7). Moving is
+// delete + re-add, which the guard rails police.
+message UpdatePurchaseRequest {
+  int64 lot_id = 1;
+  Date bought = 2;
+  Decimal shares = 3;
+  Decimal price_per_share = 4;
+  Decimal commission = 5;
+}
+
+message UpdatePurchaseResponse {}
+
+message DeletePurchaseRequest {
+  int64 lot_id = 1;
+}
+
+message DeletePurchaseResponse {}
+
+message LotSaleAllocation {
+  int64 lot_id = 1;
+  Decimal shares = 2;
+}
+
+// Server-validated (guard rail §5.9, fixing legacy defect 7): per-lot
+// shares must not exceed that lot's still-held shares and must sum to
+// the sale's total shares. Sale costs pro-rate across lots by shares
+// sold at read time — never stored.
+message RecordSaleRequest {
+  int64 account_id = 1;
+  int64 security_id = 2;
+  Date sold = 3;
+  Decimal shares = 4;
+  Decimal price_per_share = 5;
+  Decimal sale_costs = 6;
+  repeated LotSaleAllocation allocations = 7;
+}
+
+message RecordSaleResponse {
+  int64 sale_id = 1;
+}
+
+message DeleteSaleRequest {
+  int64 sale_id = 1;
+}
+
+message DeleteSaleResponse {}
+
+// Position-level quantity entry for tax-deferred accounts only
+// (build-scope §1); taxable accounts reject it — their positions
+// derive from lots.
+message SetHoldingRequest {
+  int64 account_id = 1;
+  int64 security_id = 2;
+  Decimal quantity = 3;
+}
+
+message SetHoldingResponse {}
+
+message DeleteHoldingRequest {
+  int64 account_id = 1;
+  int64 security_id = 2;
+}
+
+message DeleteHoldingResponse {}
+
+message TaxReportRow {
+  string broker_name = 1;
+  string account_name = 2;
+  string ticker = 3;
+  FormattedDate bought = 4;
+  FormattedDate sold = 5;
+  FormattedMoney purchase_price_per_share = 6;
+  FormattedMoney sale_price_per_share = 7;
+  FormattedMoney purchase_costs = 8;
+  FormattedMoney sale_costs = 9;
+  FormattedMoney short_term_gain = 10;
+  FormattedMoney long_term_gain = 11;
+}
+
+// Portfolio-scoped (fixes legacy defect 5); excludes tax-deferred
+// accounts.
+message GetTaxReportRequest {
+  Date from = 1;
+  Date to = 2;
+}
+
+message GetTaxReportResponse {
+  repeated TaxReportRow rows = 1;
+  FormattedMoney total_short_term_gain = 2;
+  FormattedMoney total_long_term_gain = 3;
+  FormattedMoney total_gain = 4;
+  // e.g. the note that non-USD sales are excluded until the FX tax
+  // treatment is ruled (build-scope §5 open question).
+  repeated string notes = 5;
+}
+
+message AccountChoice {
+  int64 account_id = 1;
+  string broker_name = 2;
+  string name = 3;
+  string currency_code = 4;
+  bool tax_deferred = 5;
+  FormattedMoney sweeps = 6;
+}
+
+message SecurityChoice {
+  int64 security_id = 1;
+  string ticker = 2;
+  string description = 3;
+  string currency_code = 4;
+  SecurityType security_type = 5;
+}
+
+// Form-support data for the buy dialog (FUNCTIONAL_SPEC §9.8).
+message GetPurchaseFormInfoRequest {}
+
+message GetPurchaseFormInfoResponse {
+  repeated AccountChoice accounts = 1;
+  repeated SecurityChoice securities = 2;
+}
+
+service PositionService {
+  rpc ListPositions(ListPositionsRequest) returns (ListPositionsResponse);
+  rpc GetLotDetails(GetLotDetailsRequest) returns (GetLotDetailsResponse);
+  rpc AddPurchase(AddPurchaseRequest) returns (AddPurchaseResponse);
+  rpc UpdatePurchase(UpdatePurchaseRequest) returns (UpdatePurchaseResponse);
+  rpc DeletePurchase(DeletePurchaseRequest) returns (DeletePurchaseResponse);
+  rpc RecordSale(RecordSaleRequest) returns (RecordSaleResponse);
+  rpc DeleteSale(DeleteSaleRequest) returns (DeleteSaleResponse);
+  rpc SetHolding(SetHoldingRequest) returns (SetHoldingResponse);
+  rpc DeleteHolding(DeleteHoldingRequest) returns (DeleteHoldingResponse);
+  rpc GetTaxReport(GetTaxReportRequest) returns (GetTaxReportResponse);
+  rpc GetPurchaseFormInfo(GetPurchaseFormInfoRequest) returns (GetPurchaseFormInfoResponse);
+}

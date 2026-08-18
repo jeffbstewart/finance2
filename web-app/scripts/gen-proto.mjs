@@ -36,7 +36,16 @@ if (!protoRoot) {
 }
 
 // The .proto files the web app consumes, dependency-first.
-const PROTO_FILES = ['info.proto'];
+const PROTO_FILES = [
+  'common.proto',
+  'info.proto',
+  'session.proto',
+  'brokers.proto',
+  'accounts.proto',
+  'securities.proto',
+  'positions.proto',
+  'allocation.proto',
+];
 
 const protocBin = process.platform === 'win32'
   ? join(webRoot, 'node_modules', '.bin', 'protoc.cmd')
