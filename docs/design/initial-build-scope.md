@@ -71,7 +71,8 @@ Schema consequences for Phase 3:
 
 - **Sign-in allowlist: yes** — a configured list of permitted emails;
   everyone else rejected at login. Resolves the spec §3.2 open
-  decision.
+  decision. *(Superseded by §8: local authentication removes federated
+  sign-up entirely, which is a stronger guarantee than an allowlist.)*
 - **Broker logos: dropped**; broker names only. Resolves spec §7.
 - **Single process:** the price service becomes a module inside the one
   Armeria server, keeping its required properties (persistent
@@ -167,3 +168,46 @@ existing machinery, nothing bespoke —
 
 The Plaid track's gating step (sandbox institution-directory query in
 bankferry, then the Vanguard production link) proceeds independently.
+
+## 8. Authentication: auth-kotlin-toolkit, not Google OAuth (ruling, Jeff 2026-08-18)
+
+The spec's federated Google sign-in (§3.1) is **dropped**. finance2
+authenticates locally via
+[auth-kotlin-toolkit](https://github.com/jeffbstewart/auth-kotlin-toolkit):
+bcrypt credentials, SHA-256-hashed revocable cookie sessions,
+rate-limited login with lockout, and optional WebAuthn passkeys. The
+Armeria auth interceptor already in place gates every RPC not on the
+unauthenticated allowlist.
+
+Consequences:
+
+- **Identity is a local username**, not a verified Google email. The
+  `users` table implements the toolkit's `AuthUser` contract
+  (`username` unique case-insensitively, `password_hash`, `locked`,
+  `must_change_password`); the email column disappears.
+- **The §3 sign-in allowlist is moot** — with no federated sign-up,
+  nobody can self-provision. Accounts are created deliberately
+  (first-run bootstrap; the toolkit's `hasUsers()` supports a setup
+  flow). This supersedes that ruling with a stronger guarantee.
+- **Logout genuinely invalidates** (server-side session revocation) and
+  no third-party signing keys exist to rotate — legacy defect 1 dies by
+  construction, and the server authenticates offline.
+- **Session RPCs** become `Login(username, password)` / `Logout` /
+  `WhoAmI`; no OAuth client config in `.env`. The toolkit's JWT service
+  goes unused for now (the SPA rides cookie sessions); its tables exist
+  but stay empty.
+- **Auth DDL is duplicated into finance2's own migration chain**
+  (consumer-versioned, the MediaManager precedent) rather than added as
+  a second Flyway location: the toolkit's `db/auth` files use versions
+  V001–V002, which would collide with finance2's own chain in a merged
+  location scan. The toolkit's files are the source of truth; finance2's
+  copy notes provenance, mirroring the Plaid proto duplication
+  convention.
+
+## 9. Migration discipline (ruling, Jeff 2026-08-18)
+
+Schema definition and value population are **separate migration
+steps**: a DDL migration never INSERTs, and reference/seed data (asset
+classes today; a future Commodities class) arrives in its own
+versioned migration. Structure diffs and data diffs review
+independently.

@@ -105,6 +105,31 @@ class DomainSchemaTest {
     }
 
     @Test
+    fun `usernames are unique case-insensitively`() {
+        db.dataSource.connection.use { conn ->
+            insert(
+                conn,
+                "INSERT INTO users (username, password_hash, display_name) VALUES ('Jeff', 'x', 'Jeff')"
+            )
+            assertFailsWith<SQLException> {
+                insert(
+                    conn,
+                    "INSERT INTO users (username, password_hash, display_name) VALUES ('jeff', 'x', 'dup')"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `auth-kotlin-toolkit tables are present`() {
+        db.dataSource.connection.use { conn ->
+            for (table in listOf("session_token", "login_attempt", "refresh_token", "auth_config", "passkey_credential")) {
+                conn.createStatement().executeQuery("SELECT COUNT(*) FROM $table").also { it.next() }
+            }
+        }
+    }
+
+    @Test
     fun `referenced rows cannot be deleted`() {
         db.dataSource.connection.use { conn ->
             val p = insert(conn, "INSERT INTO portfolios (name) VALUES ('guarded')")

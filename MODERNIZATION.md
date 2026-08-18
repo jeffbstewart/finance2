@@ -258,8 +258,11 @@ copy-paste:
 
 - API server speaking the proto contract (gRPC-web or Connect protocol so
   the browser client stays generated and typed).
-- Google OAuth sign-in with maintained libraries; sessions via maintained
-  equivalents of the legacy gorilla stack.
+- Local authentication via
+  [auth-kotlin-toolkit](https://github.com/jeffbstewart/auth-kotlin-toolkit)
+  (bcrypt credentials, revocable cookie sessions, rate-limited login,
+  optional passkeys) — Google OAuth sign-in dropped 2026-08-18; see
+  docs/design/initial-build-scope.md §8.
 - UI assets embedded/served by the app.
 - Single process unless a real need for the separate price-server daemon
   emerges — leaning single binary/service with an internal scheduler.
