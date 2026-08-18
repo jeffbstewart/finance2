@@ -1,7 +1,8 @@
 # Design: initial build scope
 
-**Status:** Accepted rulings (Jeff, 2026-08-18) recorded inline; one
-proposal pending ruling — the gold-coin IRA model (§6).
+**Status:** **Accepted in full** (Jeff, 2026-08-18) — all rulings
+recorded inline; the gold-coin IRA model (§6) was approved as proposed
+the same day.
 **Date:** 2026-08-18.
 **Relates to:** [docs/FUNCTIONAL_SPEC.md](../FUNCTIONAL_SPEC.md)
 (committed alongside this doc),
@@ -70,7 +71,8 @@ Schema consequences for Phase 3:
 
 - **Sign-in allowlist: yes** — a configured list of permitted emails;
   everyone else rejected at login. Resolves the spec §3.2 open
-  decision.
+  decision. *(Superseded by §8: local authentication removes federated
+  sign-up entirely, which is a stronger guarantee than an allowlist.)*
 - **Broker logos: dropped**; broker names only. Resolves spec §7.
 - **Single process:** the price service becomes a module inside the one
   Armeria server, keeping its required properties (persistent
@@ -127,9 +129,9 @@ The portfolio now spans **USD- and EUR-denominated accounts**.
   judgment before that machinery is built. Until then the tax report
   covers USD accounts and visibly notes any exclusion.
 
-## 6. The gold-coin IRA (proposal — pending ruling)
+## 6. The gold-coin IRA (ruling — approved as proposed, Jeff 2026-08-18)
 
-One IRA holds physical gold coins in a vault. Proposal: model it with
+One IRA holds physical gold coins in a vault. It is modeled with
 existing machinery, nothing bespoke —
 
 - **Broker** = the custodian; **Account** = the IRA, tax-deferred, USD.
@@ -166,3 +168,55 @@ existing machinery, nothing bespoke —
 
 The Plaid track's gating step (sandbox institution-directory query in
 bankferry, then the Vanguard production link) proceeds independently.
+
+## 8. Authentication: auth-kotlin-toolkit, not Google OAuth (ruling, Jeff 2026-08-18)
+
+The spec's federated Google sign-in (§3.1) is **dropped**. finance2
+authenticates locally via
+[auth-kotlin-toolkit](https://github.com/jeffbstewart/auth-kotlin-toolkit):
+bcrypt credentials, SHA-256-hashed revocable cookie sessions,
+rate-limited login with lockout, and optional WebAuthn passkeys. The
+Armeria auth interceptor already in place gates every RPC not on the
+unauthenticated allowlist.
+
+Consequences:
+
+- **Identity is a local username**, not a verified Google email. The
+  `users` table implements the toolkit's `AuthUser` contract
+  (`username` unique case-insensitively, `password_hash`, `locked`,
+  `must_change_password`); the email column disappears.
+- **The §3 sign-in allowlist is moot** — with no federated sign-up,
+  nobody can self-provision. Accounts are created deliberately
+  (first-run bootstrap; the toolkit's `hasUsers()` supports a setup
+  flow). This supersedes that ruling with a stronger guarantee.
+- **First-run flow and single-user ruling (Jeff, 2026-08-18):** when
+  the app comes online with an empty user table, the UI offers a
+  "create the first account" setup flow; that account is **the** user
+  account. Once any user exists, account creation is closed — there is
+  no registration and no user management for now. A future "manage
+  users" mechanism (some users empowered to administer others) stays
+  open as additive work: a role/admin column and a user-admin service
+  are new-migration/new-service additions, so nothing is built for it
+  today and nothing forecloses it.
+- **Logout genuinely invalidates** (server-side session revocation) and
+  no third-party signing keys exist to rotate — legacy defect 1 dies by
+  construction, and the server authenticates offline.
+- **Session RPCs** become `Login(username, password)` / `Logout` /
+  `WhoAmI`; no OAuth client config in `.env`. The toolkit's JWT service
+  goes unused for now (the SPA rides cookie sessions); its tables exist
+  but stay empty.
+- **Auth DDL is duplicated into finance2's own migration chain**
+  (consumer-versioned, the MediaManager precedent) rather than added as
+  a second Flyway location: the toolkit's `db/auth` files use versions
+  V001–V002, which would collide with finance2's own chain in a merged
+  location scan. The toolkit's files are the source of truth; finance2's
+  copy notes provenance, mirroring the Plaid proto duplication
+  convention.
+
+## 9. Migration discipline (ruling, Jeff 2026-08-18)
+
+Schema definition and value population are **separate migration
+steps**: a DDL migration never INSERTs, and reference/seed data (asset
+classes today; a future Commodities class) arrives in its own
+versioned migration. Structure diffs and data diffs review
+independently.

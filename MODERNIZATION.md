@@ -258,8 +258,11 @@ copy-paste:
 
 - API server speaking the proto contract (gRPC-web or Connect protocol so
   the browser client stays generated and typed).
-- Google OAuth sign-in with maintained libraries; sessions via maintained
-  equivalents of the legacy gorilla stack.
+- Local authentication via
+  [auth-kotlin-toolkit](https://github.com/jeffbstewart/auth-kotlin-toolkit)
+  (bcrypt credentials, revocable cookie sessions, rate-limited login,
+  optional passkeys) — Google OAuth sign-in dropped 2026-08-18; see
+  docs/design/initial-build-scope.md §8.
 - UI assets embedded/served by the app.
 - Single process unless a real need for the separate price-server daemon
   emerges — leaning single binary/service with an internal scheduler.
@@ -301,7 +304,7 @@ copy-paste:
 | 6 | UI framework | Angular (current) by default; confirm before Phase 6 |
 | 7 | Proto transport (gRPC-web vs Connect) | Follows Decision 0 toolchain |
 | 8 | Portfolio composition: Plaid vs manual/CSV | Mechanism decided 2026-07-17: bankferry fetches Investments and exports proto snapshots finance2 imports, single shared Plaid account — see [docs/design/plaid-investments-pipeline.md](docs/design/plaid-investments-pipeline.md); Plaid-vs-manual per institution awaits the coverage verification there |
-| 9 | Initial build scope: lots by tax status, decimal scales, classification launch fields, account-currency model | **Decided 2026-08-18** — see [docs/design/initial-build-scope.md](docs/design/initial-build-scope.md); gold-IRA modeling proposal pending therein |
+| 9 | Initial build scope: lots by tax status, decimal scales, classification launch fields, account-currency model | **Decided 2026-08-18** — see [docs/design/initial-build-scope.md](docs/design/initial-build-scope.md), accepted in full including the gold-IRA model |
 
 ## Baseline facts (recorded 2026-07-17)
 
