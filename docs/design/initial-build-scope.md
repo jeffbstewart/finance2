@@ -1,7 +1,8 @@
 # Design: initial build scope
 
-**Status:** Accepted rulings (Jeff, 2026-08-18) recorded inline; one
-proposal pending ruling — the gold-coin IRA model (§6).
+**Status:** **Accepted in full** (Jeff, 2026-08-18) — all rulings
+recorded inline; the gold-coin IRA model (§6) was approved as proposed
+the same day.
 **Date:** 2026-08-18.
 **Relates to:** [docs/FUNCTIONAL_SPEC.md](../FUNCTIONAL_SPEC.md)
 (committed alongside this doc),
@@ -127,9 +128,9 @@ The portfolio now spans **USD- and EUR-denominated accounts**.
   judgment before that machinery is built. Until then the tax report
   covers USD accounts and visibly notes any exclusion.
 
-## 6. The gold-coin IRA (proposal — pending ruling)
+## 6. The gold-coin IRA (ruling — approved as proposed, Jeff 2026-08-18)
 
-One IRA holds physical gold coins in a vault. Proposal: model it with
+One IRA holds physical gold coins in a vault. It is modeled with
 existing machinery, nothing bespoke —
 
 - **Broker** = the custodian; **Account** = the IRA, tax-deferred, USD.

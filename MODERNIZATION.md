@@ -301,7 +301,7 @@ copy-paste:
 | 6 | UI framework | Angular (current) by default; confirm before Phase 6 |
 | 7 | Proto transport (gRPC-web vs Connect) | Follows Decision 0 toolchain |
 | 8 | Portfolio composition: Plaid vs manual/CSV | Mechanism decided 2026-07-17: bankferry fetches Investments and exports proto snapshots finance2 imports, single shared Plaid account — see [docs/design/plaid-investments-pipeline.md](docs/design/plaid-investments-pipeline.md); Plaid-vs-manual per institution awaits the coverage verification there |
-| 9 | Initial build scope: lots by tax status, decimal scales, classification launch fields, account-currency model | **Decided 2026-08-18** — see [docs/design/initial-build-scope.md](docs/design/initial-build-scope.md); gold-IRA modeling proposal pending therein |
+| 9 | Initial build scope: lots by tax status, decimal scales, classification launch fields, account-currency model | **Decided 2026-08-18** — see [docs/design/initial-build-scope.md](docs/design/initial-build-scope.md), accepted in full including the gold-IRA model |
 
 ## Baseline facts (recorded 2026-07-17)
 
