@@ -1,0 +1,168 @@
+# Design: initial build scope
+
+**Status:** Accepted rulings (Jeff, 2026-08-18) recorded inline; one
+proposal pending ruling — the gold-coin IRA model (§6).
+**Date:** 2026-08-18.
+**Relates to:** [docs/FUNCTIONAL_SPEC.md](../FUNCTIONAL_SPEC.md)
+(committed alongside this doc),
+[docs/design/plaid-investments-pipeline.md](plaid-investments-pipeline.md),
+MODERNIZATION.md Phases 2–6.
+
+## What this scopes
+
+FUNCTIONAL_SPEC.md describes the legacy application in full, as
+extracted from the `../finance` code read. This document crosses that
+spec with the Plaid investments pipeline design and records what the
+initial build actually includes, where it deliberately diverges from
+the spec, and which seams stay open for later. **Where this document
+and the functional spec conflict, this document wins.** The spec
+remains the reference for everything not overridden here.
+
+The two documents fit together as: the spec is the application (entity
+graph, computations, UI); the Plaid pipeline is one data feed into it.
+The seam is an importer with provenance, feeding reconciliation views —
+which forces the schema decisions in §1.
+
+## 1. Composition feeds and lot tracking (ruling)
+
+Plaid snapshots are position-level; the spec's tax machinery is
+lot-level. The roles split by account tax status:
+
+- **Taxable accounts:** manually entered purchase lots remain
+  authoritative — they are the tax record. Plaid snapshots feed
+  **reconciliation views** (imported quantity/value vs. the lot
+  ledger), never silent mutation of lots.
+- **Tax-deferred accounts:** **no lots, no cost basis.** Holdings are
+  position-level (security, quantity), updated by snapshot import or by
+  hand. They stay excluded from the tax report, as in the spec.
+- The one IRA that actually has a basis: **punted** — tracked like any
+  other tax-deferred account; revisit if it ever matters.
+- **Sweep balances** are updatable both by hand (the edit-account form)
+  and by import (`is_cash_equivalent` holdings), with provenance.
+
+Schema consequences for Phase 3:
+
+- Holdings are modeled position-level, with lots as taxable-account
+  detail beneath them (rather than lots being the only source of
+  positions, as in the legacy schema).
+- Snapshot **staging tables** retain bankferry's verbatim decimal
+  strings plus provenance (`source`, `as_of`, `imported_at`) — the
+  canonical model is derived from staging, never the only copy.
+- Linkage tables: account ↔ Plaid `account_ref`, security ↔
+  `plaid_security_id`.
+
+## 2. Numeric representation (ruling)
+
+- **Money and fractions: scale 4. Quantities: scale 8** (absorbs
+  fractional shares and bullion ounces from providers without
+  rounding). The spec's ±0.0001 tolerances (lot-closed test, target
+  allocation sum) stand.
+- Storage is exact end to end: H2 `NUMERIC` columns declared with
+  headroom (e.g. `NUMERIC(20,4)` / `NUMERIC(20,8)`), `BigDecimal` on
+  the JVM with explicit scale/rounding policy, string-encoded decimals
+  on the wire. **No binary floating point anywhere on the storage or
+  wire path.**
+- Import rounding rule: a provider value entering the canonical model
+  rounds `HALF_EVEN` to the canonical scale; the staging row keeps the
+  provider's exact string, so nothing is ever lossy.
+
+## 3. Accepted spec recommendations (ruling)
+
+- **Sign-in allowlist: yes** — a configured list of permitted emails;
+  everyone else rejected at login. Resolves the spec §3.2 open
+  decision.
+- **Broker logos: dropped**; broker names only. Resolves spec §7.
+- **Single process:** the price service becomes a module inside the one
+  Armeria server, keeping its required properties (persistent
+  multi-hour cache, rate limiting, request coalescing, typed
+  quota-exceeded detection) — no separate daemon.
+- **Sell-side rebalance planner: not built now, not foreclosed.** The
+  planner's trade shape carries a side (`BUY` today; `SELL` reserved),
+  and neither the proto contract nor the planner math may bake in
+  buy-only assumptions. (Spec §5.5 / §9.14.)
+
+## 4. Security classification: launch scope (ruling)
+
+Launch fields on a security: **ticker, description, pricing locus,
+net expense ratio, asset-class mix.**
+
+- **Pricing locus** is the public/private distinction, modeled
+  extensibly (a value with room for later nuance such as which
+  exchange/venue prices the ticker) rather than a bare boolean.
+- **Asset-class mix is date-stamped** (`as_of`). The UI surfaces the
+  age of the mix and prompts for a refresh once it is older than a
+  configurable threshold.
+- **Sector, market-cap, region, and credit-quality weights are dropped
+  from the launch scope** — enjoyed in legacy, but not worth the manual
+  data entry. Storage stays generic — `(security, classification kind,
+  key, weight, as_of)` — so reviving a taxonomy later is seed data plus
+  UI, not schema surgery. Spec §9.10 tabs 3–6 are deferred; the
+  asset-allocation tab stays.
+- The country→region seed table (and its typo fixes) is deferred along
+  with region weights.
+- **Asset classes are seed data, not a closed enum**, in both schema
+  and proto — the launch seed is the spec's five (Cash, US Stock,
+  Non US Stock, Bond, Other), and adding a class later (see §6) is
+  additive.
+
+## 5. Account currency (ruling)
+
+The portfolio now spans **USD- and EUR-denominated accounts**.
+
+- **Currency is a property of the account.** Every security held in an
+  account, and the account's sweep balance, is denominated in the
+  account's currency.
+- A security therefore carries a denomination currency; holding a
+  security in an account of a different currency is rejected at write
+  time.
+- Aggregation across currencies (broker totals, grand totals, the
+  allocation dashboard, the rebalancer) converts to the **reporting
+  currency, USD**, through dated FX rates (ECB reference rates, per the
+  MODERNIZATION Phase 4 leaning). No implicit cross-currency
+  arithmetic — conversion is explicit and dated, per house rules.
+- **Open question (flagged, not designed):** the tax report's treatment
+  of sales in EUR-denominated taxable accounts — IRS translation rules
+  value purchase and sale legs at their respective transaction-date
+  rates. Leaning: translate per-leg via dated FX; needs Jeff's tax
+  judgment before that machinery is built. Until then the tax report
+  covers USD accounts and visibly notes any exclusion.
+
+## 6. The gold-coin IRA (proposal — pending ruling)
+
+One IRA holds physical gold coins in a vault. Proposal: model it with
+existing machinery, nothing bespoke —
+
+- **Broker** = the custodian; **Account** = the IRA, tax-deferred, USD.
+- Each coin type is a **privately-priced security**, quantity in **troy
+  ounces** at scale 8 (recommended over coin count so a future spot
+  price source can price it directly; a 1-oz coin type makes the two
+  equivalent anyway).
+- **Valuation** via dated manual price entries — custodian statement
+  values or spot×premium, same private-price path the 401(k) trust
+  instruments use; staleness surfaces in reporting like any manually
+  priced instrument.
+- **Asset-class mix: 100% Other at launch.** If gold deserves
+  first-class allocation targeting later, a **Commodities** asset class
+  is a seed-data addition plus a target-allocation row (enabled by §4's
+  classes-are-data rule).
+- No lots, no basis, per §1 (tax-deferred).
+
+## 7. Build order
+
+1. **Phase 2 — core value types:** `Money`, `Currency`, `Quantity`,
+   `Fraction` (+ pro-rata allocation), `BigDecimal`-backed with the §2
+   scale/rounding policy; accounting-style parse/format; the
+   property-based suite (wire round-trip, no-penny-lost allocation,
+   cross-currency arithmetic rejected) that any implementation must
+   pass.
+2. **Phase 3 — schema + contract:** Flyway migrations for the spec's
+   entity graph with §1's staging/provenance/linkage additions and §4's
+   generic classification storage; seed data; the proto API surface.
+3. **Phases 4/5 — server:** business rules as pure, DB-free testable
+   code (lots/FIFO/gains, allocation, drift, rebalancer, CPI,
+   indicators); the price-source module; the snapshot importer; auth
+   via the toolkit with the allowlist.
+4. **Phase 6 — UI**, against the generated client.
+
+The Plaid track's gating step (sandbox institution-directory query in
+bankferry, then the Vanguard production link) proceeds independently.
