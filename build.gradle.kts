@@ -32,6 +32,7 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation(testFixtures("net.stewart:h2-kotlin-toolkit:0.1.0"))
+    testImplementation("io.kotest:kotest-property:5.9.1")
 }
 
 application {
