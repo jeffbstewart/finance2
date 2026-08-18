@@ -33,21 +33,19 @@ enum PricingLocus {
   MANUAL = 2;
 }
 
-message ClassificationEntry {
-  string class_key = 1; // e.g. an asset_classes name
-  FormattedDecimal weight = 2;
-}
-
 // One classification weight map. Kind is data, not an enum: only
 // "ASSET_CLASS" ships at launch; deferred taxonomies revive as new
-// kinds (build-scope §4).
+// kinds (build-scope §4). Weights are keyed by class key (e.g. an
+// asset_classes name) as a proto map, so a duplicate key is
+// unrepresentable; display order is the client's concern (proto maps
+// are unordered).
 message ClassificationSet {
   string kind = 1;
   Date as_of = 2;
   // Set by the server once as_of is older than the configured refresh
   // threshold; the UI prompts for a refresh.
   bool refresh_suggested = 3;
-  repeated ClassificationEntry entries = 4;
+  map<string, FormattedDecimal> weights = 4;
 }
 
 message SecurityProfile {
@@ -154,18 +152,13 @@ message SetSecurityHiddenRequest {
 
 message SetSecurityHiddenResponse {}
 
-message WeightEntry {
-  string class_key = 1;
-  Decimal weight = 2;
-}
-
-// Replaces one classification set atomically. Weights must sum to 1
-// (±0.0001), validated server-side; as_of date-stamps the mix
-// (build-scope §4).
+// Replaces one classification set atomically. Weights are keyed by
+// class key (duplicates unrepresentable) and must sum to 1 (±0.0001),
+// validated server-side; as_of date-stamps the mix (build-scope §4).
 message SetClassificationRequest {
   int64 security_id = 1;
   string kind = 2;
-  repeated WeightEntry entries = 3;
+  map<string, Decimal> weights = 3;
   Date as_of = 4;
 }
 

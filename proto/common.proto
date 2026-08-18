@@ -13,7 +13,10 @@ option java_package = "net.stewart.finance.proto";
 option java_multiple_files = true;
 
 // An exact decimal number, e.g. "1234.5600". Scale conventions:
-// money and fractions 4 decimal places, quantities 8.
+// money and fractions 4 decimal places, quantities 8. A string — not a
+// numeric field — so client-side JavaScript can never introduce
+// floating-point artifacts; both ends parse it with exact-decimal
+// types.
 message Decimal {
   string value = 1;
 }
@@ -25,7 +28,7 @@ message Money {
 }
 
 // A civil calendar date; purchase/sale/price dates carry no time of
-// day (FUNCTIONAL_SPEC §4.3).
+// day and no timezone (FUNCTIONAL_SPEC §4.3).
 message Date {
   int32 year = 1;
   int32 month = 2; // 1-12
