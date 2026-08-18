@@ -189,6 +189,15 @@ Consequences:
   nobody can self-provision. Accounts are created deliberately
   (first-run bootstrap; the toolkit's `hasUsers()` supports a setup
   flow). This supersedes that ruling with a stronger guarantee.
+- **First-run flow and single-user ruling (Jeff, 2026-08-18):** when
+  the app comes online with an empty user table, the UI offers a
+  "create the first account" setup flow; that account is **the** user
+  account. Once any user exists, account creation is closed — there is
+  no registration and no user management for now. A future "manage
+  users" mechanism (some users empowered to administer others) stays
+  open as additive work: a role/admin column and a user-admin service
+  are new-migration/new-service additions, so nothing is built for it
+  today and nothing forecloses it.
 - **Logout genuinely invalidates** (server-side session revocation) and
   no third-party signing keys exist to rotate — legacy defect 1 dies by
   construction, and the server authenticates offline.
