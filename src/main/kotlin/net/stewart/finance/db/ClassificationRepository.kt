@@ -98,12 +98,4 @@ class ClassificationRepository(private val dataSource: DataSource) {
                 result
             }
         }
-
-    /** The seeded asset-class names, in display order. */
-    fun assetClassNames(): List<String> =
-        dataSource.connection.use { conn ->
-            val rs = conn.createStatement()
-                .executeQuery("SELECT name FROM asset_classes ORDER BY display_order")
-            buildList { while (rs.next()) add(rs.getString(1)) }
-        }
 }

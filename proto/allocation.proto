@@ -30,7 +30,9 @@ message ClassContributor {
 }
 
 message ClassAllocation {
-  int64 asset_class_id = 1;
+  // Classes are identified by their seeded name; numeric ids are a
+  // database implementation detail that never crosses the wire.
+  reserved 1;
   string name = 2;
   FormattedMoney current = 3;
   FormattedDecimal current_fraction = 4;
@@ -51,8 +53,10 @@ message GetAllocationResponse {
 }
 
 message TargetEntry {
-  int64 asset_class_id = 1;
+  reserved 1;
   Decimal fraction = 2;
+  // The seeded class name (see ClassAllocation.name).
+  string asset_class = 3;
 }
 
 // Fractions must sum to 1 (±0.0001), enforced at write time.
@@ -84,7 +88,7 @@ message CandidateFund {
 }
 
 message RebalanceClass {
-  int64 asset_class_id = 1;
+  reserved 1;
   string name = 2;
   FormattedDecimal before_fraction = 3;
   FormattedDecimal after_fraction = 4; // with the plan's trades applied

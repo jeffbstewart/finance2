@@ -1,22 +1,22 @@
 package net.stewart.finance.db
 
 import javax.sql.DataSource
-import net.stewart.finance.domain.AssetClassId
 
-data class AssetClassRow(
-    val id: AssetClassId,
-    val name: String,
-)
-
-/** The seeded asset classes, in display order (classes are data, §4/§6). */
+/**
+ * The seeded asset classes (classes are data, build-scope §4/§6).
+ * Names are the identity everywhere above the database — the numeric
+ * primary key never leaves the db layer. Distinctness is guaranteed by
+ * the schema's UNIQUE constraint and encoded here in the return type;
+ * iteration order is the seeded display order.
+ */
 class AssetClassRepository(private val dataSource: DataSource) {
 
-    fun list(): List<AssetClassRow> =
+    fun names(): Set<String> =
         dataSource.connection.use { conn ->
             val rs = conn.createStatement()
-                .executeQuery("SELECT id, name FROM asset_classes ORDER BY display_order")
-            buildList {
-                while (rs.next()) add(AssetClassRow(AssetClassId(rs.getLong("id")), rs.getString("name")))
-            }
+                .executeQuery("SELECT name FROM asset_classes ORDER BY display_order")
+            val result = linkedSetOf<String>()
+            while (rs.next()) result.add(rs.getString("name"))
+            result
         }
 }

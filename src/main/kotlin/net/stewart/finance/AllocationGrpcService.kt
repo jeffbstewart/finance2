@@ -19,7 +19,6 @@ import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.SecurityRow
 import net.stewart.finance.db.TargetAllocationRepository
 import net.stewart.finance.domain.AccountId
-import net.stewart.finance.domain.AssetClassId
 import net.stewart.finance.domain.Fraction
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
@@ -81,11 +80,9 @@ class AllocationGrpcService(
     override suspend fun getAllocation(request: GetAllocationRequest): GetAllocationResponse {
         val portfolioId = portfolio()
         val today = LocalDate.now()
-        val classes = assetClasses.list()
-        val idByName = classes.associate { it.name to it.id }
         val valued = valuedPositions(portfolioId, today)
-        val report = buildReport(portfolioId, classes.map { it.name }, valued, today)
-        val targetByName = targetFractionsByName(portfolioId)
+        val report = buildReport(portfolioId, assetClasses.names().toList(), valued, today)
+        val targetByName = targets.get(portfolioId)
         val sharesBySecurity = valued.associate { it.security.id to it.shares }
 
         val entries = if (targetByName.isEmpty()) null else drift(report, targetByName)
@@ -95,7 +92,6 @@ class AllocationGrpcService(
         for ((index, bucket) in report.buckets.withIndex()) {
             val entry = entries?.get(index)
             val classBuilder = ClassAllocation.newBuilder()
-                .setAssetClassId(idByName.getValue(bucket.className).value)
                 .setName(bucket.className)
                 .setCurrent(bucket.value.toFormatted())
                 .setCurrentFraction(bucket.fraction.toFormattedPercent())
@@ -123,20 +119,21 @@ class AllocationGrpcService(
     override suspend fun setTargetAllocation(request: SetTargetAllocationRequest): SetTargetAllocationResponse {
         val portfolioId = portfolio()
         if (request.entriesCount == 0) throw invalid("at least one target entry is required")
-        val known = assetClasses.list().associateBy { it.id }
-        val entries = linkedMapOf<AssetClassId, Fraction>()
+        val known = assetClasses.names()
+        val entries = linkedMapOf<String, Fraction>()
         for (entry in request.entriesList) {
-            if (entry.assetClassId <= 0) throw invalid("asset class id is required")
-            val classId = AssetClassId(entry.assetClassId)
-            if (classId !in known) throw invalid("unknown asset class ${entry.assetClassId}")
-            if (classId in entries) throw invalid("duplicate entry for ${known.getValue(classId).name}")
+            val name = entry.assetClass.trim()
+            if (name !in known) {
+                throw invalid("unknown asset class \"$name\" — known: ${known.joinToString()}")
+            }
+            if (name in entries) throw invalid("duplicate entry for $name")
             val fraction = try {
                 Fraction.of(entry.fraction.value)
             } catch (e: Exception) {
-                throw invalid("fraction for ${known.getValue(classId).name} is not valid: \"${entry.fraction.value}\"")
+                throw invalid("fraction for $name is not valid: \"${entry.fraction.value}\"")
             }
             if (fraction.signum() < 0) throw invalid("fractions must not be negative")
-            entries[classId] = fraction
+            entries[name] = fraction
         }
         // Guard rail (spec §5.9): the fractions must sum to 1 (±0.0001).
         val sum = entries.values.fold(Fraction.ZERO) { acc, f -> acc + f }
@@ -153,16 +150,14 @@ class AllocationGrpcService(
         if (request.accountId <= 0) throw invalid("destination account id is required")
         val destination = accounts.find(AccountId(request.accountId), portfolioId)
             ?: throw StatusException(Status.NOT_FOUND.withDescription("no account ${request.accountId}"))
-        val targetByName = targetFractionsByName(portfolioId)
+        val targetByName = targets.get(portfolioId)
         if (targetByName.isEmpty()) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription("set a target allocation before planning a rebalance")
             )
         }
-        val classes = assetClasses.list()
-        val idByName = classes.associate { it.name to it.id }
         val valued = valuedPositions(portfolioId, today)
-        val report = buildReport(portfolioId, classes.map { it.name }, valued, today)
+        val report = buildReport(portfolioId, assetClasses.names().toList(), valued, today)
 
         // The planner's candidate pool: priced, classified securities,
         // with prices converted to the reporting currency.
@@ -220,7 +215,6 @@ class AllocationGrpcService(
             .setRemaining(plan.remaining.toFormatted())
         for (score in plan.classes) {
             val classBuilder = RebalanceClass.newBuilder()
-                .setAssetClassId(idByName.getValue(score.className).value)
                 .setName(score.className)
                 .setBeforeFraction(score.beforeFraction.toFormattedPercent())
                 .setAfterFraction(score.afterFraction.toFormattedPercent())
@@ -314,13 +308,6 @@ class AllocationGrpcService(
         val sweeps = accounts.list(portfolioId, brokerId = null, includeHidden = false)
             .fold(reporting.zero()) { acc, account -> acc + reporting.toReporting(account.sweep, today) }
         return currentAllocation(classNames, positions, sweeps)
-    }
-
-    private fun targetFractionsByName(portfolioId: PortfolioId): Map<String, Fraction> {
-        val nameById = assetClasses.list().associate { it.id to it.name }
-        return targets.get(portfolioId).entries.associate { (id, fraction) ->
-            nameById.getValue(id) to fraction
-        }
     }
 
     private fun parseQuantity(raw: String, field: String): Quantity = try {

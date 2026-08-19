@@ -137,7 +137,10 @@ fun main() {
                     GrpcServiceSpec(BrokerGrpcService(portfolios, brokers, accounts, reporting)),
                     GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting)),
                     GrpcServiceSpec(
-                        SecurityGrpcService(portfolios, securities, classifications, privatePrices)
+                        SecurityGrpcService(
+                            portfolios, securities, classifications, privatePrices,
+                            AssetClassRepository(db.dataSource),
+                        )
                     ),
                     GrpcServiceSpec(
                         PositionGrpcService(

@@ -40,10 +40,6 @@ value class SaleId(val value: Long) {
     init { require(value > 0) { "sale id must be positive: $value" } }
 }
 
-@JvmInline
-value class AssetClassId(val value: Long) {
-    init { require(value > 0) { "asset class id must be positive: $value" } }
-}
 
 @JvmInline
 value class PriceId(val value: Long) {

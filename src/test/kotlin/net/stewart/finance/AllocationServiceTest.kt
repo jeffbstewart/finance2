@@ -123,9 +123,6 @@ class AllocationServiceTest {
         e.status.code
     }
 
-    private fun classIdOf(name: String): Long =
-        assetClasses.list().single { it.name == name }.id.value
-
     @Test
     fun `dashboard, target editing, and rebalance scoring`() {
         val f = fixture
@@ -229,7 +226,7 @@ class AllocationServiceTest {
 
     private fun entry(className: String, fraction: String): TargetEntry =
         TargetEntry.newBuilder()
-            .setAssetClassId(classIdOf(className))
+            .setAssetClass(className)
             .setFraction(decimal(fraction))
             .build()
 
