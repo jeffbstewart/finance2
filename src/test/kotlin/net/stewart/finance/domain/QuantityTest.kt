@@ -71,7 +71,7 @@ class QuantityTest {
     }
 
     @Test
-    fun `wire round-trip is lossless`() = runBlocking {
+    fun `wire round-trip is lossless`() = runBlocking<Unit> {
         checkAll(arbQuantity()) { q ->
             assertEquals(q, Quantity.fromWire(q.toWire()))
         }

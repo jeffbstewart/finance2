@@ -98,7 +98,7 @@ class LotsTest {
     }
 
     @Test
-    fun `purchase costs are conserved across any sale sequence`() = runBlocking {
+    fun `purchase costs are conserved across any sale sequence`() = runBlocking<Unit> {
         checkAll(
             Arb.long(10_000L..100_000_000L), // lot quantity in scale-4 units
             Arb.long(0L..1_000_000L),        // purchase costs in cents
