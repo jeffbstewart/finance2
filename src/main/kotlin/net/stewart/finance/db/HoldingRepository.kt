@@ -4,6 +4,7 @@ import java.sql.ResultSet
 import java.time.LocalDate
 import javax.sql.DataSource
 import net.stewart.finance.domain.AccountId
+import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SecurityId
@@ -13,7 +14,7 @@ data class HoldingRecord(
     val accountName: String,
     val securityId: SecurityId,
     val quantity: Quantity,
-    val source: String,
+    val source: EntrySource,
     val asOf: LocalDate?,
 )
 
@@ -40,7 +41,7 @@ class HoldingRepository(private val dataSource: DataSource) {
         accountId: AccountId,
         securityId: SecurityId,
         quantity: Quantity,
-        source: String,
+        source: EntrySource,
         asOf: LocalDate,
     ) {
         dataSource.connection.use { conn ->
@@ -51,7 +52,7 @@ class HoldingRepository(private val dataSource: DataSource) {
                 stmt.setLong(1, accountId.value)
                 stmt.setLong(2, securityId.value)
                 stmt.setBigDecimal(3, quantity.amount)
-                stmt.setString(4, source)
+                stmt.setString(4, source.dbValue)
                 stmt.setObject(5, asOf)
                 stmt.executeUpdate()
             }
@@ -74,7 +75,7 @@ class HoldingRepository(private val dataSource: DataSource) {
         accountName = getString("account_name"),
         securityId = SecurityId(getLong("security_id")),
         quantity = Quantity.of(getBigDecimal("quantity")),
-        source = getString("source"),
+        source = EntrySource.parse(getString("source")),
         asOf = getObject("as_of", LocalDate::class.java),
     )
 

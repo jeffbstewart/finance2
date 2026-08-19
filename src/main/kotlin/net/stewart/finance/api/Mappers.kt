@@ -1,6 +1,7 @@
 package net.stewart.finance.api
 
 import java.time.LocalDate
+import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.Fraction
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PricingLocus
@@ -74,8 +75,8 @@ fun PricingLocus.toProto(): net.stewart.finance.proto.PricingLocus = when (this)
     PricingLocus.MANUAL -> net.stewart.finance.proto.PricingLocus.MANUAL
 }
 
-fun provenanceOf(source: String, asOf: LocalDate?): Provenance {
-    val builder = Provenance.newBuilder().setSource(source)
+fun provenanceOf(source: EntrySource, asOf: LocalDate?): Provenance {
+    val builder = Provenance.newBuilder().setSource(source.dbValue)
     asOf?.let { builder.setAsOf(it.toProto()) }
     return builder.build()
 }

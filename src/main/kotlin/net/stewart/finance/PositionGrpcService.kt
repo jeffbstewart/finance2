@@ -24,6 +24,7 @@ import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.SecurityRow
 import net.stewart.finance.domain.AccountId
 import net.stewart.finance.domain.CurrencyUnit
+import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.LotId
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
@@ -349,7 +350,7 @@ class PositionGrpcService(
         requireMatchingCurrency(account, security)
         val quantity = parseQuantity(request.quantity.value, "quantity")
         if (quantity.signum() <= 0) throw invalid("quantity must be positive; delete the holding to remove it")
-        holdings.upsert(account.id, security.id, quantity, "manual", LocalDate.now())
+        holdings.upsert(account.id, security.id, quantity, EntrySource.MANUAL, LocalDate.now())
         return SetHoldingResponse.getDefaultInstance()
     }
 
