@@ -2,11 +2,12 @@ package net.stewart.finance.db
 
 import java.time.LocalDate
 import javax.sql.DataSource
+import net.stewart.finance.domain.ClassificationKind
 import net.stewart.finance.domain.Fraction
 import net.stewart.finance.domain.SecurityId
 
 data class ClassificationSetRow(
-    val kind: String,
+    val kind: ClassificationKind,
     val asOf: LocalDate,
     val weights: Map<String, Fraction>,
 )
@@ -26,9 +27,9 @@ class ClassificationRepository(private val dataSource: DataSource) {
             ).use { stmt ->
                 stmt.setLong(1, securityId.value)
                 val rs = stmt.executeQuery()
-                val byKind = linkedMapOf<String, Pair<LocalDate, MutableMap<String, Fraction>>>()
+                val byKind = linkedMapOf<ClassificationKind, Pair<LocalDate, MutableMap<String, Fraction>>>()
                 while (rs.next()) {
-                    val kind = rs.getString("kind")
+                    val kind = ClassificationKind.parse(rs.getString("kind"))
                     val entry = byKind.getOrPut(kind) {
                         rs.getObject("as_of", LocalDate::class.java) to linkedMapOf()
                     }
@@ -39,7 +40,7 @@ class ClassificationRepository(private val dataSource: DataSource) {
         }
 
     /** Replaces the (security, kind) set atomically. */
-    fun replace(securityId: SecurityId, kind: String, weights: Map<String, Fraction>, asOf: LocalDate) {
+    fun replace(securityId: SecurityId, kind: ClassificationKind, weights: Map<String, Fraction>, asOf: LocalDate) {
         dataSource.connection.use { conn ->
             conn.autoCommit = false
             try {
@@ -47,7 +48,7 @@ class ClassificationRepository(private val dataSource: DataSource) {
                     "DELETE FROM security_classifications WHERE security_id = ? AND kind = ?"
                 ).use { stmt ->
                     stmt.setLong(1, securityId.value)
-                    stmt.setString(2, kind)
+                    stmt.setString(2, kind.name)
                     stmt.executeUpdate()
                 }
                 conn.prepareStatement(
@@ -56,7 +57,7 @@ class ClassificationRepository(private val dataSource: DataSource) {
                 ).use { stmt ->
                     for ((key, weight) in weights) {
                         stmt.setLong(1, securityId.value)
-                        stmt.setString(2, kind)
+                        stmt.setString(2, kind.name)
                         stmt.setString(3, key)
                         stmt.setBigDecimal(4, weight.value)
                         stmt.setObject(5, asOf)

@@ -26,6 +26,23 @@ enum class SecurityType {
 }
 
 /**
+ * A classification taxonomy (build-scope §4). Only the asset-class mix
+ * ships at launch; reviving a deferred taxonomy (sector, market cap,
+ * region, credit quality) is an additive enum entry plus seed data —
+ * the storage is already generic. Server code rejects kinds it does
+ * not know, so the wire cannot persist arbitrary taxonomies.
+ */
+enum class ClassificationKind {
+    ASSET_CLASS;
+
+    companion object {
+        fun parse(dbValue: String): ClassificationKind =
+            entries.firstOrNull { it.name == dbValue }
+                ?: throw IllegalArgumentException("unknown classification kind \"$dbValue\" in database")
+    }
+}
+
+/**
  * Who prices the security (build-scope §4): MARKET = the external
  * provider; MANUAL = hand-entered private price rows.
  */
