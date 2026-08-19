@@ -17,9 +17,14 @@ import net.stewart.armeria.auth.AuthGrpcInterceptor
 import net.stewart.armeria.auth.grpcAuthConfig
 import net.stewart.auth.LoginService
 import net.stewart.auth.SessionService
+import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.auth.RequestMetaInterceptor
 import net.stewart.finance.auth.TrustedProxyDecorator
+import net.stewart.finance.db.AccountRepository
+import net.stewart.finance.db.BrokerRepository
+import net.stewart.finance.db.FxRepository
+import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.ops.AuthMaintenance
 import net.stewart.finance.ops.InternalHttpService
 import net.stewart.finance.ops.InternalPortGate
@@ -110,10 +115,18 @@ fun main() {
     ArmeriaAppServer(
         AppServerConfig(
             port = port,
-            grpcServices = listOf(
-                GrpcServiceSpec(InfoGrpcService()),
-                GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
-            ),
+            grpcServices = run {
+                val portfolios = PortfolioRepository(db.dataSource)
+                val brokers = BrokerRepository(db.dataSource)
+                val accounts = AccountRepository(db.dataSource)
+                val reporting = ReportingCurrency(FxRepository(db.dataSource))
+                listOf(
+                    GrpcServiceSpec(InfoGrpcService()),
+                    GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
+                    GrpcServiceSpec(BrokerGrpcService(portfolios, brokers, accounts, reporting)),
+                    GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting)),
+                )
+            },
             grpcInterceptors = listOf(RequestMetaInterceptor(), authInterceptor),
             globalDecorators = listOf(InternalPortGate(internalPort)) +
                 if (trustedProxies.isEmpty()) emptyList()
