@@ -1,0 +1,70 @@
+// BrokerService: the Brokerages page and broker CRUD
+// (FUNCTIONAL_SPEC §7 "Brokers", §9.1–§9.3). Broker logos are dropped
+// by ruling (build-scope §3) — names only.
+syntax = "proto3";
+
+package finance;
+
+import "common.proto";
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+message BrokerSummary {
+  int64 broker_id = 1;
+  string name = 2;
+  bool hidden = 3;
+  // Totals are in the reporting currency, USD (build-scope §5).
+  FormattedMoney total_holdings = 4;
+  FormattedMoney sweeps = 5;
+}
+
+message ListBrokersRequest {
+  // Also returns hidden brokers, so the UI can reveal and unhide them
+  // (fixes legacy defect 6).
+  bool include_hidden = 1;
+}
+
+message ListBrokersResponse {
+  repeated BrokerSummary brokers = 1;
+  FormattedMoney total_holdings = 2;
+  FormattedMoney total_sweeps = 3;
+}
+
+message CreateBrokerRequest {
+  string name = 1;
+}
+
+message CreateBrokerResponse {
+  int64 broker_id = 1;
+}
+
+message RenameBrokerRequest {
+  int64 broker_id = 1;
+  string name = 2;
+}
+
+message RenameBrokerResponse {}
+
+// Guard rail (§5.9): only a broker with no accounts can be deleted.
+message DeleteBrokerRequest {
+  int64 broker_id = 1;
+}
+
+message DeleteBrokerResponse {}
+
+// Guard rail (§5.9): hiding requires no visible accounts.
+message SetBrokerHiddenRequest {
+  int64 broker_id = 1;
+  bool hidden = 2;
+}
+
+message SetBrokerHiddenResponse {}
+
+service BrokerService {
+  rpc ListBrokers(ListBrokersRequest) returns (ListBrokersResponse);
+  rpc CreateBroker(CreateBrokerRequest) returns (CreateBrokerResponse);
+  rpc RenameBroker(RenameBrokerRequest) returns (RenameBrokerResponse);
+  rpc DeleteBroker(DeleteBrokerRequest) returns (DeleteBrokerResponse);
+  rpc SetBrokerHidden(SetBrokerHiddenRequest) returns (SetBrokerHiddenResponse);
+}

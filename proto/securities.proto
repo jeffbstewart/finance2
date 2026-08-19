@@ -1,0 +1,218 @@
+// SecurityService: the securities list, security details with price
+// history and technical indicators, profile and classification edits,
+// and the private price-history editor (FUNCTIONAL_SPEC §7
+// "Securities & prices", §9.10–§9.12, §9.17–§9.18; launch
+// classification scope per build-scope §4).
+syntax = "proto3";
+
+package finance;
+
+import "common.proto";
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+// The MUTUAL_FUND distinction is load-bearing in the rebalance
+// planner: mutual funds are bought in dollars, everything else in
+// whole shares (FUNCTIONAL_SPEC §5.5). UNSPECIFIED renders as
+// "Unknown".
+enum SecurityType {
+  SECURITY_TYPE_UNSPECIFIED = 0;
+  STOCK = 1;
+  ETF = 2;
+  MUTUAL_FUND = 3;
+  PRIVATE_INVESTMENT = 4;
+}
+
+// Who prices the security (build-scope §4): MARKET = the external
+// provider; MANUAL = hand-entered private price rows. Extensible for
+// later venue/exchange nuance.
+enum PricingLocus {
+  PRICING_LOCUS_UNSPECIFIED = 0;
+  MARKET = 1;
+  MANUAL = 2;
+}
+
+// One classification weight map. Kind is data, not an enum: only
+// "ASSET_CLASS" ships at launch; deferred taxonomies revive as new
+// kinds (build-scope §4). Weights are keyed by class key (e.g. an
+// asset_classes name) as a proto map, so a duplicate key is
+// unrepresentable; display order is the client's concern (proto maps
+// are unordered).
+message ClassificationSet {
+  string kind = 1;
+  Date as_of = 2;
+  // Set by the server once as_of is older than the configured refresh
+  // threshold; the UI prompts for a refresh.
+  bool refresh_suggested = 3;
+  map<string, FormattedDecimal> weights = 4;
+}
+
+message SecurityProfile {
+  int64 security_id = 1;
+  string ticker = 2;
+  string description = 3;
+  string currency_code = 4; // must match every account that holds it
+  SecurityType security_type = 5;
+  PricingLocus pricing_locus = 6;
+  FormattedDecimal net_expense_ratio = 7;
+  bool hidden = 8;
+  repeated ClassificationSet classifications = 9;
+}
+
+// Six-month adjusted-close trend, oldest first, embedded in list
+// responses (fixes the legacy sparkline N+1, defect 11).
+message Sparkline {
+  repeated Decimal adjusted_closes = 1;
+}
+
+message SecurityListing {
+  int64 security_id = 1;
+  string ticker = 2;
+  string description = 3;
+  Sparkline sparkline = 4;
+  bool hidden = 5;
+}
+
+message ListSecuritiesRequest {
+  // Also returns hidden securities so the UI can reveal and unhide
+  // them (fixes legacy defect 6).
+  bool include_hidden = 1;
+}
+
+message ListSecuritiesResponse {
+  repeated SecurityListing securities = 1;
+}
+
+// Adding takes just a ticker (FUNCTIONAL_SPEC §9.18); every profile
+// field is then edited manually — there is no auto-population (§6.3).
+message AddSecurityRequest {
+  string ticker = 1;
+  string currency_code = 2;
+}
+
+message AddSecurityResponse {
+  SecurityProfile security = 1;
+}
+
+message PricePoint {
+  Date date = 1;
+  Decimal close = 2;
+  Decimal adjusted_close = 3; // equals close for MANUAL-locus securities
+}
+
+message IndicatorPoint {
+  Date date = 1;
+  Decimal value = 2;
+}
+
+message BollingerPoint {
+  Date date = 1;
+  Decimal mean = 2;
+  Decimal upper = 3;
+  Decimal lower = 4;
+}
+
+// Computed server-side over the date-ascending adjusted closes with a
+// 20-sample window (FUNCTIONAL_SPEC §5.8).
+message TechnicalIndicators {
+  repeated IndicatorPoint sma = 1;
+  repeated IndicatorPoint ema = 2;
+  repeated BollingerPoint bollinger = 3;
+}
+
+message GetSecurityDetailsRequest {
+  int64 security_id = 1;
+  // Present prices in constant dollars via CPI (FUNCTIONAL_SPEC §5.7).
+  bool inflation_adjusted = 2;
+}
+
+message GetSecurityDetailsResponse {
+  SecurityProfile security = 1;
+  repeated PricePoint price_history = 2; // date ascending
+  TechnicalIndicators indicators = 3;
+}
+
+message UpdateSecurityProfileRequest {
+  int64 security_id = 1;
+  string description = 2;
+  SecurityType security_type = 3;
+  PricingLocus pricing_locus = 4;
+  Decimal net_expense_ratio = 5;
+}
+
+message UpdateSecurityProfileResponse {}
+
+// Guard rail (§5.9): hiding requires no open positions; deletion is
+// not offered — a security with no references can be hidden instead.
+message SetSecurityHiddenRequest {
+  int64 security_id = 1;
+  bool hidden = 2;
+}
+
+message SetSecurityHiddenResponse {}
+
+// Replaces one classification set atomically. Weights are keyed by
+// class key (duplicates unrepresentable) and must sum to 1 (±0.0001),
+// validated server-side; as_of date-stamps the mix (build-scope §4).
+message SetClassificationRequest {
+  int64 security_id = 1;
+  string kind = 2;
+  map<string, Decimal> weights = 3;
+  Date as_of = 4;
+}
+
+message SetClassificationResponse {}
+
+// Private price-history CRUD applies only to MANUAL-locus securities;
+// MARKET-locus securities reject it (FUNCTIONAL_SPEC §5.6).
+message PrivatePriceRow {
+  int64 price_id = 1;
+  FormattedDate date = 2;
+  FormattedMoney price = 3;
+}
+
+message ListPrivatePricesRequest {
+  int64 security_id = 1;
+}
+
+message ListPrivatePricesResponse {
+  repeated PrivatePriceRow prices = 1;
+}
+
+message AddPrivatePriceRequest {
+  int64 security_id = 1;
+  Date date = 2;
+  Decimal price = 3;
+}
+
+message AddPrivatePriceResponse {
+  int64 price_id = 1;
+}
+
+message UpdatePrivatePriceRequest {
+  int64 price_id = 1;
+  Date date = 2;
+  Decimal price = 3;
+}
+
+message UpdatePrivatePriceResponse {}
+
+message DeletePrivatePriceRequest {
+  int64 price_id = 1;
+}
+
+message DeletePrivatePriceResponse {}
+
+service SecurityService {
+  rpc ListSecurities(ListSecuritiesRequest) returns (ListSecuritiesResponse);
+  rpc AddSecurity(AddSecurityRequest) returns (AddSecurityResponse);
+  rpc GetSecurityDetails(GetSecurityDetailsRequest) returns (GetSecurityDetailsResponse);
+  rpc UpdateSecurityProfile(UpdateSecurityProfileRequest) returns (UpdateSecurityProfileResponse);
+  rpc SetSecurityHidden(SetSecurityHiddenRequest) returns (SetSecurityHiddenResponse);
+  rpc SetClassification(SetClassificationRequest) returns (SetClassificationResponse);
+  rpc ListPrivatePrices(ListPrivatePricesRequest) returns (ListPrivatePricesResponse);
+  rpc AddPrivatePrice(AddPrivatePriceRequest) returns (AddPrivatePriceResponse);
+  rpc UpdatePrivatePrice(UpdatePrivatePriceRequest) returns (UpdatePrivatePriceResponse);
+  rpc DeletePrivatePrice(DeletePrivatePriceRequest) returns (DeletePrivatePriceResponse);
+}

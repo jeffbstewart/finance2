@@ -1,0 +1,65 @@
+// SessionService: local authentication via auth-kotlin-toolkit
+// (docs/design/initial-build-scope.md §8) — no OAuth. Login/Logout
+// ride an HttpOnly session cookie set by the server; GetSessionStatus
+// lets the SPA restore state on reload and route to first-run setup.
+syntax = "proto3";
+
+package finance;
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+message UserInfo {
+  string username = 1;
+  string display_name = 2;
+}
+
+message GetSessionStatusRequest {}
+
+message GetSessionStatusResponse {
+  // True while the user table is empty: the UI must offer the
+  // create-the-first-account flow (§8 single-user ruling).
+  bool setup_required = 1;
+  bool signed_in = 2;
+  UserInfo user = 3; // set when signed_in
+}
+
+message CreateFirstUserRequest {
+  string username = 1;
+  string password = 2;
+  string display_name = 3;
+}
+
+message CreateFirstUserResponse {
+  UserInfo user = 1;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  UserInfo user = 1;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+service SessionService {
+  // Unauthenticated: status probe for reload restore and setup routing.
+  rpc GetSessionStatus(GetSessionStatusRequest) returns (GetSessionStatusResponse);
+
+  // Creates the single user account and signs it in. Valid only while
+  // no user exists; PERMISSION_DENIED afterwards — registration is
+  // closed once the app has its user (§8).
+  rpc CreateFirstUser(CreateFirstUserRequest) returns (CreateFirstUserResponse);
+
+  // Unauthenticated; rate-limited with lockout by the auth toolkit.
+  // Success sets the session cookie.
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Revokes the server-side session and clears the cookie.
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}

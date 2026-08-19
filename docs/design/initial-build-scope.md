@@ -220,3 +220,26 @@ steps**: a DDL migration never INSERTs, and reference/seed data (asset
 classes today; a future Commodities class) arrives in its own
 versioned migration. Structure diffs and data diffs review
 independently.
+
+## 10. Deployment topology: behind HAProxy (design note, Jeff 2026-08-18)
+
+The server runs behind an **HAProxy** instance that owns TLS (SSL
+transcoding) and forwards standard origin-IP headers so the app can
+know the calling client's address.
+
+Consequences for Phase 5 wiring:
+
+- The Armeria server listens in **cleartext** (h2c/HTTP1) on an
+  address only the proxy reaches; it never terminates TLS itself.
+- **Client IP comes from the forwarded headers** (`X-Forwarded-For`),
+  trusted only from the proxy's address (Armeria's client-address
+  source configuration). The auth toolkit's per-IP login rate limiting
+  and lockout must be fed this derived address, not the socket peer —
+  otherwise every attempt appears to come from HAProxy and one
+  attacker's failures lock everyone out.
+- **Session cookies stay `Secure` + `HttpOnly` + `SameSite`**: the
+  browser-facing origin is HTTPS even though the backend hop is
+  cleartext, so the server sets cookie flags for the proxied origin
+  (honoring `X-Forwarded-Proto`), not its own listener.
+- Proxy trust is **configuration** (`.env`): the trusted proxy
+  address(es), documented in `example.env` when Phase 5 lands.
