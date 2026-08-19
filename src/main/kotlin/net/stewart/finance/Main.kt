@@ -20,6 +20,7 @@ import net.stewart.auth.SessionService
 import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.auth.RequestMetaInterceptor
 import net.stewart.finance.auth.TrustedProxyDecorator
+import net.stewart.finance.ops.AuthMaintenance
 import net.stewart.finance.ops.InternalHttpService
 import net.stewart.finance.ops.InternalPortGate
 import net.stewart.finance.proto.InfoServiceGrpc
@@ -69,6 +70,8 @@ fun main() {
     val sessions = SessionService(db.dataSource, users, cookieName = "finance_session")
     val logins = LoginService(db.dataSource, users)
     val secureCookies = System.getenv("COOKIE_SECURE")?.toBooleanStrictOrNull() ?: true
+
+    AuthMaintenance(sessions, logins).start()
 
     val setupToken = if (users.hasUsers()) null else generateSetupToken().also {
         log.info("First-run setup: no user exists. Setup token (required by CreateFirstUser): {}", it)
