@@ -243,3 +243,11 @@ Consequences for Phase 5 wiring:
   (honoring `X-Forwarded-Proto`), not its own listener.
 - Proxy trust is **configuration** (`.env`): the trusted proxy
   address(es), documented in `example.env` when Phase 5 lands.
+- **Amended (ruling, Jeff 2026-08-19):** health and metrics move to a
+  **separate internal port** (`INTERNAL_PORT`), LAN-direct with no
+  proxy and no auth. Exactly `/healthz` and `/metrics` answer there,
+  plus `/` redirecting to `/metrics`; everything else on that port is
+  404, and the ops endpoints do not exist on the main port. With
+  trusted proxies configured, the main port accepts requests only from
+  them, and a proxied request missing the forwarded client address
+  fails as a bad request.
