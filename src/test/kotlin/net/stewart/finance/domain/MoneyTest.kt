@@ -109,9 +109,17 @@ class MoneyTest {
     }
 
     @Test
+    fun `money over fraction scales up to the whole`() {
+        // A class holding $500 at a 0.6 target implies an $833.33 total.
+        assertEquals(usd("833.3333"), usd("500") / Fraction.of("0.6"))
+        assertEquals(usd("200"), usd("50") / Fraction.of("0.25"))
+    }
+
+    @Test
     fun `division by zero throws`() {
         assertFailsWith<ArithmeticException> { usd("1") / usd("0") }
         assertFailsWith<ArithmeticException> { usd("1") / Quantity.ZERO }
+        assertFailsWith<ArithmeticException> { usd("1") / Fraction.ZERO }
     }
 
     @Test
