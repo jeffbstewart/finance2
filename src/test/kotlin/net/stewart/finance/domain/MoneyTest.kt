@@ -167,21 +167,21 @@ class MoneyTest {
     // --- properties ---
 
     @Test
-    fun `wire round-trip is lossless`() = runBlocking {
+    fun `wire round-trip is lossless`() = runBlocking<Unit> {
         checkAll(arbMoney()) { m ->
             assertEquals(m, Money.fromWire(m.toWire(), m.currency))
         }
     }
 
     @Test
-    fun `display round-trips through parse`() = runBlocking {
+    fun `display round-trips through parse`() = runBlocking<Unit> {
         checkAll(arbMoney()) { m ->
             assertEquals(m, Money.parse(m.display(), m.currency))
         }
     }
 
     @Test
-    fun `addition then subtraction is identity`() = runBlocking {
+    fun `addition then subtraction is identity`() = runBlocking<Unit> {
         checkAll(arbMoney(), arbMoney()) { a, b ->
             assertEquals(a, a + b - b)
         }
@@ -190,7 +190,7 @@ class MoneyTest {
     // --- allocation (no penny lost) ---
 
     @Test
-    fun `allocation is exhaustive and proportional`() = runBlocking {
+    fun `allocation is exhaustive and proportional`() = runBlocking<Unit> {
         checkAll(arbMoney(), arbWeights) { total, weights ->
             val parts = total.allocateBy(weights)
             assertEquals(weights.size, parts.size)
