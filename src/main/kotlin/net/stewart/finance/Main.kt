@@ -22,8 +22,10 @@ import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.auth.RequestMetaInterceptor
 import net.stewart.finance.auth.TrustedProxyDecorator
 import net.stewart.finance.db.AccountRepository
+import net.stewart.finance.db.AssetClassRepository
 import net.stewart.finance.db.BrokerRepository
 import net.stewart.finance.db.ClassificationRepository
+import net.stewart.finance.db.TargetAllocationRepository
 import net.stewart.finance.db.FxRepository
 import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRepository
@@ -142,6 +144,15 @@ fun main() {
                             portfolios, accounts, securities,
                             LotRepository(db.dataSource), SaleRepository(db.dataSource),
                             HoldingRepository(db.dataSource), privatePrices, reporting,
+                        )
+                    ),
+                    GrpcServiceSpec(
+                        AllocationGrpcService(
+                            portfolios, accounts, securities,
+                            LotRepository(db.dataSource), SaleRepository(db.dataSource),
+                            HoldingRepository(db.dataSource), privatePrices, classifications,
+                            AssetClassRepository(db.dataSource), TargetAllocationRepository(db.dataSource),
+                            reporting,
                         )
                     ),
                 )

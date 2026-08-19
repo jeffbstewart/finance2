@@ -75,6 +75,30 @@ class ClassificationRepository(private val dataSource: DataSource) {
         }
     }
 
+    /**
+     * Every security's asset-class weight map, in one query — feeds
+     * the allocation dashboard and rebalancer without an N+1.
+     */
+    fun assetClassWeightsBySecurity(portfolioId: net.stewart.finance.domain.PortfolioId): Map<SecurityId, Map<String, Fraction>> =
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(
+                "SELECT sc.security_id, sc.class_key, sc.weight FROM security_classifications sc " +
+                    "JOIN securities s ON s.id = sc.security_id " +
+                    "WHERE s.portfolio_id = ? AND sc.kind = ? ORDER BY sc.security_id"
+            ).use { stmt ->
+                stmt.setLong(1, portfolioId.value)
+                stmt.setString(2, ClassificationKind.ASSET_CLASS.name)
+                val rs = stmt.executeQuery()
+                val result = linkedMapOf<SecurityId, MutableMap<String, Fraction>>()
+                while (rs.next()) {
+                    result.getOrPut(SecurityId(rs.getLong("security_id"))) { linkedMapOf() }[
+                        rs.getString("class_key")
+                    ] = Fraction.of(rs.getBigDecimal("weight"))
+                }
+                result
+            }
+        }
+
     /** The seeded asset-class names, in display order. */
     fun assetClassNames(): List<String> =
         dataSource.connection.use { conn ->
