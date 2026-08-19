@@ -17,14 +17,23 @@ import net.stewart.finance.domain.SecurityId
  *  is rejected as unimplemented. */
 enum class TradeSide { BUY, SELL }
 
+/**
+ * How a security is purchased (spec §5.5 — this distinction is
+ * load-bearing in the planner math): mutual funds buy in dollar
+ * amounts with shares derived; everything else buys whole shares with
+ * cost derived.
+ */
+enum class PurchaseModality {
+    PURCHASE_WHOLE_SHARES,
+    PURCHASE_DOLLAR_AMOUNTS,
+}
+
 /** A security the planner may buy, with its price and weight map. */
 data class PlannerSecurity(
     val securityId: SecurityId,
     val ticker: String,
     val price: Money,
-    /** Mutual funds are bought in dollars; everything else in whole
-     *  shares (spec §5.5 — this distinction is load-bearing). */
-    val mutualFund: Boolean,
+    val purchaseModality: PurchaseModality,
     val weights: Map<String, Fraction>,
 ) {
     init {
@@ -35,8 +44,9 @@ data class PlannerSecurity(
 }
 
 /**
- * One tentative trade. For a mutual fund [cost] drives the trade
- * (shares derived); for anything else [shares] drives it (cost
+ * One tentative trade. Under [PurchaseModality.PURCHASE_DOLLAR_AMOUNTS]
+ * [cost] drives the trade (shares derived); under
+ * [PurchaseModality.PURCHASE_WHOLE_SHARES] [shares] drives it (cost
  * derived) — pass the driving field, the other may be null.
  */
 data class PlannedTrade(
@@ -93,6 +103,10 @@ data class RebalancePlan(
     val remaining: Money,
 )
 
+// The spec §5.5 candidate threshold: a security is suggested as a buy
+// for a class only when at least this fraction of its weight map lies
+// in that class ("candidate funds … whose weight in that class is
+// ≥ 0.9, ordered by concentration").
 private val CANDIDATE_CONCENTRATION = Fraction.of("0.9")
 
 /**
@@ -132,8 +146,8 @@ fun scoreRebalance(
         val security = requireNotNull(securitiesById[trade.securityId]) {
             "trade references unknown security ${trade.securityId}"
         }
-        if (security.mutualFund) {
-            val cost = requireNotNull(trade.cost) { "${security.ticker} is a mutual fund: buy in dollars" }
+        if (security.purchaseModality == PurchaseModality.PURCHASE_DOLLAR_AMOUNTS) {
+            val cost = requireNotNull(trade.cost) { "${security.ticker} is bought in dollar amounts" }
             require(cost.signum() > 0) { "${security.ticker} trade cost must be positive" }
             require(cost.currency == security.price.currency) {
                 "${security.ticker} trade cost in ${cost.currency}, price in ${security.price.currency}"

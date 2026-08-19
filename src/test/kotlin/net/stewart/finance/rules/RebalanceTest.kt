@@ -18,19 +18,22 @@ private fun security(
     id: Long,
     ticker: String,
     price: String,
-    mutualFund: Boolean,
+    modality: PurchaseModality,
     vararg weights: Pair<String, String>,
 ) = PlannerSecurity(
     SecurityId(id),
     ticker,
     usd(price),
-    mutualFund,
+    modality,
     weights.associate { (k, v) -> k to Fraction.of(v) },
 )
 
-private val VTI = security(1, "VTI", "100", false, "US Stock" to "1")
-private val BND = security(2, "BND", "80", false, "Bond" to "1")
-private val VBTLX = security(3, "VBTLX", "11", true, "Bond" to "1")
+private val VTI =
+    security(1, "VTI", "100", PurchaseModality.PURCHASE_WHOLE_SHARES, "US Stock" to "1")
+private val BND =
+    security(2, "BND", "80", PurchaseModality.PURCHASE_WHOLE_SHARES, "Bond" to "1")
+private val VBTLX =
+    security(3, "VBTLX", "11", PurchaseModality.PURCHASE_DOLLAR_AMOUNTS, "Bond" to "1")
 
 private val TARGET = mapOf(
     "Cash" to Fraction.of("0.1"),
@@ -153,7 +156,10 @@ class RebalanceTest {
 
     @Test
     fun `class spending always sums to the trades' costs`() {
-        val blended = security(4, "BLEND", "10", false, "US Stock" to "0.7", "Bond" to "0.3")
+        val blended = security(
+            4, "BLEND", "10", PurchaseModality.PURCHASE_WHOLE_SHARES,
+            "US Stock" to "0.7", "Bond" to "0.3",
+        )
         val plan = scoreRebalance(
             cashHeavyReport(), TARGET, listOf(VTI, blended),
             trades = listOf(PlannedTrade(TradeSide.BUY, SecurityId(4), shares = Quantity.of("3"))),
