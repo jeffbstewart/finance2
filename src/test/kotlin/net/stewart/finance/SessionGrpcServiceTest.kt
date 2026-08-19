@@ -6,9 +6,11 @@ import io.grpc.StatusException
 import kotlinx.coroutines.runBlocking
 import net.stewart.auth.LoginService
 import net.stewart.auth.SessionService
+import net.stewart.finance.auth.AUTHORITY_KEY
 import net.stewart.finance.auth.CLIENT_IP_KEY
 import net.stewart.finance.auth.COOKIE_HEADER_KEY
 import net.stewart.finance.auth.FinanceUserRepository
+import net.stewart.finance.auth.ORIGIN_KEY
 import net.stewart.finance.auth.RESPONSE_COOKIES_KEY
 import net.stewart.finance.auth.ResponseCookies
 import net.stewart.finance.proto.CreateFirstUserRequest
@@ -29,6 +31,8 @@ class SessionGrpcServiceTest {
         @JvmField
         @RegisterExtension
         val db = H2TestDatabaseExtension()
+
+        const val SETUP_TOKEN = "test-setup-token"
     }
 
     private val users by lazy { FinanceUserRepository(db.dataSource) }
@@ -36,19 +40,25 @@ class SessionGrpcServiceTest {
         SessionService(db.dataSource, users, cookieName = "finance_session")
     }
     private val logins by lazy { LoginService(db.dataSource, users) }
-    private val service by lazy { SessionGrpcService(users, sessions, logins, secureCookies = true) }
+    private val service by lazy {
+        SessionGrpcService(users, sessions, logins, setupToken = SETUP_TOKEN, secureCookies = true)
+    }
 
     /** Runs [block] inside a gRPC context shaped like RequestMetaInterceptor's. */
     private fun <T> call(
         cookies: ResponseCookies = ResponseCookies(),
         cookieHeader: String? = null,
         ip: String = "10.0.0.1",
+        origin: String? = null,
+        authority: String? = null,
         block: suspend () -> T,
     ): T {
         var ctx = Context.current()
             .withValue(RESPONSE_COOKIES_KEY, cookies)
             .withValue(CLIENT_IP_KEY, ip)
         if (cookieHeader != null) ctx = ctx.withValue(COOKIE_HEADER_KEY, cookieHeader)
+        if (origin != null) ctx = ctx.withValue(ORIGIN_KEY, origin)
+        if (authority != null) ctx = ctx.withValue(AUTHORITY_KEY, authority)
         val prev = ctx.attach()
         try {
             return runBlocking { block() }
@@ -87,6 +97,41 @@ class SessionGrpcServiceTest {
             },
         )
 
+        // Username rules: 7-bit visible ASCII, at most 100 chars.
+        assertEquals(
+            Status.Code.INVALID_ARGUMENT,
+            statusOf {
+                service.createFirstUser(
+                    CreateFirstUserRequest.newBuilder()
+                        .setUsername("jéff").setPassword("correct-horse-battery").build()
+                )
+            },
+        )
+        assertEquals(
+            Status.Code.INVALID_ARGUMENT,
+            statusOf {
+                service.createFirstUser(
+                    CreateFirstUserRequest.newBuilder()
+                        .setUsername("j".repeat(101)).setPassword("correct-horse-battery").build()
+                )
+            },
+        )
+
+        // The per-run setup token is required (ruling: a fresh
+        // deployment cannot be claimed without reading the server log).
+        assertEquals(
+            Status.Code.PERMISSION_DENIED,
+            statusOf {
+                service.createFirstUser(
+                    CreateFirstUserRequest.newBuilder()
+                        .setUsername("jeff")
+                        .setPassword("correct-horse-battery")
+                        .setSetupToken("wrong-token")
+                        .build()
+                )
+            },
+        )
+
         // The first (and only) account: created and signed in.
         val setupCookies = ResponseCookies()
         val created = call(cookies = setupCookies) {
@@ -95,6 +140,7 @@ class SessionGrpcServiceTest {
                     .setUsername("jeff")
                     .setPassword("correct-horse-battery")
                     .setDisplayName("Jeff")
+                    .setSetupToken(SETUP_TOKEN)
                     .build()
             )
         }
@@ -109,6 +155,15 @@ class SessionGrpcServiceTest {
         assertTrue(!signedIn.setupRequired)
         assertTrue(signedIn.signedIn)
         assertEquals("jeff", signedIn.user.username)
+
+        // A cross-origin request's cookie is ignored (CSRF posture
+        // mirrors the auth interceptor's Origin check).
+        val crossOrigin = call(
+            cookieHeader = "finance_session=$token",
+            origin = "https://evil.example",
+            authority = "finance.local:443",
+        ) { service.getSessionStatus(GetSessionStatusRequest.getDefaultInstance()) }
+        assertTrue(!crossOrigin.signedIn)
 
         // Registration is closed forever (single-user ruling).
         assertEquals(
