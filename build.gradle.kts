@@ -27,6 +27,7 @@ dependencies {
     implementation("io.grpc:grpc-kotlin-stub:$grpcKotlinVersion")
     implementation("com.google.protobuf:protobuf-kotlin:$protobufVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.15.2")
 
     runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
 

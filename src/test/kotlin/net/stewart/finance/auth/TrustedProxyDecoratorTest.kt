@@ -10,12 +10,20 @@ import java.net.InetSocketAddress
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+private const val MAIN_PORT = 9090
+private const val INTERNAL_PORT = 9091
+
 class TrustedProxyDecoratorTest {
 
-    private val decorator = TrustedProxyDecorator(setOf("10.0.0.2"))
+    private val decorator = TrustedProxyDecorator(setOf("10.0.0.2"), internalPort = INTERNAL_PORT)
     private val okService = HttpService { _, _ -> HttpResponse.of(HttpStatus.OK) }
 
-    private fun serve(path: String, peer: String, vararg headers: Pair<String, String>): HttpStatus {
+    private fun serve(
+        path: String,
+        peer: String,
+        localPort: Int = MAIN_PORT,
+        vararg headers: Pair<String, String>,
+    ): HttpStatus {
         var request = HttpRequest.of(HttpMethod.POST, path)
         if (headers.isNotEmpty()) {
             val builder = request.headers().toBuilder()
@@ -24,6 +32,7 @@ class TrustedProxyDecoratorTest {
         }
         val ctx = ServiceRequestContext.builder(request)
             .remoteAddress(InetSocketAddress(peer, 55555))
+            .localAddress(InetSocketAddress("10.0.0.1", localPort))
             .build()
         return decorator.serve(okService, ctx, request).aggregate().join().status()
     }
@@ -32,7 +41,7 @@ class TrustedProxyDecoratorTest {
     fun `requests from the proxy with a forwarded address pass`() {
         assertEquals(
             HttpStatus.OK,
-            serve("/finance.SessionService/Login", "10.0.0.2", "x-forwarded-for" to "203.0.113.9"),
+            serve("/finance.SessionService/Login", "10.0.0.2", MAIN_PORT, "x-forwarded-for" to "203.0.113.9"),
         )
     }
 
@@ -47,8 +56,8 @@ class TrustedProxyDecoratorTest {
     }
 
     @Test
-    fun `health and metrics stay reachable directly`() {
-        assertEquals(HttpStatus.OK, serve("/healthz", "10.0.0.99"))
-        assertEquals(HttpStatus.OK, serve("/metrics", "10.0.0.99"))
+    fun `the internal ops port bypasses proxy enforcement`() {
+        // LAN-direct by design; InternalPortGate restricts what answers.
+        assertEquals(HttpStatus.OK, serve("/metrics", "10.0.0.99", INTERNAL_PORT))
     }
 }

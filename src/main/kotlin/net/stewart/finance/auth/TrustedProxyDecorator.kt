@@ -11,17 +11,18 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 
 /**
- * Deployment-topology enforcement (build-scope §10, ruling 2026-08-18):
- * when trusted proxies are configured, every request must arrive from
- * one of them — a request from any other peer is rejected outright,
- * and a request from the proxy that lacks the forwarded client address
- * is a bad request (a misconfigured proxy must fail loudly, not
- * collapse every client into one rate-limit bucket). Health and
- * metrics endpoints stay reachable directly for LAN probes.
+ * Deployment-topology enforcement (build-scope §10, rulings 2026-08-18
+ * and 2026-08-19): every main-port request must arrive from a trusted
+ * proxy — a request from any other peer is rejected outright, and a
+ * request from the proxy that lacks the forwarded client address is a
+ * bad request (a misconfigured proxy must fail loudly, not collapse
+ * every client into one rate-limit bucket). The internal ops port is
+ * exempt: it is LAN-direct by design and [net.stewart.finance.ops.InternalPortGate]
+ * restricts what answers there.
  */
 class TrustedProxyDecorator(
     trustedProxies: Set<String>,
-    private val exemptPaths: Set<String> = setOf("/healthz", "/metrics"),
+    private val internalPort: Int = 0,
 ) : DecoratingHttpServiceFunction {
 
     private val trusted: Set<InetAddress> = trustedProxies.map { InetAddress.getByName(it) }.toSet()
@@ -31,7 +32,7 @@ class TrustedProxyDecorator(
     }
 
     override fun serve(delegate: HttpService, ctx: ServiceRequestContext, req: HttpRequest): HttpResponse {
-        if (ctx.path() in exemptPaths) {
+        if (internalPort > 0 && ctx.localAddress().port == internalPort) {
             return delegate.serve(ctx, req)
         }
         val peer = (ctx.remoteAddress() as? InetSocketAddress)?.address
