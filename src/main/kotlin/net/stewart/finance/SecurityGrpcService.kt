@@ -137,7 +137,7 @@ class SecurityGrpcService(
         // MANUAL locus: the hand-entered history is the history.
         // MARKET locus: empty until the price-source module (Phase 4/5).
         val history = if (row.pricingLocus == PricingLocus.MANUAL) {
-            prices.history(row.id, row.currency).map { ClosePoint(it.date, it.price) }
+            prices.history(row.id).map { ClosePoint(it.date, it.price) }
         } else {
             emptyList()
         }
@@ -250,7 +250,7 @@ class SecurityGrpcService(
     override suspend fun listPrivatePrices(request: ListPrivatePricesRequest): ListPrivatePricesResponse {
         val row = findSecurity(request.securityId)
         val builder = ListPrivatePricesResponse.newBuilder()
-        for (price in prices.list(row.id, row.currency)) {
+        for (price in prices.list(row.id)) {
             builder.addPrices(
                 PrivatePriceRow.newBuilder()
                     .setPriceId(price.id.value)

@@ -22,22 +22,30 @@ data class PrivatePriceRow(
  */
 class PrivatePriceRepository(private val dataSource: DataSource) {
 
-    /** Newest first, for the price-history editor (spec §9.12). */
-    fun list(securityId: SecurityId, currency: CurrencyUnit): List<PrivatePriceRow> =
+    /**
+     * Newest first, for the price-history editor (spec §9.12). The
+     * price's currency is read from the security row in the same
+     * query — never asserted by the caller, so a wrong-currency
+     * label is unconstructable here.
+     */
+    fun list(securityId: SecurityId): List<PrivatePriceRow> =
         dataSource.connection.use { conn ->
             conn.prepareStatement(
-                "SELECT id, security_id, price_date, price FROM private_prices " +
-                    "WHERE security_id = ? ORDER BY price_date DESC"
+                "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
+                    "JOIN securities s ON s.id = p.security_id " +
+                    "WHERE p.security_id = ? ORDER BY p.price_date DESC"
             ).use { stmt ->
                 stmt.setLong(1, securityId.value)
                 val rs = stmt.executeQuery()
-                buildList { while (rs.next()) add(rs.toRow(currency)) }
+                buildList {
+                    while (rs.next()) add(rs.toRow(CurrencyUnit.parse(rs.getString("currency").trim())))
+                }
             }
         }
 
     /** Date-ascending closes for charts and indicators. */
-    fun history(securityId: SecurityId, currency: CurrencyUnit): List<PrivatePriceRow> =
-        list(securityId, currency).asReversed()
+    fun history(securityId: SecurityId): List<PrivatePriceRow> =
+        list(securityId).asReversed()
 
     /**
      * Date-ascending closes since [since] for every non-hidden
