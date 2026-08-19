@@ -56,6 +56,14 @@ class Money private constructor(val amount: BigDecimal, val currency: CurrencyUn
     operator fun div(quantity: Quantity): Money =
         Money(amount.divide(quantity.amount, SCALE, RoundingMode.HALF_EVEN), currency)
 
+    /**
+     * This amount scaled up to the whole it is [fraction] of (e.g. a
+     * class value over its target fraction); HALF_EVEN to scale 4.
+     * [fraction] must be non-zero.
+     */
+    operator fun div(fraction: Fraction): Money =
+        Money(amount.divide(fraction.value, SCALE, RoundingMode.HALF_EVEN), currency)
+
     fun abs(): Money = if (amount.signum() < 0) -this else this
 
     fun isZero(): Boolean = amount.signum() == 0
