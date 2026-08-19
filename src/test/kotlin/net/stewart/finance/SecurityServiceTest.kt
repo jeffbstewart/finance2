@@ -131,6 +131,18 @@ class SecurityServiceTest {
                 )
             },
         )
+        // Unknown kinds cannot reach the database.
+        assertEquals(
+            Status.Code.INVALID_ARGUMENT,
+            statusOf {
+                service.setClassification(
+                    SetClassificationRequest.newBuilder()
+                        .setSecurityId(id).setKind("ASTROLOGY")
+                        .putWeights("Other", decimal("1"))
+                        .setAsOf(date(2026, 8, 1)).build()
+                )
+            },
+        )
         call {
             service.setClassification(
                 SetClassificationRequest.newBuilder()

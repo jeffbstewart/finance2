@@ -16,6 +16,7 @@ import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.SecurityRow
+import net.stewart.finance.domain.ClassificationKind
 import net.stewart.finance.domain.CurrencyUnit
 import net.stewart.finance.domain.Fraction
 import net.stewart.finance.domain.Money
@@ -65,7 +66,6 @@ import net.stewart.finance.proto.UpdateSecurityProfileResponse
 private val WEIGHT_SUM_TOLERANCE = Fraction.of("0.0001")
 
 private const val SPARKLINE_MONTHS = 6L
-private const val ASSET_CLASS_KIND = "ASSET_CLASS"
 
 /**
  * SecurityService (spec §7 "Securities & prices", §9.10–§9.12,
@@ -215,8 +215,11 @@ class SecurityGrpcService(
 
     override suspend fun setClassification(request: SetClassificationRequest): SetClassificationResponse {
         val row = findSecurity(request.securityId)
-        val kind = request.kind.trim().uppercase()
-        if (kind.isEmpty()) throw invalid("classification kind is required")
+        val kind = ClassificationKind.entries.firstOrNull { it.name == request.kind.trim().uppercase() }
+            ?: throw invalid(
+                "unknown classification kind \"${request.kind}\" — known: " +
+                    ClassificationKind.entries.joinToString { it.name }
+            )
         if (request.weightsMap.isEmpty()) throw invalid("at least one weight is required")
         val asOf = try {
             request.asOf.toLocalDate()
@@ -232,7 +235,7 @@ class SecurityGrpcService(
             if (fraction.signum() < 0) throw invalid("weight for \"$key\" must not be negative")
             fraction
         }
-        if (kind == ASSET_CLASS_KIND) {
+        if (kind == ClassificationKind.ASSET_CLASS) {
             val known = classifications.assetClassNames().toSet()
             weights.keys.firstOrNull { it !in known }?.let {
                 throw invalid("unknown asset class \"$it\"")
@@ -330,7 +333,7 @@ class SecurityGrpcService(
         netExpenseRatio?.let { builder.setNetExpenseRatio(it.toFormattedPercent()) }
         for (set in classifications.setsFor(id)) {
             val setBuilder = ClassificationSet.newBuilder()
-                .setKind(set.kind)
+                .setKind(set.kind.name)
                 .setAsOf(set.asOf.toProto())
                 .setRefreshSuggested(set.asOf.plusDays(classificationRefreshDays) < today)
             for ((key, weight) in set.weights) {
