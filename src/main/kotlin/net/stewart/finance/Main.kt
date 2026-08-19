@@ -23,8 +23,11 @@ import net.stewart.finance.auth.RequestMetaInterceptor
 import net.stewart.finance.auth.TrustedProxyDecorator
 import net.stewart.finance.db.AccountRepository
 import net.stewart.finance.db.BrokerRepository
+import net.stewart.finance.db.ClassificationRepository
 import net.stewart.finance.db.FxRepository
 import net.stewart.finance.db.PortfolioRepository
+import net.stewart.finance.db.PrivatePriceRepository
+import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.ops.AuthMaintenance
 import net.stewart.finance.ops.InternalHttpService
 import net.stewart.finance.ops.InternalPortGate
@@ -120,11 +123,17 @@ fun main() {
                 val brokers = BrokerRepository(db.dataSource)
                 val accounts = AccountRepository(db.dataSource)
                 val reporting = ReportingCurrency(FxRepository(db.dataSource))
+                val securities = SecurityRepository(db.dataSource)
+                val classifications = ClassificationRepository(db.dataSource)
+                val privatePrices = PrivatePriceRepository(db.dataSource)
                 listOf(
                     GrpcServiceSpec(InfoGrpcService()),
                     GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
                     GrpcServiceSpec(BrokerGrpcService(portfolios, brokers, accounts, reporting)),
                     GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting)),
+                    GrpcServiceSpec(
+                        SecurityGrpcService(portfolios, securities, classifications, privatePrices)
+                    ),
                 )
             },
             grpcInterceptors = listOf(RequestMetaInterceptor(), authInterceptor),
