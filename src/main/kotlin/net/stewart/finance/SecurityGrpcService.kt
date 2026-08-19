@@ -324,21 +324,8 @@ class SecurityGrpcService(
             .setTicker(ticker)
             .setDescription(description)
             .setCurrencyCode(currency.code)
-            .setSecurityType(
-                when (securityType) {
-                    SecurityType.STOCK -> SecurityTypeProto.STOCK
-                    SecurityType.ETF -> SecurityTypeProto.ETF
-                    SecurityType.MUTUAL_FUND -> SecurityTypeProto.MUTUAL_FUND
-                    SecurityType.PRIVATE -> SecurityTypeProto.PRIVATE_INVESTMENT
-                    SecurityType.UNKNOWN -> SecurityTypeProto.SECURITY_TYPE_UNSPECIFIED
-                }
-            )
-            .setPricingLocus(
-                when (pricingLocus) {
-                    PricingLocus.MARKET -> PricingLocusProto.MARKET
-                    PricingLocus.MANUAL -> PricingLocusProto.MANUAL
-                }
-            )
+            .setSecurityType(securityType.toProto())
+            .setPricingLocus(pricingLocus.toProto())
             .setHidden(hidden)
         netExpenseRatio?.let { builder.setNetExpenseRatio(it.toFormattedPercent()) }
         for (set in classifications.setsFor(id)) {

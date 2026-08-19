@@ -25,8 +25,11 @@ import net.stewart.finance.db.AccountRepository
 import net.stewart.finance.db.BrokerRepository
 import net.stewart.finance.db.ClassificationRepository
 import net.stewart.finance.db.FxRepository
+import net.stewart.finance.db.HoldingRepository
+import net.stewart.finance.db.LotRepository
 import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.PrivatePriceRepository
+import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.ops.AuthMaintenance
 import net.stewart.finance.ops.InternalHttpService
@@ -133,6 +136,13 @@ fun main() {
                     GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting)),
                     GrpcServiceSpec(
                         SecurityGrpcService(portfolios, securities, classifications, privatePrices)
+                    ),
+                    GrpcServiceSpec(
+                        PositionGrpcService(
+                            portfolios, accounts, securities,
+                            LotRepository(db.dataSource), SaleRepository(db.dataSource),
+                            HoldingRepository(db.dataSource), privatePrices, reporting,
+                        )
                     ),
                 )
             },

@@ -73,6 +73,32 @@ class PrivatePriceRepository(private val dataSource: DataSource) {
             }
         }
 
+    /**
+     * The newest price per MANUAL-locus security in the portfolio —
+     * the "latest price" source for valuing manually priced holdings
+     * (spec §5.6). Currency from the security row.
+     */
+    fun latestBySecurity(portfolioId: PortfolioId): Map<SecurityId, Money> =
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(
+                "SELECT p.security_id, s.currency, p.price FROM private_prices p " +
+                    "JOIN securities s ON s.id = p.security_id " +
+                    "WHERE s.portfolio_id = ? AND p.price_date = (" +
+                    "  SELECT MAX(p2.price_date) FROM private_prices p2 WHERE p2.security_id = p.security_id)"
+            ).use { stmt ->
+                stmt.setLong(1, portfolioId.value)
+                val rs = stmt.executeQuery()
+                val result = linkedMapOf<SecurityId, Money>()
+                while (rs.next()) {
+                    result[SecurityId(rs.getLong("security_id"))] = Money.of(
+                        rs.getBigDecimal("price"),
+                        CurrencyUnit.parse(rs.getString("currency").trim()),
+                    )
+                }
+                result
+            }
+        }
+
     fun find(id: PriceId, portfolioId: PortfolioId): PrivatePriceRow? =
         dataSource.connection.use { conn ->
             conn.prepareStatement(
