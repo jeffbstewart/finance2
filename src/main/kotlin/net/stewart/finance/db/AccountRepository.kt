@@ -6,6 +6,7 @@ import javax.sql.DataSource
 import net.stewart.finance.domain.AccountId
 import net.stewart.finance.domain.BrokerId
 import net.stewart.finance.domain.CurrencyUnit
+import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
 
@@ -18,7 +19,7 @@ data class AccountRow(
     val currency: CurrencyUnit,
     val taxDeferred: Boolean,
     val sweep: Money,
-    val sweepSource: String,
+    val sweepSource: EntrySource,
     val sweepAsOf: LocalDate?,
     val hidden: Boolean,
 )
@@ -80,7 +81,7 @@ class AccountRepository(private val dataSource: DataSource) {
         accountNumber: String,
         taxDeferred: Boolean,
         sweep: Money,
-        sweepSource: String,
+        sweepSource: EntrySource,
         sweepAsOf: LocalDate,
     ): Boolean =
         dataSource.connection.use { conn ->
@@ -92,7 +93,7 @@ class AccountRepository(private val dataSource: DataSource) {
                 stmt.setString(2, accountNumber)
                 stmt.setBoolean(3, taxDeferred)
                 stmt.setBigDecimal(4, sweep.amount)
-                stmt.setString(5, sweepSource)
+                stmt.setString(5, sweepSource.dbValue)
                 stmt.setObject(6, sweepAsOf)
                 stmt.setLong(7, id.value)
                 stmt.executeUpdate() > 0
@@ -140,7 +141,7 @@ class AccountRepository(private val dataSource: DataSource) {
             currency = currency,
             taxDeferred = getBoolean("tax_deferred"),
             sweep = Money.of(getBigDecimal("sweep_balance"), currency),
-            sweepSource = getString("sweep_source"),
+            sweepSource = EntrySource.parse(getString("sweep_source")),
             sweepAsOf = getObject("sweep_as_of", LocalDate::class.java),
             hidden = getBoolean("hidden"),
         )

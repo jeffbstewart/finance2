@@ -15,6 +15,7 @@ import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.domain.AccountId
 import net.stewart.finance.domain.BrokerId
 import net.stewart.finance.domain.CurrencyUnit
+import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.UserId
@@ -107,7 +108,7 @@ class AccountGrpcService(
             throw invalid("sweep balance is not a valid amount: \"${request.sweepBalance.value}\"")
         }
         val updated = try {
-            accounts.update(row.id, name, number, request.taxDeferred, sweep, "manual", LocalDate.now())
+            accounts.update(row.id, name, number, request.taxDeferred, sweep, EntrySource.MANUAL, LocalDate.now())
         } catch (e: SQLException) {
             throw StatusException(
                 Status.ALREADY_EXISTS.withDescription("an account named \"$name\" already exists at this broker")
