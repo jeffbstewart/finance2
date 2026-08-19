@@ -1,41 +1,104 @@
 package net.stewart.finance
 
-import io.grpc.Status
+import java.nio.file.Path
+import java.security.SecureRandom
 import net.stewart.armeria.AppServerConfig
 import net.stewart.armeria.ArmeriaAppServer
 import net.stewart.armeria.GrpcServiceSpec
 import net.stewart.armeria.SinglePageAppConfig
 import net.stewart.armeria.auth.AuthGrpcInterceptor
-import net.stewart.armeria.auth.GrpcAuthConfig
-import java.nio.file.Path
+import net.stewart.armeria.auth.grpcAuthConfig
+import net.stewart.auth.LoginService
+import net.stewart.auth.SessionService
+import net.stewart.finance.auth.FinanceUserRepository
+import net.stewart.finance.auth.RequestMetaInterceptor
+import net.stewart.finance.auth.TrustedProxyDecorator
+import net.stewart.finance.proto.InfoServiceGrpc
+import net.stewart.finance.proto.SessionServiceGrpc
+import net.stewart.h2toolkit.H2Config
+import net.stewart.h2toolkit.H2Database
+import org.slf4j.LoggerFactory
 
 /**
  * finance2 server bootstrap: one Armeria port serving gRPC (native +
  * gRPC-Web), a health endpoint, and — once Phase 6 builds it — the SPA.
+ * TLS terminates at HAProxy; this listener stays cleartext. When
+ * TRUSTED_PROXIES is set, only those peers may talk to it (except
+ * /healthz and /metrics) and every proxied request must carry the
+ * forwarded client address (build-scope §10).
  *
- * Auth posture from day one: every RPC not on the explicit
- * unauthenticated allowlist is rejected. No authenticators are wired
- * yet (Phase 5 adds SessionService/JwtService from
- * auth-kotlin-toolkit), so today the allowlist is the only reachable
- * surface.
+ * Auth posture: every RPC not on the explicit unauthenticated
+ * allowlist requires a valid session cookie (auth-kotlin-toolkit via
+ * the armeria auth bridge, build-scope §8). The allowlisted
+ * SessionService RPCs implement first-run setup, login, and logout;
+ * first-run setup additionally requires the per-run token printed to
+ * this process's log.
  */
 fun main() {
+    val log = LoggerFactory.getLogger("net.stewart.finance.Main")
     val port = System.getenv("PORT")?.toIntOrNull() ?: 9090
 
+    val db = H2Database(
+        H2Config(
+            basePath = requireEnv("DB_PATH"),
+            password = requireEnv("H2_PASSWORD"),
+            filePassword = requireEnv("H2_FILE_PASSWORD"),
+        )
+    ).apply { init() }
+
+    val users = FinanceUserRepository(db.dataSource)
+    val sessions = SessionService(db.dataSource, users, cookieName = "finance_session")
+    val logins = LoginService(db.dataSource, users)
+    val secureCookies = System.getenv("COOKIE_SECURE")?.toBooleanStrictOrNull() ?: true
+
+    val setupToken = if (users.hasUsers()) null else generateSetupToken().also {
+        log.info("First-run setup: no user exists. Setup token (required by CreateFirstUser): {}", it)
+    }
+
+    val trustedProxies = System.getenv("TRUSTED_PROXIES")
+        ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
+        .orEmpty()
+    if (trustedProxies.isEmpty()) {
+        log.warn("TRUSTED_PROXIES is not set — accepting direct connections (dev mode only)")
+    }
+
+    // Allowlist derived from generated descriptors: a proto rename is a
+    // compile error here, never a silent auth change.
     val authInterceptor = AuthGrpcInterceptor(
-        GrpcAuthConfig(
-            unauthenticatedMethods = setOf("finance.InfoService/GetInfo"),
-            gate = { _, _ -> Status.PERMISSION_DENIED.withDescription("no roles defined yet") },
+        grpcAuthConfig(
+            sessionService = sessions,
+            unauthenticatedMethods = setOf(
+                InfoServiceGrpc.getGetInfoMethod().fullMethodName,
+                SessionServiceGrpc.getGetSessionStatusMethod().fullMethodName,
+                SessionServiceGrpc.getCreateFirstUserMethod().fullMethodName,
+                SessionServiceGrpc.getLoginMethod().fullMethodName,
+                SessionServiceGrpc.getLogoutMethod().fullMethodName,
+            ),
         )
     )
 
     ArmeriaAppServer(
         AppServerConfig(
             port = port,
-            grpcServices = listOf(GrpcServiceSpec(InfoGrpcService())),
-            grpcInterceptors = listOf(authInterceptor),
+            grpcServices = listOf(
+                GrpcServiceSpec(InfoGrpcService()),
+                GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
+            ),
+            grpcInterceptors = listOf(RequestMetaInterceptor(), authInterceptor),
+            globalDecorators = if (trustedProxies.isEmpty()) emptyList()
+                else listOf(TrustedProxyDecorator(trustedProxies)),
             singlePageApp = SinglePageAppConfig(dir = Path.of("spa")),
             healthPath = "/healthz",
         )
     ).start()
 }
+
+private fun generateSetupToken(): String {
+    val bytes = ByteArray(16)
+    SecureRandom().nextBytes(bytes)
+    return bytes.joinToString("") { "%02x".format(it) }
+}
+
+private fun requireEnv(name: String): String =
+    System.getenv(name)?.takeIf { it.isNotBlank() }
+        ?: error("missing required environment variable $name — see example.env")

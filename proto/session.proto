@@ -28,6 +28,10 @@ message CreateFirstUserRequest {
   string username = 1;
   string password = 2;
   string display_name = 3;
+  // The per-run setup token the server prints to its log at startup
+  // when no user exists — proves the caller can read the server's
+  // console, so a network stranger cannot claim a fresh deployment.
+  string setup_token = 4;
 }
 
 message CreateFirstUserResponse {
