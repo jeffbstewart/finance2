@@ -11,11 +11,13 @@ import net.stewart.finance.domain.MarketSource
 /**
  * Tiingo end-of-day client (Decision 4 primary). The response carries
  * spec §6.1's field list verbatim; numbers are read as raw JSON
- * literals into BigDecimal, never doubles.
+ * literals into BigDecimal, never doubles. The token travels in the
+ * Authorization header, never the URL — tokens can contain characters
+ * ($, %) that break URIs, and URLs leak into logs.
  */
 class TiingoPriceSource(
     private val token: String,
-    private val get: (String) -> HttpResult = { httpGetRaw(it) },
+    private val get: (String, Map<String, String>) -> HttpResult = ::httpGetRaw,
 ) : PriceSource {
 
     override val id: MarketSource = MarketSource.TIINGO
@@ -24,11 +26,11 @@ class TiingoPriceSource(
         val url = buildString {
             append("https://api.tiingo.com/tiingo/daily/")
             append(java.net.URLEncoder.encode(ticker, Charsets.UTF_8))
-            append("/prices?token=").append(token)
-            if (startDate != null) append("&startDate=").append(startDate)
+            append("/prices")
+            if (startDate != null) append("?startDate=").append(startDate)
         }
         val result = try {
-            get(url)
+            get(url, mapOf("Authorization" to "Token $token"))
         } catch (e: Exception) {
             throw PriceSourceException("tiingo request failed for $ticker", e)
         }
