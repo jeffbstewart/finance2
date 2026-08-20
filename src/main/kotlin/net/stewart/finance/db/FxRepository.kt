@@ -4,9 +4,34 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import javax.sql.DataSource
 import net.stewart.finance.domain.CurrencyUnit
+import net.stewart.finance.domain.RateSource
 
 /** Dated FX rates — the only path between currencies (build-scope §5). */
 class FxRepository(private val dataSource: DataSource) {
+
+    /** Inserts or replaces the rate for (base, quote, date). */
+    fun upsert(
+        base: CurrencyUnit,
+        quote: CurrencyUnit,
+        date: LocalDate,
+        rate: BigDecimal,
+        source: RateSource,
+    ) {
+        require(rate.signum() > 0) { "rate must be positive: $rate" }
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(
+                "MERGE INTO fx_rates (base_currency, quote_currency, rate_date, rate, source) " +
+                    "KEY (base_currency, quote_currency, rate_date) VALUES (?, ?, ?, ?, ?)"
+            ).use { stmt ->
+                stmt.setString(1, base.code)
+                stmt.setString(2, quote.code)
+                stmt.setObject(3, date)
+                stmt.setBigDecimal(4, rate)
+                stmt.setString(5, source.dbValue)
+                stmt.executeUpdate()
+            }
+        }
+    }
 
     /** The most recent quote-per-base rate on or before [asOf], or null.
      *  A currency converts to itself at exactly 1 — no lookup. */
