@@ -8,6 +8,7 @@ import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.PricingLocus
 import net.stewart.finance.domain.SecurityId
 import net.stewart.finance.domain.SecurityType
+import org.jdbi.v3.core.Jdbi
 
 data class SecurityRow(
     val id: SecurityId,
@@ -21,54 +22,52 @@ data class SecurityRow(
 )
 
 /** Securities, always portfolio-scoped. */
-class SecurityRepository(private val dataSource: DataSource) {
+class SecurityRepository(dataSource: DataSource) {
 
-    fun list(portfolioId: PortfolioId, includeHidden: Boolean): List<SecurityRow> =
-        dataSource.connection.use { conn ->
-            val sql = "$SELECT WHERE portfolio_id = ?" +
+    private val jdbi = Jdbi.create(dataSource)
+
+    fun list(portfolioId: PortfolioId, includeHidden: Boolean): List<SecurityRow> = jdbi.sql { handle ->
+        handle.createQuery(
+            "$SELECT WHERE portfolio_id = :portfolioId" +
                 (if (includeHidden) "" else " AND NOT hidden") + " ORDER BY ticker"
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setLong(1, portfolioId.value)
-                val rs = stmt.executeQuery()
-                buildList { while (rs.next()) add(rs.toRow()) }
-            }
-        }
+        )
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ -> rs.toRow() }
+            .list()
+    }
 
     /** Every visible MARKET-locus security, portfolio-independent —
      *  the background price-prefetch job's work list. */
-    fun listAllMarket(): List<SecurityRow> =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "$SELECT WHERE pricing_locus = 'MARKET' AND NOT hidden ORDER BY ticker"
-            ).use { stmt ->
-                val rs = stmt.executeQuery()
-                buildList { while (rs.next()) add(rs.toRow()) }
-            }
-        }
+    fun listAllMarket(): List<SecurityRow> = jdbi.sql { handle ->
+        handle.createQuery("$SELECT WHERE pricing_locus = 'MARKET' AND NOT hidden ORDER BY ticker")
+            .map { rs, _ -> rs.toRow() }
+            .list()
+    }
 
-    fun find(id: SecurityId, portfolioId: PortfolioId): SecurityRow? =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("$SELECT WHERE id = ? AND portfolio_id = ?").use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.setLong(2, portfolioId.value)
-                val rs = stmt.executeQuery()
-                if (rs.next()) rs.toRow() else null
-            }
-        }
+    fun find(id: SecurityId, portfolioId: PortfolioId): SecurityRow? = jdbi.sql { handle ->
+        handle.createQuery("$SELECT WHERE id = :id AND portfolio_id = :portfolioId")
+            .bind("id", id.value)
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ -> rs.toRow() }
+            .findOne()
+            .orElse(null)
+    }
 
     /** Throws SQLException on a duplicate ticker within the portfolio. */
     fun create(portfolioId: PortfolioId, ticker: String, currency: CurrencyUnit): SecurityId =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "INSERT INTO securities (portfolio_id, ticker, currency) VALUES (?, ?, ?)",
-                java.sql.Statement.RETURN_GENERATED_KEYS,
-            ).use { stmt ->
-                stmt.setLong(1, portfolioId.value)
-                stmt.setString(2, ticker)
-                stmt.setString(3, currency.code)
-                stmt.executeUpdate()
-                SecurityId(stmt.generatedKeys.also { check(it.next()) }.getLong(1))
-            }
+        jdbi.sql { handle ->
+            SecurityId(
+                handle.createUpdate(
+                    "INSERT INTO securities (portfolio_id, ticker, currency) " +
+                        "VALUES (:portfolioId, :ticker, :currency)"
+                )
+                    .bind("portfolioId", portfolioId.value)
+                    .bind("ticker", ticker)
+                    .bind("currency", currency.code)
+                    .executeAndReturnGeneratedKeys("id")
+                    .mapTo(Long::class.java)
+                    .one()
+            )
         }
 
     fun updateProfile(
@@ -77,42 +76,37 @@ class SecurityRepository(private val dataSource: DataSource) {
         securityType: SecurityType,
         pricingLocus: PricingLocus,
         netExpenseRatio: Fraction?,
-    ): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "UPDATE securities SET description = ?, security_type = ?, pricing_locus = ?, " +
-                    "net_expense_ratio = ? WHERE id = ?"
-            ).use { stmt ->
-                stmt.setString(1, description)
-                stmt.setString(2, securityType.name)
-                stmt.setString(3, pricingLocus.name)
-                stmt.setBigDecimal(4, netExpenseRatio?.value)
-                stmt.setLong(5, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    ): Boolean = jdbi.sql { handle ->
+        handle.createUpdate(
+            "UPDATE securities SET description = :description, security_type = :securityType, " +
+                "pricing_locus = :pricingLocus, net_expense_ratio = :netExpenseRatio WHERE id = :id"
+        )
+            .bind("description", description)
+            .bind("securityType", securityType.name)
+            .bind("pricingLocus", pricingLocus.name)
+            .bind("netExpenseRatio", netExpenseRatio?.value)
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
-    fun setHidden(id: SecurityId, hidden: Boolean): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("UPDATE securities SET hidden = ? WHERE id = ?").use { stmt ->
-                stmt.setBoolean(1, hidden)
-                stmt.setLong(2, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    fun setHidden(id: SecurityId, hidden: Boolean): Boolean = jdbi.sql { handle ->
+        handle.createUpdate("UPDATE securities SET hidden = :hidden WHERE id = :id")
+            .bind("hidden", hidden)
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
     /** True when any lot or holding references the security. */
-    fun hasPositions(id: SecurityId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "SELECT 1 FROM purchase_lots WHERE security_id = ? " +
-                    "UNION ALL SELECT 1 FROM holdings WHERE security_id = ? LIMIT 1"
-            ).use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.setLong(2, id.value)
-                stmt.executeQuery().next()
-            }
-        }
+    fun hasPositions(id: SecurityId): Boolean = jdbi.sql { handle ->
+        handle.createQuery(
+            "SELECT 1 FROM purchase_lots WHERE security_id = :id " +
+                "UNION ALL SELECT 1 FROM holdings WHERE security_id = :id LIMIT 1"
+        )
+            .bind("id", id.value)
+            .mapTo(Int::class.java)
+            .findFirst()
+            .isPresent
+    }
 
     private fun ResultSet.toRow() = SecurityRow(
         id = SecurityId(getLong("id")),

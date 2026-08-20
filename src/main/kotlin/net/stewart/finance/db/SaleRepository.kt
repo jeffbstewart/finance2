@@ -11,6 +11,8 @@ import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SaleId
 import net.stewart.finance.domain.SecurityId
+import org.jdbi.v3.core.Handle
+import org.jdbi.v3.core.Jdbi
 
 data class SaleRecord(
     val id: SaleId,
@@ -25,41 +27,49 @@ data class SaleRecord(
 )
 
 /** Sales and their lot allocations; currency from the account row. */
-class SaleRepository(private val dataSource: DataSource) {
+class SaleRepository(dataSource: DataSource) {
+
+    private val jdbi = Jdbi.create(dataSource)
 
     fun list(
         portfolioId: PortfolioId,
         accountId: AccountId? = null,
         securityId: SecurityId? = null,
-    ): List<SaleRecord> =
-        query(
-            SELECT + " WHERE b.portfolio_id = ?" +
-                (if (accountId != null) " AND s.account_id = ?" else "") +
-                (if (securityId != null) " AND s.security_id = ?" else "") +
+    ): List<SaleRecord> = jdbi.sql { handle ->
+        val query = handle.createQuery(
+            SELECT + " WHERE b.portfolio_id = :portfolioId" +
+                (if (accountId != null) " AND s.account_id = :accountId" else "") +
+                (if (securityId != null) " AND s.security_id = :securityId" else "") +
                 " ORDER BY s.sale_date, s.id"
-        ) { stmt ->
-            var i = 1
-            stmt.setLong(i++, portfolioId.value)
-            if (accountId != null) stmt.setLong(i++, accountId.value)
-            if (securityId != null) stmt.setLong(i, securityId.value)
-        }
+        ).bind("portfolioId", portfolioId.value)
+        if (accountId != null) query.bind("accountId", accountId.value)
+        if (securityId != null) query.bind("securityId", securityId.value)
+        withAllocations(handle, query.map { rs, _ -> rs.toRecord() }.list())
+    }
 
     /** Sales in [from]..[to] from taxable accounts only (spec §5.3). */
     fun listForTaxReport(portfolioId: PortfolioId, from: LocalDate, to: LocalDate): List<SaleRecord> =
-        query(
-            "$SELECT WHERE b.portfolio_id = ? AND NOT a.tax_deferred " +
-                "AND s.sale_date >= ? AND s.sale_date <= ? ORDER BY s.sale_date, s.id"
-        ) { stmt ->
-            stmt.setLong(1, portfolioId.value)
-            stmt.setObject(2, from)
-            stmt.setObject(3, to)
+        jdbi.sql { handle ->
+            val sales = handle.createQuery(
+                "$SELECT WHERE b.portfolio_id = :portfolioId AND NOT a.tax_deferred " +
+                    "AND s.sale_date >= :from AND s.sale_date <= :to ORDER BY s.sale_date, s.id"
+            )
+                .bind("portfolioId", portfolioId.value)
+                .bind("from", from)
+                .bind("to", to)
+                .map { rs, _ -> rs.toRecord() }
+                .list()
+            withAllocations(handle, sales)
         }
 
-    fun find(id: SaleId, portfolioId: PortfolioId): SaleRecord? =
-        query("$SELECT WHERE s.id = ? AND b.portfolio_id = ?") { stmt ->
-            stmt.setLong(1, id.value)
-            stmt.setLong(2, portfolioId.value)
-        }.singleOrNull()
+    fun find(id: SaleId, portfolioId: PortfolioId): SaleRecord? = jdbi.sql { handle ->
+        val sales = handle.createQuery("$SELECT WHERE s.id = :id AND b.portfolio_id = :portfolioId")
+            .bind("id", id.value)
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ -> rs.toRecord() }
+            .list()
+        withAllocations(handle, sales).singleOrNull()
+    }
 
     /** Inserts the sale and its allocations atomically. */
     fun create(
@@ -69,89 +79,59 @@ class SaleRepository(private val dataSource: DataSource) {
         pricePerShare: Money,
         saleCosts: Money,
         allocations: List<Pair<LotId, Quantity>>,
-    ): SaleId =
-        dataSource.connection.use { conn ->
-            conn.autoCommit = false
-            try {
-                val saleId = conn.prepareStatement(
-                    "INSERT INTO sales (account_id, security_id, sale_date, price_per_share, sale_costs) " +
-                        "VALUES (?, ?, ?, ?, ?)",
-                    java.sql.Statement.RETURN_GENERATED_KEYS,
-                ).use { stmt ->
-                    stmt.setLong(1, accountId.value)
-                    stmt.setLong(2, securityId.value)
-                    stmt.setObject(3, saleDate)
-                    stmt.setBigDecimal(4, pricePerShare.amount)
-                    stmt.setBigDecimal(5, saleCosts.amount)
-                    stmt.executeUpdate()
-                    stmt.generatedKeys.also { check(it.next()) }.getLong(1)
-                }
-                conn.prepareStatement(
-                    "INSERT INTO sale_allocations (sale_id, lot_id, shares_sold) VALUES (?, ?, ?)"
-                ).use { stmt ->
-                    for ((lotId, shares) in allocations) {
-                        stmt.setLong(1, saleId)
-                        stmt.setLong(2, lotId.value)
-                        stmt.setBigDecimal(3, shares.amount)
-                        stmt.addBatch()
-                    }
-                    stmt.executeBatch()
-                }
-                conn.commit()
-                SaleId(saleId)
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
-            } finally {
-                conn.autoCommit = true
-            }
+    ): SaleId = jdbi.sqlTransaction { handle ->
+        val saleId = handle.createUpdate(
+            "INSERT INTO sales (account_id, security_id, sale_date, price_per_share, sale_costs) " +
+                "VALUES (:accountId, :securityId, :saleDate, :pricePerShare, :saleCosts)"
+        )
+            .bind("accountId", accountId.value)
+            .bind("securityId", securityId.value)
+            .bind("saleDate", saleDate)
+            .bind("pricePerShare", pricePerShare.amount)
+            .bind("saleCosts", saleCosts.amount)
+            .executeAndReturnGeneratedKeys("id")
+            .mapTo(Long::class.java)
+            .one()
+        val batch = handle.prepareBatch(
+            "INSERT INTO sale_allocations (sale_id, lot_id, shares_sold) VALUES (:saleId, :lotId, :shares)"
+        )
+        for ((lotId, shares) in allocations) {
+            batch.bind("saleId", saleId).bind("lotId", lotId.value).bind("shares", shares.amount).add()
         }
+        batch.execute()
+        SaleId(saleId)
+    }
 
     /** Deletes the sale and its allocations atomically. */
-    fun delete(id: SaleId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.autoCommit = false
-            try {
-                conn.prepareStatement("DELETE FROM sale_allocations WHERE sale_id = ?").use { stmt ->
-                    stmt.setLong(1, id.value)
-                    stmt.executeUpdate()
-                }
-                val deleted = conn.prepareStatement("DELETE FROM sales WHERE id = ?").use { stmt ->
-                    stmt.setLong(1, id.value)
-                    stmt.executeUpdate() > 0
-                }
-                conn.commit()
-                deleted
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
-            } finally {
-                conn.autoCommit = true
-            }
-        }
+    fun delete(id: SaleId): Boolean = jdbi.sqlTransaction { handle ->
+        handle.createUpdate("DELETE FROM sale_allocations WHERE sale_id = :id")
+            .bind("id", id.value)
+            .execute()
+        handle.createUpdate("DELETE FROM sales WHERE id = :id")
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
-    private fun query(sql: String, bind: (java.sql.PreparedStatement) -> Unit): List<SaleRecord> =
-        dataSource.connection.use { conn ->
-            val sales = conn.prepareStatement(sql).use { stmt ->
-                bind(stmt)
-                val rs = stmt.executeQuery()
-                buildList { while (rs.next()) add(rs.toRecord()) }
+    private fun withAllocations(handle: Handle, sales: List<SaleRecord>): List<SaleRecord> {
+        if (sales.isEmpty()) return sales
+        val allocations = linkedMapOf<Long, MutableList<Pair<LotId, Quantity>>>()
+        handle.createQuery(
+            "SELECT sale_id, lot_id, shares_sold FROM sale_allocations " +
+                "WHERE sale_id IN (<saleIds>) ORDER BY sale_id, lot_id"
+        )
+            .bindList("saleIds", sales.map { it.id.value })
+            .map { rs, _ ->
+                Triple(
+                    rs.getLong("sale_id"),
+                    LotId(rs.getLong("lot_id")),
+                    Quantity.of(rs.getBigDecimal("shares_sold")),
+                )
             }
-            if (sales.isEmpty()) return@use sales
-            val allocations = linkedMapOf<Long, MutableList<Pair<LotId, Quantity>>>()
-            conn.prepareStatement(
-                "SELECT sale_id, lot_id, shares_sold FROM sale_allocations WHERE sale_id IN (" +
-                    sales.joinToString(",") { "?" } + ") ORDER BY sale_id, lot_id"
-            ).use { stmt ->
-                sales.forEachIndexed { i, sale -> stmt.setLong(i + 1, sale.id.value) }
-                val rs = stmt.executeQuery()
-                while (rs.next()) {
-                    allocations.getOrPut(rs.getLong("sale_id")) { mutableListOf() }
-                        .add(LotId(rs.getLong("lot_id")) to Quantity.of(rs.getBigDecimal("shares_sold")))
-                }
+            .forEach { (saleId, lotId, shares) ->
+                allocations.getOrPut(saleId) { mutableListOf() }.add(lotId to shares)
             }
-            sales.map { it.copy(allocations = allocations[it.id.value].orEmpty()) }
-        }
+        return sales.map { it.copy(allocations = allocations[it.id.value].orEmpty()) }
+    }
 
     private fun ResultSet.toRecord(): SaleRecord {
         val currency = CurrencyUnit.parse(getString("currency").trim())
