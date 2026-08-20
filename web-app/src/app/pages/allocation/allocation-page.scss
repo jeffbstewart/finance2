@@ -1,0 +1,83 @@
+table {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.num {
+  text-align: right;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.chart-cell {
+  display: flex;
+  flex-direction: column;
+
+  // The chart facades are block elements that must keep the cell's
+  // full width — centering would shrink them to zero.
+  app-pie-chart,
+  app-grouped-bar-chart {
+    width: 100%;
+  }
+
+  button {
+    align-self: center;
+  }
+}
+
+.target-prompt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0 16px;
+}
+
+.empty-note {
+  opacity: 0.7;
+}
+
+.validation-error {
+  color: #b3261e;
+  font-size: 13px;
+}
+
+.controls-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.section-title {
+  margin: 24px 0 8px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.readonly-stat {
+  min-width: 140px;
+
+  .stat-label {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  .stat-value {
+    font-size: 18px;
+    font-weight: 500;
+  }
+}
+
+.row-actions {
+  white-space: nowrap;
+}

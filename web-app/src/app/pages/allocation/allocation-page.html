@@ -1,0 +1,93 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>Asset Allocation</mat-card-title>
+    <mat-card-subtitle>Portfolio total: {{ portfolioTotal() }}</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    @if (!targetSet()) {
+      <div class="target-prompt">
+        <p>No target allocation is set yet.</p>
+        <button matButton="filled" (click)="editTarget()">Set Target Allocation</button>
+      </div>
+    }
+
+    <div class="chart-grid">
+      <div class="chart-cell">
+        <app-pie-chart
+          title="Current Allocation"
+          [slices]="currentSlices()"
+          (sliceClick)="openClass($event)"
+        />
+      </div>
+      <div class="chart-cell">
+        <app-pie-chart
+          title="Target Allocation"
+          [slices]="targetSlices()"
+          (sliceClick)="openClass($event)"
+        />
+        <button matButton (click)="editTarget()">
+          <mat-icon>edit</mat-icon>
+          Edit Target Asset Allocation
+        </button>
+      </div>
+      <div class="chart-cell">
+        <app-grouped-bar-chart
+          title="Current vs Target (%)"
+          [categories]="categories()"
+          [series]="percentSeries()"
+        />
+      </div>
+      <div class="chart-cell">
+        <app-grouped-bar-chart
+          title="Asset Changes Required Without Investing"
+          [categories]="categories()"
+          [series]="deltaSeries()"
+        />
+      </div>
+    </div>
+
+    <table mat-table [dataSource]="classes()">
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Asset Class</th>
+        <td mat-cell *matCellDef="let c">
+          <a [routerLink]="['/allocation/class', c.name]">{{ c.name }}</a>
+        </td>
+        <td mat-footer-cell *matFooterCellDef>Total</td>
+      </ng-container>
+      <ng-container matColumnDef="current">
+        <th mat-header-cell *matHeaderCellDef class="num">Total Holdings</th>
+        <td mat-cell *matCellDef="let c" class="num">{{ c.current?.display }}</td>
+        <td mat-footer-cell *matFooterCellDef class="num">{{ portfolioTotal() }}</td>
+      </ng-container>
+      <ng-container matColumnDef="target">
+        <th mat-header-cell *matHeaderCellDef class="num">Target Holdings</th>
+        <td mat-cell *matCellDef="let c" class="num">{{ c.target?.display }}</td>
+        <td mat-footer-cell *matFooterCellDef></td>
+      </ng-container>
+      <ng-container matColumnDef="delta">
+        <th mat-header-cell *matHeaderCellDef class="num">Delta</th>
+        <td mat-cell *matCellDef="let c" class="num">{{ c.delta?.display }}</td>
+        <td mat-footer-cell *matFooterCellDef></td>
+      </ng-container>
+      <ng-container matColumnDef="percent">
+        <th mat-header-cell *matHeaderCellDef class="num">Percent</th>
+        <td mat-cell *matCellDef="let c" class="num">{{ c.currentFraction?.display }}</td>
+        <td mat-footer-cell *matFooterCellDef></td>
+      </ng-container>
+      <ng-container matColumnDef="targetPercent">
+        <th mat-header-cell *matHeaderCellDef class="num">Target Percent</th>
+        <td mat-cell *matCellDef="let c" class="num">{{ c.targetFraction?.display }}</td>
+        <td mat-footer-cell *matFooterCellDef></td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      <tr mat-footer-row *matFooterRowDef="columns"></tr>
+    </table>
+  </mat-card-content>
+  <mat-card-actions>
+    <a matButton="filled" routerLink="/allocation/rebalance">
+      <mat-icon>balance</mat-icon>
+      Rebalance through Purchases
+    </a>
+  </mat-card-actions>
+</mat-card>

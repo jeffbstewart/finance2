@@ -54,6 +54,33 @@ export function toScaledBigInt(s: string, scale: number): bigint {
   return BigInt(whole + frac.padEnd(scale, '0'));
 }
 
+/** Render a scaled BigInt back to a decimal string. */
+export function fromScaledBigInt(v: bigint, scale: number): string {
+  const negative = v < 0n;
+  const digits = (negative ? -v : v).toString().padStart(scale + 1, '0');
+  const at = digits.length - scale;
+  const body = scale === 0 ? digits : `${digits.slice(0, at)}.${digits.slice(at)}`;
+  return (negative ? '-' : '') + trimZeros(body);
+}
+
+/**
+ * Exact decimal multiply for the rebalance planner's shares × price =
+ * cost (spec §9.14): scaled-BigInt product, truncated to outScale.
+ * Planning inputs only — stored money still comes from the server.
+ */
+export function mulDecimal(a: string, b: string, outScale: number): string {
+  const scaled = toScaledBigInt(a, 8) * toScaledBigInt(b, 8); // scale 16
+  return fromScaledBigInt(scaled / 10n ** BigInt(16 - outScale), outScale);
+}
+
+/** Exact decimal divide (truncating) for cost / price = shares. */
+export function divDecimal(a: string, b: string, outScale: number): string {
+  const denominator = toScaledBigInt(b, 8);
+  if (denominator === 0n) throw new Error('division by zero');
+  const numerator = toScaledBigInt(a, 8) * 10n ** BigInt(outScale);
+  return fromScaledBigInt(numerator / denominator, outScale);
+}
+
 function trimZeros(s: string): string {
   let out = s;
   if (out.includes('.')) out = out.replace(/0+$/, '').replace(/\.$/, '');
