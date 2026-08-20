@@ -301,7 +301,7 @@ copy-paste:
 | 3 | Embedded DB engine & access layer | SQLite-family; specifics follow Decision 0 / MediaManager patterns |
 | 4 | Price provider(s), free vs paid | Assessed 2026-08-19 — recommend **Tiingo primary + EODHD fallback** (both free tiers); see [decisions/4-price-providers.md](decisions/4-price-providers.md); awaiting Jeff's ruling |
 | 5 | FX rate source | ECB reference rates, leaning |
-| 6 | UI framework | Angular (current) by default; confirm before Phase 6 |
+| 6 | UI framework | Assessed 2026-08-20 — recommend **Angular (current major) + Angular Material**, cribbing MediaManager's post-Vaadin client; see [decisions/6-ui-framework.md](decisions/6-ui-framework.md); awaiting Jeff's ruling |
 | 7 | Proto transport (gRPC-web vs Connect) | Follows Decision 0 toolchain |
 | 8 | Portfolio composition: Plaid vs manual/CSV | Mechanism decided 2026-07-17: bankferry fetches Investments and exports proto snapshots finance2 imports, single shared Plaid account — see [docs/design/plaid-investments-pipeline.md](docs/design/plaid-investments-pipeline.md); Plaid-vs-manual per institution awaits the coverage verification there |
 | 9 | Initial build scope: lots by tax status, decimal scales, classification launch fields, account-currency model | **Decided 2026-08-18** — see [docs/design/initial-build-scope.md](docs/design/initial-build-scope.md), accepted in full including the gold-IRA model |
