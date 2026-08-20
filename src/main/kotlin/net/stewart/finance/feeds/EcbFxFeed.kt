@@ -2,11 +2,6 @@ package net.stewart.finance.feeds
 
 import java.io.StringReader
 import java.math.BigDecimal
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
 import java.time.LocalDate
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
@@ -70,14 +65,4 @@ class EcbFxFeed(
         }
         log.info("ECB FX refresh: {} EUR->USD rates through {}", rates.size, rates.keys.max())
     }
-}
-
-internal fun httpGet(url: String): String {
-    val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build()
-    val response = client.send(
-        HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).GET().build(),
-        HttpResponse.BodyHandlers.ofString(),
-    )
-    check(response.statusCode() == 200) { "GET $url returned ${response.statusCode()}" }
-    return response.body()
 }

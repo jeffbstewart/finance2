@@ -28,6 +28,9 @@ dependencies {
     implementation("com.google.protobuf:protobuf-kotlin:$protobufVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("io.micrometer:micrometer-registry-prometheus:1.15.2")
+    // JSON tree parsing for provider clients (no @Serializable classes,
+    // so no compiler plugin): numbers stay raw strings -> BigDecimal.
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 
     runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
 

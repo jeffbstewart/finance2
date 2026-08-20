@@ -7,6 +7,7 @@ import java.sql.SQLException
 import java.time.DateTimeException
 import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
+import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.toFormatted
 import net.stewart.finance.api.toFormattedPercent
 import net.stewart.finance.api.toLocalDate
@@ -83,6 +84,7 @@ class SecurityGrpcService(
     private val classifications: ClassificationRepository,
     private val prices: PrivatePriceRepository,
     private val assetClasses: AssetClassRepository,
+    private val pricing: PricingService,
     /** The persisted CPI series, or null while unseeded (degraded mode). */
     private val cpiSeries: () -> CpiSeries? = { null },
     /** Days after which a classification set suggests a refresh (build-scope §4). */
@@ -91,7 +93,7 @@ class SecurityGrpcService(
 
     override suspend fun listSecurities(request: ListSecuritiesRequest): ListSecuritiesResponse {
         val portfolioId = portfolio()
-        val sparklines = prices.recentBySecurity(portfolioId, LocalDate.now().minusMonths(SPARKLINE_MONTHS))
+        val sparklines = pricing.sparklines(portfolioId, LocalDate.now().minusMonths(SPARKLINE_MONTHS))
         val builder = ListSecuritiesResponse.newBuilder()
         for (row in securities.list(portfolioId, request.includeHidden)) {
             val closes = sparklines[row.id].orEmpty()
@@ -132,23 +134,25 @@ class SecurityGrpcService(
 
     override suspend fun getSecurityDetails(request: GetSecurityDetailsRequest): GetSecurityDetailsResponse {
         val row = findSecurity(request.securityId)
-        // MANUAL locus: the hand-entered history is the history.
-        // MARKET locus: empty until the price-source module (Phase 4/5).
-        val raw = if (row.pricingLocus == PricingLocus.MANUAL) {
-            prices.history(row.id).map { ClosePoint(it.date, it.price) }
-        } else {
-            emptyList()
-        }
-        // Constant-dollar presentation (spec §5.7): each close converts
-        // to today's dollars, and the indicators run over the same
-        // adjusted series the chart shows -- one consistent direction.
-        val history = if (!request.inflationAdjusted) raw else {
+        // MANUAL locus: hand-entered history (adjusted = raw); MARKET
+        // locus: persisted provider bars, refreshed when stale.
+        val raw = pricing.history(row)
+        // Constant-dollar presentation (spec §5.7): both series convert
+        // to today's dollars; the chart and the indicators use the same
+        // adjusted series -- one consistent direction.
+        val points = if (!request.inflationAdjusted) raw else {
             val cpi = cpiSeries() ?: throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription("CPI data is not loaded yet")
             )
             val today = LocalDate.now()
             try {
-                raw.map { ClosePoint(it.date, cpi.convert(it.close, it.date, today)) }
+                raw.map {
+                    PricingService.HistoryPoint(
+                        it.date,
+                        cpi.convert(it.close, it.date, today),
+                        cpi.convert(it.adjustedClose, it.date, today),
+                    )
+                }
             } catch (e: IllegalArgumentException) {
                 throw StatusException(
                     Status.FAILED_PRECONDITION.withDescription(e.message ?: "CPI coverage error")
@@ -156,14 +160,16 @@ class SecurityGrpcService(
             }
         }
         val builder = GetSecurityDetailsResponse.newBuilder().setSecurity(row.toProfile())
-        for (point in history) {
+        for (point in points) {
             builder.addPriceHistory(
                 PricePoint.newBuilder()
                     .setDate(point.date.toProto())
                     .setClose(point.close.toProto().amount)
-                    .setAdjustedClose(point.close.toProto().amount)
+                    .setAdjustedClose(point.adjustedClose.toProto().amount)
             )
         }
+        // Indicators run over the adjusted-close series (spec §5.8).
+        val history = points.map { ClosePoint(it.date, it.adjustedClose) }
         val indicators = builder.indicatorsBuilder
         for (p in sma(history)) {
             indicators.addSma(IndicatorPoint.newBuilder().setDate(p.date.toProto()).setValue(p.value.toProto().amount))

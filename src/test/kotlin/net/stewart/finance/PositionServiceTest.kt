@@ -58,11 +58,17 @@ class PositionServiceTest {
         private val accounts by lazy { AccountRepository(db.dataSource) }
         private val securities by lazy { SecurityRepository(db.dataSource) }
         private val privatePrices by lazy { PrivatePriceRepository(db.dataSource) }
+        private val pricing by lazy {
+            val marketRepo = net.stewart.finance.db.MarketPriceRepository(db.dataSource)
+            net.stewart.finance.api.PricingService(
+                privatePrices, marketRepo, net.stewart.finance.feeds.MarketData(marketRepo, emptyList()),
+            )
+        }
         private val service by lazy {
             PositionGrpcService(
                 portfolios, accounts, securities,
                 LotRepository(db.dataSource), SaleRepository(db.dataSource),
-                HoldingRepository(db.dataSource), privatePrices,
+                HoldingRepository(db.dataSource), pricing,
                 ReportingCurrency(FxRepository(db.dataSource)),
             )
         }
@@ -279,7 +285,7 @@ class PositionServiceTest {
         val inflationService = PositionGrpcService(
             portfolios, accounts, securities,
             LotRepository(db.dataSource), SaleRepository(db.dataSource),
-            HoldingRepository(db.dataSource), privatePrices,
+            HoldingRepository(db.dataSource), pricing,
             ReportingCurrency(FxRepository(db.dataSource)),
             cpiSeries = { flat },
         )

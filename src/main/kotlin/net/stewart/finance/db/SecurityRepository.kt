@@ -34,6 +34,18 @@ class SecurityRepository(private val dataSource: DataSource) {
             }
         }
 
+    /** Every visible MARKET-locus security, portfolio-independent —
+     *  the background price-prefetch job's work list. */
+    fun listAllMarket(): List<SecurityRow> =
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(
+                "$SELECT WHERE pricing_locus = 'MARKET' AND NOT hidden ORDER BY ticker"
+            ).use { stmt ->
+                val rs = stmt.executeQuery()
+                buildList { while (rs.next()) add(rs.toRow()) }
+            }
+        }
+
     fun find(id: SecurityId, portfolioId: PortfolioId): SecurityRow? =
         dataSource.connection.use { conn ->
             conn.prepareStatement("$SELECT WHERE id = ? AND portfolio_id = ?").use { stmt ->
