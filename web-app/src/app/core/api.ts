@@ -10,6 +10,7 @@ import { AccountService } from '../../proto-gen/accounts_pb';
 import { SecurityService } from '../../proto-gen/securities_pb';
 import { PositionService } from '../../proto-gen/positions_pb';
 import { AllocationService } from '../../proto-gen/allocation_pb';
+import { ImportService } from '../../proto-gen/imports_pb';
 
 const transport = createGrpcWebTransport({
   baseUrl: location.origin,
@@ -23,4 +24,5 @@ export const api = {
   securities: createClient(SecurityService, transport),
   positions: createClient(PositionService, transport),
   allocation: createClient(AllocationService, transport),
+  imports: createClient(ImportService, transport),
 } as const;

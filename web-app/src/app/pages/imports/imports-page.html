@@ -1,0 +1,122 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>bankferry Imports</mat-card-title>
+    <mat-card-subtitle>
+      Upload an investments snapshot, link its accounts, then process — every step is revisitable.
+    </mat-card-subtitle>
+    <span class="header-spacer"></span>
+    <button matButton="filled" [disabled]="busy()" (click)="picker.click()">
+      <mat-icon>upload_file</mat-icon>
+      Upload snapshot
+    </button>
+    <input #picker type="file" hidden (change)="fileChosen($event)">
+  </mat-card-header>
+  <mat-card-content>
+    <table mat-table [dataSource]="snapshots()">
+      <ng-container matColumnDef="filename">
+        <th mat-header-cell *matHeaderCellDef>File</th>
+        <td mat-cell *matCellDef="let s">
+          <a href="javascript:void(0)" (click)="select(s)">{{ s.filename }}</a>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="asOf">
+        <th mat-header-cell *matHeaderCellDef>As Of</th>
+        <td mat-cell *matCellDef="let s">{{ s.asOf?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="uploaded">
+        <th mat-header-cell *matHeaderCellDef>Uploaded</th>
+        <td mat-cell *matCellDef="let s">{{ timestamp(s.uploadedAt) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let s">
+          <span class="status-chip" [class.failed]="s.status === SnapshotStatus.FAILED"
+                [class.processed]="s.status === SnapshotStatus.PROCESSED">
+            {{ statusLabel(s) }}
+          </span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="processed">
+        <th mat-header-cell *matHeaderCellDef>Last Processed</th>
+        <td mat-cell *matCellDef="let s">{{ timestamp(s.processedAt) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let s" class="row-actions">
+          <button matIconButton [disabled]="busy()" (click)="process(s)" aria-label="Process snapshot">
+            <mat-icon>play_arrow</mat-icon>
+          </button>
+          <button matIconButton (click)="deleteSnapshot(s)" aria-label="Delete snapshot">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"
+          [class.selected-row]="row.snapshotId === selected()?.snapshotId"></tr>
+    </table>
+
+    @if (!snapshots().length) {
+      <p class="empty-note">
+        No snapshots yet. Run <code>bankferry investments export</code>, then upload the file here.
+      </p>
+    }
+
+    @if (selected(); as s) {
+      <h3 class="section-title">Accounts in {{ s.filename }}</h3>
+      <table mat-table [dataSource]="plaidAccounts()">
+        <ng-container matColumnDef="institution">
+          <th mat-header-cell *matHeaderCellDef>Institution</th>
+          <td mat-cell *matCellDef="let a">{{ a.institutionEntry }}</td>
+        </ng-container>
+        <ng-container matColumnDef="plaidName">
+          <th mat-header-cell *matHeaderCellDef>Account</th>
+          <td mat-cell *matCellDef="let a">
+            {{ a.name }}@if (a.mask) { <span class="mask">…{{ a.mask }}</span> }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="kind">
+          <th mat-header-cell *matHeaderCellDef>Type</th>
+          <td mat-cell *matCellDef="let a">{{ a.type }}{{ a.subtype ? ' / ' + a.subtype : '' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="holdings">
+          <th mat-header-cell *matHeaderCellDef class="num">Holdings</th>
+          <td mat-cell *matCellDef="let a" class="num">{{ a.holdings }}</td>
+        </ng-container>
+        <ng-container matColumnDef="link">
+          <th mat-header-cell *matHeaderCellDef>Linked finance2 account</th>
+          <td mat-cell *matCellDef="let a">
+            <mat-select
+              class="link-select"
+              [value]="a.linkedAccountId"
+              (valueChange)="linkChanged(a, $event)"
+              placeholder="Not linked"
+            >
+              <mat-option [value]="UNLINKED">Not linked</mat-option>
+              @for (local of localAccounts(); track local.accountId) {
+                <mat-option [value]="local.accountId">{{ accountLabel(local) }}</mat-option>
+              }
+            </mat-select>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="accountColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: accountColumns"></tr>
+      </table>
+
+      @if (s.report; as report) {
+        <h3 class="section-title">
+          Last processing report
+          ({{ report.holdingsUpdated }} holding(s), {{ report.sweepsUpdated }} sweep(s) updated)
+        </h3>
+        <ul class="report">
+          @for (line of reportLines(); track $index) {
+            <li [class.warning]="line.severity === ReportSeverity.WARNING">
+              <mat-icon inline>{{ severityIcon(line.severity) }}</mat-icon>
+              {{ line.message }}
+            </li>
+          }
+        </ul>
+      }
+    }
+  </mat-card-content>
+</mat-card>

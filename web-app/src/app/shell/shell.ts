@@ -41,6 +41,7 @@ export class Shell {
     { path: '/positions', label: 'Positions', icon: 'trending_up' },
     { path: '/allocation', label: 'Allocation', icon: 'pie_chart' },
     { path: '/tax', label: 'Tax', icon: 'receipt_long' },
+    { path: '/imports', label: 'Imports', icon: 'upload_file' },
   ];
 
   async logout(): Promise<void> {
