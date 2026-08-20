@@ -47,8 +47,18 @@ export const routes: Routes = [
       },
       {
         path: 'allocation',
-        loadComponent: () => import('./pages/placeholder').then((m) => m.Placeholder),
-        data: { title: 'Asset Allocation' },
+        loadComponent: () =>
+          import('./pages/allocation/allocation-page').then((m) => m.AllocationPage),
+      },
+      {
+        path: 'allocation/rebalance',
+        loadComponent: () =>
+          import('./pages/allocation/rebalance-page').then((m) => m.RebalancePage),
+      },
+      {
+        path: 'allocation/class/:name',
+        loadComponent: () =>
+          import('./pages/allocation/class-details-page').then((m) => m.ClassDetailsPage),
       },
       {
         path: 'tax',
