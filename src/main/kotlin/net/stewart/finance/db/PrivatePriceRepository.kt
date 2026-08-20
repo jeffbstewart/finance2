@@ -8,6 +8,7 @@ import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.PriceId
 import net.stewart.finance.domain.SecurityId
+import org.jdbi.v3.core.Jdbi
 
 data class PrivatePriceRow(
     val id: PriceId,
@@ -18,34 +19,27 @@ data class PrivatePriceRow(
 
 /**
  * Hand-entered price history for MANUAL-locus securities (spec §5.6);
- * prices are in the security's currency.
+ * prices are in the security's currency, read from the security row in
+ * the same query — never asserted by a caller.
  */
-class PrivatePriceRepository(private val dataSource: DataSource) {
+class PrivatePriceRepository(dataSource: DataSource) {
 
-    /**
-     * Newest first, for the price-history editor (spec §9.12). The
-     * price's currency is read from the security row in the same
-     * query — never asserted by the caller, so a wrong-currency
-     * label is unconstructable here.
-     */
-    fun list(securityId: SecurityId): List<PrivatePriceRow> =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
-                    "JOIN securities s ON s.id = p.security_id " +
-                    "WHERE p.security_id = ? ORDER BY p.price_date DESC"
-            ).use { stmt ->
-                stmt.setLong(1, securityId.value)
-                val rs = stmt.executeQuery()
-                buildList {
-                    while (rs.next()) add(rs.toRow(CurrencyUnit.parse(rs.getString("currency").trim())))
-                }
-            }
-        }
+    private val jdbi = Jdbi.create(dataSource)
+
+    /** Newest first, for the price-history editor (spec §9.12). */
+    fun list(securityId: SecurityId): List<PrivatePriceRow> = jdbi.sql { handle ->
+        handle.createQuery(
+            "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
+                "JOIN securities s ON s.id = p.security_id " +
+                "WHERE p.security_id = :securityId ORDER BY p.price_date DESC"
+        )
+            .bind("securityId", securityId.value)
+            .map { rs, _ -> rs.toRow() }
+            .list()
+    }
 
     /** Date-ascending closes for charts and indicators. */
-    fun history(securityId: SecurityId): List<PrivatePriceRow> =
-        list(securityId).asReversed()
+    fun history(securityId: SecurityId): List<PrivatePriceRow> = list(securityId).asReversed()
 
     /**
      * Date-ascending closes since [since] for every non-hidden
@@ -53,24 +47,24 @@ class PrivatePriceRepository(private val dataSource: DataSource) {
      * (the legacy N+1, defect 11, must not return).
      */
     fun recentBySecurity(portfolioId: PortfolioId, since: LocalDate): Map<SecurityId, List<Money>> =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
+        jdbi.sql { handle ->
+            val result = linkedMapOf<SecurityId, MutableList<Money>>()
+            handle.createQuery(
                 "SELECT p.security_id, s.currency, p.price FROM private_prices p " +
                     "JOIN securities s ON s.id = p.security_id " +
-                    "WHERE s.portfolio_id = ? AND p.price_date >= ? ORDER BY p.security_id, p.price_date"
-            ).use { stmt ->
-                stmt.setLong(1, portfolioId.value)
-                stmt.setObject(2, since)
-                val rs = stmt.executeQuery()
-                val result = linkedMapOf<SecurityId, MutableList<Money>>()
-                while (rs.next()) {
-                    val id = SecurityId(rs.getLong("security_id"))
-                    val currency = CurrencyUnit.parse(rs.getString("currency").trim())
-                    result.getOrPut(id) { mutableListOf() }
-                        .add(Money.of(rs.getBigDecimal("price"), currency))
+                    "WHERE s.portfolio_id = :portfolioId AND p.price_date >= :since " +
+                    "ORDER BY p.security_id, p.price_date"
+            )
+                .bind("portfolioId", portfolioId.value)
+                .bind("since", since)
+                .map { rs, _ ->
+                    SecurityId(rs.getLong("security_id")) to Money.of(
+                        rs.getBigDecimal("price"),
+                        CurrencyUnit.parse(rs.getString("currency").trim()),
+                    )
                 }
-                result
-            }
+                .forEach { (id, price) -> result.getOrPut(id) { mutableListOf() }.add(price) }
+            result
         }
 
     /**
@@ -78,80 +72,75 @@ class PrivatePriceRepository(private val dataSource: DataSource) {
      * the "latest price" source for valuing manually priced holdings
      * (spec §5.6). Currency from the security row.
      */
-    fun latestBySecurity(portfolioId: PortfolioId): Map<SecurityId, Money> =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "SELECT p.security_id, s.currency, p.price FROM private_prices p " +
-                    "JOIN securities s ON s.id = p.security_id " +
-                    "WHERE s.portfolio_id = ? AND p.price_date = (" +
-                    "  SELECT MAX(p2.price_date) FROM private_prices p2 WHERE p2.security_id = p.security_id)"
-            ).use { stmt ->
-                stmt.setLong(1, portfolioId.value)
-                val rs = stmt.executeQuery()
-                val result = linkedMapOf<SecurityId, Money>()
-                while (rs.next()) {
-                    result[SecurityId(rs.getLong("security_id"))] = Money.of(
-                        rs.getBigDecimal("price"),
-                        CurrencyUnit.parse(rs.getString("currency").trim()),
-                    )
-                }
-                result
+    fun latestBySecurity(portfolioId: PortfolioId): Map<SecurityId, Money> = jdbi.sql { handle ->
+        val result = linkedMapOf<SecurityId, Money>()
+        handle.createQuery(
+            "SELECT p.security_id, s.currency, p.price FROM private_prices p " +
+                "JOIN securities s ON s.id = p.security_id " +
+                "WHERE s.portfolio_id = :portfolioId AND p.price_date = (" +
+                "  SELECT MAX(p2.price_date) FROM private_prices p2 WHERE p2.security_id = p.security_id)"
+        )
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ ->
+                SecurityId(rs.getLong("security_id")) to Money.of(
+                    rs.getBigDecimal("price"),
+                    CurrencyUnit.parse(rs.getString("currency").trim()),
+                )
             }
-        }
+            .forEach { (id, price) -> result[id] = price }
+        result
+    }
 
-    fun find(id: PriceId, portfolioId: PortfolioId): PrivatePriceRow? =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
-                    "JOIN securities s ON s.id = p.security_id WHERE p.id = ? AND s.portfolio_id = ?"
-            ).use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.setLong(2, portfolioId.value)
-                val rs = stmt.executeQuery()
-                if (rs.next()) rs.toRow(CurrencyUnit.parse(rs.getString("currency").trim())) else null
-            }
-        }
+    fun find(id: PriceId, portfolioId: PortfolioId): PrivatePriceRow? = jdbi.sql { handle ->
+        handle.createQuery(
+            "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
+                "JOIN securities s ON s.id = p.security_id " +
+                "WHERE p.id = :id AND s.portfolio_id = :portfolioId"
+        )
+            .bind("id", id.value)
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ -> rs.toRow() }
+            .findOne()
+            .orElse(null)
+    }
 
     /** Throws SQLException on a duplicate (security, date). */
-    fun add(securityId: SecurityId, date: LocalDate, price: Money): PriceId =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "INSERT INTO private_prices (security_id, price_date, price) VALUES (?, ?, ?)",
-                java.sql.Statement.RETURN_GENERATED_KEYS,
-            ).use { stmt ->
-                stmt.setLong(1, securityId.value)
-                stmt.setObject(2, date)
-                stmt.setBigDecimal(3, price.amount)
-                stmt.executeUpdate()
-                PriceId(stmt.generatedKeys.also { check(it.next()) }.getLong(1))
-            }
-        }
+    fun add(securityId: SecurityId, date: LocalDate, price: Money): PriceId = jdbi.sql { handle ->
+        PriceId(
+            handle.createUpdate(
+                "INSERT INTO private_prices (security_id, price_date, price) " +
+                    "VALUES (:securityId, :date, :price)"
+            )
+                .bind("securityId", securityId.value)
+                .bind("date", date)
+                .bind("price", price.amount)
+                .executeAndReturnGeneratedKeys("id")
+                .mapTo(Long::class.java)
+                .one()
+        )
+    }
 
     /** Throws SQLException on a duplicate (security, date). */
-    fun update(id: PriceId, date: LocalDate, price: Money): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "UPDATE private_prices SET price_date = ?, price = ? WHERE id = ?"
-            ).use { stmt ->
-                stmt.setObject(1, date)
-                stmt.setBigDecimal(2, price.amount)
-                stmt.setLong(3, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    fun update(id: PriceId, date: LocalDate, price: Money): Boolean = jdbi.sql { handle ->
+        handle.createUpdate(
+            "UPDATE private_prices SET price_date = :date, price = :price WHERE id = :id"
+        )
+            .bind("date", date)
+            .bind("price", price.amount)
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
-    fun delete(id: PriceId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("DELETE FROM private_prices WHERE id = ?").use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    fun delete(id: PriceId): Boolean = jdbi.sql { handle ->
+        handle.createUpdate("DELETE FROM private_prices WHERE id = :id")
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
-    private fun ResultSet.toRow(currency: CurrencyUnit) = PrivatePriceRow(
+    private fun ResultSet.toRow() = PrivatePriceRow(
         id = PriceId(getLong("id")),
         securityId = SecurityId(getLong("security_id")),
         date = getObject("price_date", LocalDate::class.java),
-        price = Money.of(getBigDecimal("price"), currency),
+        price = Money.of(getBigDecimal("price"), CurrencyUnit.parse(getString("currency").trim())),
     )
 }

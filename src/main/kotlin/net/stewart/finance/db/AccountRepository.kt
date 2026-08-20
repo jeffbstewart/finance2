@@ -9,6 +9,7 @@ import net.stewart.finance.domain.CurrencyUnit
 import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
+import org.jdbi.v3.core.Jdbi
 
 data class AccountRow(
     val id: AccountId,
@@ -25,31 +26,30 @@ data class AccountRow(
 )
 
 /** Accounts, portfolio-scoped through their broker join. */
-class AccountRepository(private val dataSource: DataSource) {
+class AccountRepository(dataSource: DataSource) {
+
+    private val jdbi = Jdbi.create(dataSource)
 
     fun list(portfolioId: PortfolioId, brokerId: BrokerId?, includeHidden: Boolean): List<AccountRow> =
-        dataSource.connection.use { conn ->
-            val sql = SELECT + " WHERE b.portfolio_id = ?" +
-                (if (brokerId != null) " AND a.broker_id = ?" else "") +
-                (if (includeHidden) "" else " AND NOT a.hidden") +
-                " ORDER BY b.name, a.name"
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setLong(1, portfolioId.value)
-                if (brokerId != null) stmt.setLong(2, brokerId.value)
-                val rs = stmt.executeQuery()
-                buildList { while (rs.next()) add(rs.toRow()) }
-            }
+        jdbi.sql { handle ->
+            val query = handle.createQuery(
+                SELECT + " WHERE b.portfolio_id = :portfolioId" +
+                    (if (brokerId != null) " AND a.broker_id = :brokerId" else "") +
+                    (if (includeHidden) "" else " AND NOT a.hidden") +
+                    " ORDER BY b.name, a.name"
+            ).bind("portfolioId", portfolioId.value)
+            if (brokerId != null) query.bind("brokerId", brokerId.value)
+            query.map { rs, _ -> rs.toRow() }.list()
         }
 
-    fun find(id: AccountId, portfolioId: PortfolioId): AccountRow? =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("$SELECT WHERE a.id = ? AND b.portfolio_id = ?").use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.setLong(2, portfolioId.value)
-                val rs = stmt.executeQuery()
-                if (rs.next()) rs.toRow() else null
-            }
-        }
+    fun find(id: AccountId, portfolioId: PortfolioId): AccountRow? = jdbi.sql { handle ->
+        handle.createQuery("$SELECT WHERE a.id = :id AND b.portfolio_id = :portfolioId")
+            .bind("id", id.value)
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ -> rs.toRow() }
+            .findOne()
+            .orElse(null)
+    }
 
     /** Throws SQLException on a duplicate name within the broker. */
     fun create(
@@ -58,22 +58,22 @@ class AccountRepository(private val dataSource: DataSource) {
         accountNumber: String,
         currency: CurrencyUnit,
         taxDeferred: Boolean,
-    ): AccountId =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
+    ): AccountId = jdbi.sql { handle ->
+        AccountId(
+            handle.createUpdate(
                 "INSERT INTO accounts (broker_id, name, account_number, currency, tax_deferred) " +
-                    "VALUES (?, ?, ?, ?, ?)",
-                java.sql.Statement.RETURN_GENERATED_KEYS,
-            ).use { stmt ->
-                stmt.setLong(1, brokerId.value)
-                stmt.setString(2, name)
-                stmt.setString(3, accountNumber)
-                stmt.setString(4, currency.code)
-                stmt.setBoolean(5, taxDeferred)
-                stmt.executeUpdate()
-                AccountId(stmt.generatedKeys.also { check(it.next()) }.getLong(1))
-            }
-        }
+                    "VALUES (:brokerId, :name, :accountNumber, :currency, :taxDeferred)"
+            )
+                .bind("brokerId", brokerId.value)
+                .bind("name", name)
+                .bind("accountNumber", accountNumber)
+                .bind("currency", currency.code)
+                .bind("taxDeferred", taxDeferred)
+                .executeAndReturnGeneratedKeys("id")
+                .mapTo(Long::class.java)
+                .one()
+        )
+    }
 
     fun update(
         id: AccountId,
@@ -83,52 +83,46 @@ class AccountRepository(private val dataSource: DataSource) {
         sweep: Money,
         sweepSource: EntrySource,
         sweepAsOf: LocalDate,
-    ): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "UPDATE accounts SET name = ?, account_number = ?, tax_deferred = ?, " +
-                    "sweep_balance = ?, sweep_source = ?, sweep_as_of = ? WHERE id = ?"
-            ).use { stmt ->
-                stmt.setString(1, name)
-                stmt.setString(2, accountNumber)
-                stmt.setBoolean(3, taxDeferred)
-                stmt.setBigDecimal(4, sweep.amount)
-                stmt.setString(5, sweepSource.dbValue)
-                stmt.setObject(6, sweepAsOf)
-                stmt.setLong(7, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    ): Boolean = jdbi.sql { handle ->
+        handle.createUpdate(
+            "UPDATE accounts SET name = :name, account_number = :accountNumber, " +
+                "tax_deferred = :taxDeferred, sweep_balance = :sweep, sweep_source = :sweepSource, " +
+                "sweep_as_of = :sweepAsOf WHERE id = :id"
+        )
+            .bind("name", name)
+            .bind("accountNumber", accountNumber)
+            .bind("taxDeferred", taxDeferred)
+            .bind("sweep", sweep.amount)
+            .bind("sweepSource", sweepSource.dbValue)
+            .bind("sweepAsOf", sweepAsOf)
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
-    fun setHidden(id: AccountId, hidden: Boolean): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("UPDATE accounts SET hidden = ? WHERE id = ?").use { stmt ->
-                stmt.setBoolean(1, hidden)
-                stmt.setLong(2, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    fun setHidden(id: AccountId, hidden: Boolean): Boolean = jdbi.sql { handle ->
+        handle.createUpdate("UPDATE accounts SET hidden = :hidden WHERE id = :id")
+            .bind("hidden", hidden)
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
-    fun delete(id: AccountId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("DELETE FROM accounts WHERE id = ?").use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    fun delete(id: AccountId): Boolean = jdbi.sql { handle ->
+        handle.createUpdate("DELETE FROM accounts WHERE id = :id")
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
     /** True when nothing references the account: no lots, no holdings. */
-    fun isEmpty(id: AccountId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "SELECT 1 FROM purchase_lots WHERE account_id = ? " +
-                    "UNION ALL SELECT 1 FROM holdings WHERE account_id = ? LIMIT 1"
-            ).use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.setLong(2, id.value)
-                !stmt.executeQuery().next()
-            }
-        }
+    fun isEmpty(id: AccountId): Boolean = jdbi.sql { handle ->
+        handle.createQuery(
+            "SELECT 1 FROM purchase_lots WHERE account_id = :id " +
+                "UNION ALL SELECT 1 FROM holdings WHERE account_id = :id LIMIT 1"
+        )
+            .bind("id", id.value)
+            .mapTo(Int::class.java)
+            .findFirst()
+            .isEmpty
+    }
 
     private fun ResultSet.toRow(): AccountRow {
         val currency = CurrencyUnit.parse(getString("currency").trim())

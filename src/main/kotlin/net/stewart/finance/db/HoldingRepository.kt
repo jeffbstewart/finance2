@@ -8,6 +8,7 @@ import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SecurityId
+import org.jdbi.v3.core.Jdbi
 
 data class HoldingRecord(
     val accountId: AccountId,
@@ -22,19 +23,19 @@ data class HoldingRecord(
  * Position-level holdings — the record for tax-deferred accounts
  * (build-scope §1), with provenance.
  */
-class HoldingRepository(private val dataSource: DataSource) {
+class HoldingRepository(dataSource: DataSource) {
+
+    private val jdbi = Jdbi.create(dataSource)
 
     fun list(portfolioId: PortfolioId, accountId: AccountId? = null): List<HoldingRecord> =
-        dataSource.connection.use { conn ->
-            val sql = SELECT + " WHERE b.portfolio_id = ?" +
-                (if (accountId != null) " AND h.account_id = ?" else "") +
-                " ORDER BY h.account_id, h.security_id"
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setLong(1, portfolioId.value)
-                if (accountId != null) stmt.setLong(2, accountId.value)
-                val rs = stmt.executeQuery()
-                buildList { while (rs.next()) add(rs.toRecord()) }
-            }
+        jdbi.sql { handle ->
+            val query = handle.createQuery(
+                SELECT + " WHERE b.portfolio_id = :portfolioId" +
+                    (if (accountId != null) " AND h.account_id = :accountId" else "") +
+                    " ORDER BY h.account_id, h.security_id"
+            ).bind("portfolioId", portfolioId.value)
+            if (accountId != null) query.bind("accountId", accountId.value)
+            query.map { rs, _ -> rs.toRecord() }.list()
         }
 
     fun upsert(
@@ -44,31 +45,29 @@ class HoldingRepository(private val dataSource: DataSource) {
         source: EntrySource,
         asOf: LocalDate,
     ) {
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
+        jdbi.sql { handle ->
+            handle.createUpdate(
                 "MERGE INTO holdings (account_id, security_id, quantity, source, as_of, updated_at) " +
-                    "KEY (account_id, security_id) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
-            ).use { stmt ->
-                stmt.setLong(1, accountId.value)
-                stmt.setLong(2, securityId.value)
-                stmt.setBigDecimal(3, quantity.amount)
-                stmt.setString(4, source.dbValue)
-                stmt.setObject(5, asOf)
-                stmt.executeUpdate()
-            }
+                    "KEY (account_id, security_id) " +
+                    "VALUES (:accountId, :securityId, :quantity, :source, :asOf, CURRENT_TIMESTAMP)"
+            )
+                .bind("accountId", accountId.value)
+                .bind("securityId", securityId.value)
+                .bind("quantity", quantity.amount)
+                .bind("source", source.dbValue)
+                .bind("asOf", asOf)
+                .execute()
         }
     }
 
-    fun delete(accountId: AccountId, securityId: SecurityId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "DELETE FROM holdings WHERE account_id = ? AND security_id = ?"
-            ).use { stmt ->
-                stmt.setLong(1, accountId.value)
-                stmt.setLong(2, securityId.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    fun delete(accountId: AccountId, securityId: SecurityId): Boolean = jdbi.sql { handle ->
+        handle.createUpdate(
+            "DELETE FROM holdings WHERE account_id = :accountId AND security_id = :securityId"
+        )
+            .bind("accountId", accountId.value)
+            .bind("securityId", securityId.value)
+            .execute() > 0
+    }
 
     private fun ResultSet.toRecord() = HoldingRecord(
         accountId = AccountId(getLong("account_id")),

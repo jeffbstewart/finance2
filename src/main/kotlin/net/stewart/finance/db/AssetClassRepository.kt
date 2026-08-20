@@ -1,6 +1,7 @@
 package net.stewart.finance.db
 
 import javax.sql.DataSource
+import org.jdbi.v3.core.Jdbi
 
 /**
  * The seeded asset classes (classes are data, build-scope §4/§6).
@@ -9,14 +10,14 @@ import javax.sql.DataSource
  * the schema's UNIQUE constraint and encoded here in the return type;
  * iteration order is the seeded display order.
  */
-class AssetClassRepository(private val dataSource: DataSource) {
+class AssetClassRepository(dataSource: DataSource) {
 
-    fun names(): Set<String> =
-        dataSource.connection.use { conn ->
-            val rs = conn.createStatement()
-                .executeQuery("SELECT name FROM asset_classes ORDER BY display_order")
-            val result = linkedSetOf<String>()
-            while (rs.next()) result.add(rs.getString("name"))
-            result
-        }
+    private val jdbi = Jdbi.create(dataSource)
+
+    fun names(): Set<String> = jdbi.sql { handle ->
+        handle.createQuery("SELECT name FROM asset_classes ORDER BY display_order")
+            .mapTo(String::class.java)
+            .list()
+            .toCollection(linkedSetOf())
+    }
 }

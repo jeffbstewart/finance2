@@ -10,6 +10,7 @@ import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SecurityId
+import org.jdbi.v3.core.Jdbi
 
 data class LotRecord(
     val id: LotId,
@@ -27,37 +28,34 @@ data class LotRecord(
  * §1). Money currency comes from the owning account's row in the same
  * query, never from a caller.
  */
-class LotRepository(private val dataSource: DataSource) {
+class LotRepository(dataSource: DataSource) {
+
+    private val jdbi = Jdbi.create(dataSource)
 
     fun list(
         portfolioId: PortfolioId,
         accountId: AccountId? = null,
         securityId: SecurityId? = null,
-    ): List<LotRecord> =
-        dataSource.connection.use { conn ->
-            val sql = SELECT + " WHERE b.portfolio_id = ?" +
-                (if (accountId != null) " AND l.account_id = ?" else "") +
-                (if (securityId != null) " AND l.security_id = ?" else "") +
+    ): List<LotRecord> = jdbi.sql { handle ->
+        val query = handle.createQuery(
+            SELECT + " WHERE b.portfolio_id = :portfolioId" +
+                (if (accountId != null) " AND l.account_id = :accountId" else "") +
+                (if (securityId != null) " AND l.security_id = :securityId" else "") +
                 " ORDER BY l.date_bought, l.id"
-            conn.prepareStatement(sql).use { stmt ->
-                var i = 1
-                stmt.setLong(i++, portfolioId.value)
-                if (accountId != null) stmt.setLong(i++, accountId.value)
-                if (securityId != null) stmt.setLong(i, securityId.value)
-                val rs = stmt.executeQuery()
-                buildList { while (rs.next()) add(rs.toRecord()) }
-            }
-        }
+        ).bind("portfolioId", portfolioId.value)
+        if (accountId != null) query.bind("accountId", accountId.value)
+        if (securityId != null) query.bind("securityId", securityId.value)
+        query.map { rs, _ -> rs.toRecord() }.list()
+    }
 
-    fun find(id: LotId, portfolioId: PortfolioId): LotRecord? =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("$SELECT WHERE l.id = ? AND b.portfolio_id = ?").use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.setLong(2, portfolioId.value)
-                val rs = stmt.executeQuery()
-                if (rs.next()) rs.toRecord() else null
-            }
-        }
+    fun find(id: LotId, portfolioId: PortfolioId): LotRecord? = jdbi.sql { handle ->
+        handle.createQuery("$SELECT WHERE l.id = :id AND b.portfolio_id = :portfolioId")
+            .bind("id", id.value)
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ -> rs.toRecord() }
+            .findOne()
+            .orElse(null)
+    }
 
     fun create(
         accountId: AccountId,
@@ -66,23 +64,24 @@ class LotRepository(private val dataSource: DataSource) {
         quantity: Quantity,
         pricePerShare: Money,
         purchaseCosts: Money,
-    ): LotId =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
+    ): LotId = jdbi.sql { handle ->
+        LotId(
+            handle.createUpdate(
                 "INSERT INTO purchase_lots (account_id, security_id, date_bought, quantity, " +
-                    "price_per_share, purchase_costs) VALUES (?, ?, ?, ?, ?, ?)",
-                java.sql.Statement.RETURN_GENERATED_KEYS,
-            ).use { stmt ->
-                stmt.setLong(1, accountId.value)
-                stmt.setLong(2, securityId.value)
-                stmt.setObject(3, dateBought)
-                stmt.setBigDecimal(4, quantity.amount)
-                stmt.setBigDecimal(5, pricePerShare.amount)
-                stmt.setBigDecimal(6, purchaseCosts.amount)
-                stmt.executeUpdate()
-                LotId(stmt.generatedKeys.also { check(it.next()) }.getLong(1))
-            }
-        }
+                    "price_per_share, purchase_costs) " +
+                    "VALUES (:accountId, :securityId, :dateBought, :quantity, :pricePerShare, :purchaseCosts)"
+            )
+                .bind("accountId", accountId.value)
+                .bind("securityId", securityId.value)
+                .bind("dateBought", dateBought)
+                .bind("quantity", quantity.amount)
+                .bind("pricePerShare", pricePerShare.amount)
+                .bind("purchaseCosts", purchaseCosts.amount)
+                .executeAndReturnGeneratedKeys("id")
+                .mapTo(Long::class.java)
+                .one()
+        )
+    }
 
     /** Account and security are immutable (guard rail §5.9). */
     fun update(
@@ -91,37 +90,33 @@ class LotRepository(private val dataSource: DataSource) {
         quantity: Quantity,
         pricePerShare: Money,
         purchaseCosts: Money,
-    ): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                "UPDATE purchase_lots SET date_bought = ?, quantity = ?, price_per_share = ?, " +
-                    "purchase_costs = ? WHERE id = ?"
-            ).use { stmt ->
-                stmt.setObject(1, dateBought)
-                stmt.setBigDecimal(2, quantity.amount)
-                stmt.setBigDecimal(3, pricePerShare.amount)
-                stmt.setBigDecimal(4, purchaseCosts.amount)
-                stmt.setLong(5, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    ): Boolean = jdbi.sql { handle ->
+        handle.createUpdate(
+            "UPDATE purchase_lots SET date_bought = :dateBought, quantity = :quantity, " +
+                "price_per_share = :pricePerShare, purchase_costs = :purchaseCosts WHERE id = :id"
+        )
+            .bind("dateBought", dateBought)
+            .bind("quantity", quantity.amount)
+            .bind("pricePerShare", pricePerShare.amount)
+            .bind("purchaseCosts", purchaseCosts.amount)
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
-    fun delete(id: LotId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("DELETE FROM purchase_lots WHERE id = ?").use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.executeUpdate() > 0
-            }
-        }
+    fun delete(id: LotId): Boolean = jdbi.sql { handle ->
+        handle.createUpdate("DELETE FROM purchase_lots WHERE id = :id")
+            .bind("id", id.value)
+            .execute() > 0
+    }
 
     /** True when any sale allocation references the lot. */
-    fun hasSales(id: LotId): Boolean =
-        dataSource.connection.use { conn ->
-            conn.prepareStatement("SELECT 1 FROM sale_allocations WHERE lot_id = ? LIMIT 1").use { stmt ->
-                stmt.setLong(1, id.value)
-                stmt.executeQuery().next()
-            }
-        }
+    fun hasSales(id: LotId): Boolean = jdbi.sql { handle ->
+        handle.createQuery("SELECT 1 FROM sale_allocations WHERE lot_id = :id LIMIT 1")
+            .bind("id", id.value)
+            .mapTo(Int::class.java)
+            .findOne()
+            .isPresent
+    }
 
     private fun ResultSet.toRecord(): LotRecord {
         val currency = CurrencyUnit.parse(getString("currency").trim())
