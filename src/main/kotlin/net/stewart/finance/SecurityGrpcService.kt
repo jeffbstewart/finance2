@@ -28,6 +28,7 @@ import net.stewart.finance.domain.SecurityId
 import net.stewart.finance.domain.SecurityType
 import net.stewart.finance.domain.UserId
 import net.stewart.finance.rules.ClosePoint
+import net.stewart.finance.rules.CpiSeries
 import net.stewart.finance.rules.bollingerBands
 import net.stewart.finance.rules.ema
 import net.stewart.finance.rules.sma
@@ -82,6 +83,8 @@ class SecurityGrpcService(
     private val classifications: ClassificationRepository,
     private val prices: PrivatePriceRepository,
     private val assetClasses: AssetClassRepository,
+    /** The persisted CPI series, or null while unseeded (degraded mode). */
+    private val cpiSeries: () -> CpiSeries? = { null },
     /** Days after which a classification set suggests a refresh (build-scope §4). */
     private val classificationRefreshDays: Long = 365,
 ) : SecurityServiceGrpcKt.SecurityServiceCoroutineImplBase() {
@@ -128,20 +131,29 @@ class SecurityGrpcService(
     }
 
     override suspend fun getSecurityDetails(request: GetSecurityDetailsRequest): GetSecurityDetailsResponse {
-        if (request.inflationAdjusted) {
-            throw StatusException(
-                Status.UNIMPLEMENTED.withDescription(
-                    "inflation-adjusted presentation arrives with the CPI wiring"
-                )
-            )
-        }
         val row = findSecurity(request.securityId)
         // MANUAL locus: the hand-entered history is the history.
         // MARKET locus: empty until the price-source module (Phase 4/5).
-        val history = if (row.pricingLocus == PricingLocus.MANUAL) {
+        val raw = if (row.pricingLocus == PricingLocus.MANUAL) {
             prices.history(row.id).map { ClosePoint(it.date, it.price) }
         } else {
             emptyList()
+        }
+        // Constant-dollar presentation (spec §5.7): each close converts
+        // to today's dollars, and the indicators run over the same
+        // adjusted series the chart shows -- one consistent direction.
+        val history = if (!request.inflationAdjusted) raw else {
+            val cpi = cpiSeries() ?: throw StatusException(
+                Status.FAILED_PRECONDITION.withDescription("CPI data is not loaded yet")
+            )
+            val today = LocalDate.now()
+            try {
+                raw.map { ClosePoint(it.date, cpi.convert(it.close, it.date, today)) }
+            } catch (e: IllegalArgumentException) {
+                throw StatusException(
+                    Status.FAILED_PRECONDITION.withDescription(e.message ?: "CPI coverage error")
+                )
+            }
         }
         val builder = GetSecurityDetailsResponse.newBuilder().setSecurity(row.toProfile())
         for (point in history) {

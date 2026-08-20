@@ -207,9 +207,9 @@ class SecurityServiceTest {
         val trustA = listing.securitiesList.single { it.ticker == "TRUST-A" }
         assertEquals(2, trustA.sparkline.adjustedClosesCount)
 
-        // Inflation toggle awaits CPI wiring.
+        // Inflation toggle needs a seeded CPI series.
         assertEquals(
-            Status.Code.UNIMPLEMENTED,
+            Status.Code.FAILED_PRECONDITION,
             statusOf {
                 service.getSecurityDetails(
                     GetSecurityDetailsRequest.newBuilder().setSecurityId(id).setInflationAdjusted(true).build()
@@ -304,6 +304,40 @@ class SecurityServiceTest {
         assertEquals(6, details.indicators.smaCount)      // 25 − 20 + 1
         assertEquals(6, details.indicators.emaCount)
         assertEquals(6, details.indicators.bollingerCount)
+    }
+
+    @Test
+    fun `flat CPI leaves adjusted history equal to nominal`() {
+        val flat = net.stewart.finance.rules.CpiSeries(
+            (0L..23L).associate {
+                java.time.YearMonth.parse("2025-01").plusMonths(it) to java.math.BigDecimal("100")
+            }
+        )
+        val inflationService = SecurityGrpcService(
+            PortfolioRepository(db.dataSource),
+            SecurityRepository(db.dataSource),
+            ClassificationRepository(db.dataSource),
+            PrivatePriceRepository(db.dataSource),
+            net.stewart.finance.db.AssetClassRepository(db.dataSource),
+            cpiSeries = { flat },
+        )
+        val id = call {
+            service.addSecurity(
+                AddSecurityRequest.newBuilder().setTicker("FLATCPI").setCurrencyCode("USD").build()
+            )
+        }.security.securityId
+        call {
+            service.addPrivatePrice(
+                AddPrivatePriceRequest.newBuilder()
+                    .setSecurityId(id).setDate(date(2026, 6, 1)).setPrice(decimal("50")).build()
+            )
+        }
+        val adjusted = call {
+            inflationService.getSecurityDetails(
+                GetSecurityDetailsRequest.newBuilder().setSecurityId(id).setInflationAdjusted(true).build()
+            )
+        }
+        assertEquals(listOf("50.0000"), adjusted.priceHistoryList.map { it.close.value })
     }
 
     @Test

@@ -258,6 +258,60 @@ class PositionServiceTest {
         assertTrue(form.securitiesList.any { it.ticker == "TRUST-A" })
     }
 
+    @Test
+    fun `inflation-adjusted lot details need CPI data and pass through flat CPI`() {
+        val f = fixture
+        assertEquals(
+            Status.Code.FAILED_PRECONDITION,
+            statusOf {
+                service.getLotDetails(
+                    GetLotDetailsRequest.newBuilder()
+                        .setSecurityId(f.securityId).setInflationAdjusted(true).build()
+                )
+            },
+        )
+
+        val flat = net.stewart.finance.rules.CpiSeries(
+            (0L..35L).associate {
+                java.time.YearMonth.parse("2024-01").plusMonths(it) to java.math.BigDecimal("100")
+            }
+        )
+        val inflationService = PositionGrpcService(
+            portfolios, accounts, securities,
+            LotRepository(db.dataSource), SaleRepository(db.dataSource),
+            HoldingRepository(db.dataSource), privatePrices,
+            ReportingCurrency(FxRepository(db.dataSource)),
+            cpiSeries = { flat },
+        )
+        val lots = LotRepository(db.dataSource)
+        val portfolioId = f.portfolioId
+        val lotId = lots.create(
+            net.stewart.finance.domain.AccountId(f.taxableId),
+            net.stewart.finance.domain.SecurityId(f.securityId),
+            java.time.LocalDate.parse("2024-06-01"),
+            Quantity.of("2"), usd("10.00"), usd("1.00"),
+        )
+        try {
+            val details = asUserCall {
+                inflationService.getLotDetails(
+                    GetLotDetailsRequest.newBuilder()
+                        .setSecurityId(f.securityId).setInflationAdjusted(true).build()
+                )
+            }
+            assertTrue(details.inflationAdjusted)
+            val row = details.lotsList.single { it.lotId == lotId.value }
+            // Flat CPI: adjusted cost columns equal nominal.
+            assertEquals("$10.00", row.buyPricePerShare.display)
+            assertEquals("$1.00", row.commission.display)
+            assertEquals("$21.00", row.basis.display) // 2×10 + 1
+        } finally {
+            lots.delete(lotId)
+        }
+    }
+
+    private fun asUserCall(block: suspend () -> net.stewart.finance.proto.GetLotDetailsResponse) =
+        call(block)
+
     private fun purchase(
         accountId: Long,
         securityId: Long,
