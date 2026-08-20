@@ -17,6 +17,7 @@ import net.stewart.armeria.auth.AuthGrpcInterceptor
 import net.stewart.armeria.auth.grpcAuthConfig
 import net.stewart.auth.LoginService
 import net.stewart.auth.SessionService
+import net.stewart.finance.api.MtmService
 import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.auth.FinanceUserRepository
@@ -36,6 +37,7 @@ import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.CpiRepository
 import net.stewart.finance.db.MarketPriceRepository
+import net.stewart.finance.db.MtmMarkRepository
 import net.stewart.finance.feeds.CpiFeed
 import net.stewart.finance.feeds.EcbFxFeed
 import net.stewart.finance.feeds.EodhdPriceSource
@@ -172,6 +174,13 @@ fun main() {
                 val classifications = ClassificationRepository(db.dataSource)
                 val privatePrices = PrivatePriceRepository(db.dataSource)
                 val pricing = PricingService(privatePrices, MarketPriceRepository(db.dataSource), marketData)
+                val lots = LotRepository(db.dataSource)
+                val sales = SaleRepository(db.dataSource)
+                val mtmMarks = MtmMarkRepository(db.dataSource)
+                val mtm = MtmService(
+                    lots, sales, mtmMarks, FxRepository(db.dataSource), reporting,
+                    history = { pricing.history(it) },
+                )
                 listOf(
                     GrpcServiceSpec(InfoGrpcService()),
                     GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
@@ -180,15 +189,15 @@ fun main() {
                     GrpcServiceSpec(
                         SecurityGrpcService(
                             portfolios, securities, classifications, privatePrices,
-                            AssetClassRepository(db.dataSource), pricing,
+                            AssetClassRepository(db.dataSource), pricing, mtm,
                             cpiSeries = { cpiFeed.series() },
                         )
                     ),
                     GrpcServiceSpec(
                         PositionGrpcService(
                             portfolios, accounts, securities,
-                            LotRepository(db.dataSource), SaleRepository(db.dataSource),
-                            HoldingRepository(db.dataSource), pricing, reporting,
+                            lots, sales,
+                            HoldingRepository(db.dataSource), mtmMarks, pricing, reporting,
                             cpiSeries = { cpiFeed.series() },
                         )
                     ),

@@ -7,6 +7,7 @@ import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PricingLocus
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SecurityType
+import net.stewart.finance.domain.TaxTreatment
 import net.stewart.finance.proto.Date as DateProto
 import net.stewart.finance.proto.Decimal as DecimalProto
 import net.stewart.finance.proto.FormattedDate
@@ -73,6 +74,11 @@ fun SecurityType.toProto(): net.stewart.finance.proto.SecurityType = when (this)
 fun PricingLocus.toProto(): net.stewart.finance.proto.PricingLocus = when (this) {
     PricingLocus.MARKET -> net.stewart.finance.proto.PricingLocus.MARKET
     PricingLocus.MANUAL -> net.stewart.finance.proto.PricingLocus.MANUAL
+}
+
+fun TaxTreatment.toProto(): net.stewart.finance.proto.TaxTreatment = when (this) {
+    TaxTreatment.LOTS -> net.stewart.finance.proto.TaxTreatment.LOTS
+    TaxTreatment.MARK_TO_MARKET -> net.stewart.finance.proto.TaxTreatment.MARK_TO_MARKET
 }
 
 fun provenanceOf(source: EntrySource, asOf: LocalDate?): Provenance {

@@ -68,7 +68,8 @@ class PositionServiceTest {
             PositionGrpcService(
                 portfolios, accounts, securities,
                 LotRepository(db.dataSource), SaleRepository(db.dataSource),
-                HoldingRepository(db.dataSource), pricing,
+                HoldingRepository(db.dataSource),
+                net.stewart.finance.db.MtmMarkRepository(db.dataSource), pricing,
                 ReportingCurrency(FxRepository(db.dataSource)),
             )
         }
@@ -285,7 +286,8 @@ class PositionServiceTest {
         val inflationService = PositionGrpcService(
             portfolios, accounts, securities,
             LotRepository(db.dataSource), SaleRepository(db.dataSource),
-            HoldingRepository(db.dataSource), pricing,
+            HoldingRepository(db.dataSource),
+            net.stewart.finance.db.MtmMarkRepository(db.dataSource), pricing,
             ReportingCurrency(FxRepository(db.dataSource)),
             cpiSeries = { flat },
         )

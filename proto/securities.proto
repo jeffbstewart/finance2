@@ -33,6 +33,16 @@ enum PricingLocus {
   MANUAL = 2;
 }
 
+// How the security is taxed (build-scope §11): LOTS = purchase-lot
+// basis with ST/LT capital gains; MARK_TO_MARKET = the annual PFIC
+// §1296 election — year-end marks recognize ordinary income and reset
+// the basis, floored at acquisition cost.
+enum TaxTreatment {
+  TAX_TREATMENT_UNSPECIFIED = 0;
+  LOTS = 1;
+  MARK_TO_MARKET = 2;
+}
+
 // One classification weight map. Kind is data, not an enum: only
 // "ASSET_CLASS" ships at launch; deferred taxonomies revive as new
 // kinds (build-scope §4). Weights are keyed by class key (e.g. an
@@ -58,6 +68,7 @@ message SecurityProfile {
   FormattedDecimal net_expense_ratio = 7;
   bool hidden = 8;
   repeated ClassificationSet classifications = 9;
+  TaxTreatment tax_treatment = 10;
 }
 
 // Six-month adjusted-close trend, oldest first, embedded in list
@@ -139,6 +150,8 @@ message UpdateSecurityProfileRequest {
   SecurityType security_type = 3;
   PricingLocus pricing_locus = 4;
   Decimal net_expense_ratio = 5;
+  // Reverting MARK_TO_MARKET to LOTS is rejected while marks exist.
+  TaxTreatment tax_treatment = 6;
 }
 
 message UpdateSecurityProfileResponse {}
@@ -204,6 +217,70 @@ message DeletePrivatePriceRequest {
 
 message DeletePrivatePriceResponse {}
 
+// One year-end PFIC §1296 mark (build-scope §11). USD amounts are the
+// tax truth; fmv_local and fx_rate record how they were derived.
+message MtmMark {
+  int64 mark_id = 1;
+  int32 tax_year = 2;
+  FormattedDate mark_date = 3;
+  FormattedDecimal quantity = 4;
+  FormattedMoney fmv_local = 5;   // security currency
+  FormattedDecimal fx_rate = 6;   // USD per unit of the security currency
+  FormattedMoney fmv_usd = 7;
+  FormattedMoney basis_before = 8;
+  FormattedMoney basis_after = 9;
+  FormattedMoney ordinary_income = 10;
+}
+
+message ListMtmMarksRequest {
+  int64 security_id = 1;
+}
+
+message ListMtmMarksResponse {
+  repeated MtmMark marks = 1; // tax-year ascending
+  // Total acquisition cost in USD at purchase-date FX — the basis
+  // floor (build-scope §11).
+  FormattedMoney acquisition_cost_usd = 2;
+}
+
+// Computes the proposed year-end mark from stored prices and FX:
+// shares held on Dec 31 × last price on or before Dec 31 × ECB rate
+// on or before Dec 31. Anything the store cannot supply is left unset
+// and explained in notes — the user enters it by hand.
+message SuggestMtmMarkRequest {
+  int64 security_id = 1;
+  int32 tax_year = 2;
+}
+
+message SuggestMtmMarkResponse {
+  // The would-be mark (mark_id 0), computed where possible.
+  MtmMark preview = 1;
+  repeated string notes = 2;
+}
+
+// Records the mark as filed. The server recomputes fmv_usd, the basis
+// chain, and the floor from these inputs; years must be recorded in
+// ascending order.
+message RecordMtmMarkRequest {
+  int64 security_id = 1;
+  int32 tax_year = 2;
+  Date mark_date = 3;
+  Decimal quantity = 4;
+  Decimal fmv_local = 5;
+  Decimal fx_rate = 6;
+}
+
+message RecordMtmMarkResponse {
+  MtmMark mark = 1;
+}
+
+// Only the latest mark may be deleted — the basis chain feeds forward.
+message DeleteMtmMarkRequest {
+  int64 mark_id = 1;
+}
+
+message DeleteMtmMarkResponse {}
+
 service SecurityService {
   rpc ListSecurities(ListSecuritiesRequest) returns (ListSecuritiesResponse);
   rpc AddSecurity(AddSecurityRequest) returns (AddSecurityResponse);
@@ -215,4 +292,8 @@ service SecurityService {
   rpc AddPrivatePrice(AddPrivatePriceRequest) returns (AddPrivatePriceResponse);
   rpc UpdatePrivatePrice(UpdatePrivatePriceRequest) returns (UpdatePrivatePriceResponse);
   rpc DeletePrivatePrice(DeletePrivatePriceRequest) returns (DeletePrivatePriceResponse);
+  rpc ListMtmMarks(ListMtmMarksRequest) returns (ListMtmMarksResponse);
+  rpc SuggestMtmMark(SuggestMtmMarkRequest) returns (SuggestMtmMarkResponse);
+  rpc RecordMtmMark(RecordMtmMarkRequest) returns (RecordMtmMarkResponse);
+  rpc DeleteMtmMark(DeleteMtmMarkRequest) returns (DeleteMtmMarkResponse);
 }

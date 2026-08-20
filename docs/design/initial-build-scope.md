@@ -251,3 +251,40 @@ Consequences for Phase 5 wiring:
   trusted proxies configured, the main port accepts requests only from
   them, and a proxied request missing the forwarded client address
   fails as a bad request.
+
+## 11. Mark-to-market international investments (ruling, Jeff 2026-08-20)
+
+Non-USD securities subject to an annual **PFIC §1296 mark-to-market
+election** get first-class support. Rulings:
+
+- **§1296 semantics confirmed.** Each tax year the position is marked
+  to fair market value; the year's change is **ordinary income** (not
+  capital gain), and the basis resets to the marked FMV. The USD
+  filing inherently captures FX movement: FMV = shares × year-end
+  price × year-end FX rate, compared against a USD basis carried from
+  the prior mark.
+- **Election is per security** (`tax_treatment`: `LOTS` default,
+  `MARK_TO_MARKET` elected). Purchases still record lots for share
+  counts and audit; the lot ST/LT machinery is bypassed for MTM
+  securities.
+- **Loss limitation = FMV floored at acquisition cost.** For a single
+  position acquired once and never partially sold this is exactly the
+  §1296 unreversed-inclusions rule: allowed loss in any year is
+  basis − max(FMV, total acquisition cost). Marks can carry negative
+  ordinary income down to that floor, never below.
+- **FX convention:** the suggested mark uses ECB's last published
+  rate on or before Dec 31 of the tax year. The ECB feed only
+  backfills 90 days, so a past year's rate may be absent — the
+  suggestion says so and the rate is enterable by hand; the recorded
+  mark stores the rate actually used.
+- **Sales are punted.** Sale-year treatment under the election is not
+  yet ruled (the position is committed for years). Until ruled, the
+  server rejects recording sales of MTM securities and rejects
+  reverting a security to `LOTS` while marks exist.
+- **Tax report:** MTM marks appear as a separate **"PFIC
+  mark-to-market ordinary income"** section with its own total,
+  distinct from the ST/LT capital-gain columns. This supersedes the
+  §5 "non-USD sales excluded" note for elected securities.
+- Position views keep showing acquisition cost as Basis ("what I
+  paid"); the marked (tax) basis lives on the security's
+  mark-to-market ledger and the tax report.

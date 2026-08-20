@@ -7,8 +7,10 @@ import java.sql.SQLException
 import java.time.DateTimeException
 import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
+import net.stewart.finance.api.MtmService
 import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.toFormatted
+import net.stewart.finance.api.toFormattedDate
 import net.stewart.finance.api.toFormattedPercent
 import net.stewart.finance.api.toLocalDate
 import net.stewart.finance.api.toProto
@@ -25,8 +27,11 @@ import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.PriceId
 import net.stewart.finance.domain.PricingLocus
+import net.stewart.finance.domain.MtmMarkId
+import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SecurityId
 import net.stewart.finance.domain.SecurityType
+import net.stewart.finance.domain.TaxTreatment
 import net.stewart.finance.domain.UserId
 import net.stewart.finance.rules.ClosePoint
 import net.stewart.finance.rules.CpiSeries
@@ -46,8 +51,17 @@ import net.stewart.finance.proto.GetSecurityDetailsResponse
 import net.stewart.finance.proto.IndicatorPoint
 import net.stewart.finance.proto.ListPrivatePricesRequest
 import net.stewart.finance.proto.ListPrivatePricesResponse
+import net.stewart.finance.proto.DeleteMtmMarkRequest
+import net.stewart.finance.proto.DeleteMtmMarkResponse
+import net.stewart.finance.proto.ListMtmMarksRequest
+import net.stewart.finance.proto.ListMtmMarksResponse
 import net.stewart.finance.proto.ListSecuritiesRequest
 import net.stewart.finance.proto.ListSecuritiesResponse
+import net.stewart.finance.proto.MtmMark as MtmMarkProto
+import net.stewart.finance.proto.RecordMtmMarkRequest
+import net.stewart.finance.proto.RecordMtmMarkResponse
+import net.stewart.finance.proto.SuggestMtmMarkRequest
+import net.stewart.finance.proto.SuggestMtmMarkResponse
 import net.stewart.finance.proto.PricePoint
 import net.stewart.finance.proto.PricingLocus as PricingLocusProto
 import net.stewart.finance.proto.PrivatePriceRow
@@ -55,6 +69,7 @@ import net.stewart.finance.proto.SecurityListing
 import net.stewart.finance.proto.SecurityProfile
 import net.stewart.finance.proto.SecurityServiceGrpcKt
 import net.stewart.finance.proto.SecurityType as SecurityTypeProto
+import net.stewart.finance.proto.TaxTreatment as TaxTreatmentProto
 import net.stewart.finance.proto.SetClassificationRequest
 import net.stewart.finance.proto.SetClassificationResponse
 import net.stewart.finance.proto.SetSecurityHiddenRequest
@@ -85,6 +100,7 @@ class SecurityGrpcService(
     private val prices: PrivatePriceRepository,
     private val assetClasses: AssetClassRepository,
     private val pricing: PricingService,
+    private val mtm: MtmService,
     /** The persisted CPI series, or null while unseeded (degraded mode). */
     private val cpiSeries: () -> CpiSeries? = { null },
     /** Days after which a classification set suggests a refresh (build-scope §4). */
@@ -204,6 +220,25 @@ class SecurityGrpcService(
             SecurityTypeProto.PRIVATE_INVESTMENT -> SecurityType.PRIVATE
             else -> throw invalid("unknown security type")
         }
+        val treatment = when (request.taxTreatment) {
+            // Absent on the wire keeps the stored default (LOTS) —
+            // pre-§11 clients never sent the field.
+            TaxTreatmentProto.TAX_TREATMENT_UNSPECIFIED, TaxTreatmentProto.LOTS -> TaxTreatment.LOTS
+            TaxTreatmentProto.MARK_TO_MARKET -> TaxTreatment.MARK_TO_MARKET
+            else -> throw invalid("unknown tax treatment")
+        }
+        // Guard (build-scope §11): the election cannot be reverted
+        // while its marks exist — the ledger would silently lose its
+        // meaning.
+        if (row.taxTreatment == TaxTreatment.MARK_TO_MARKET &&
+            treatment == TaxTreatment.LOTS && mtmMarksExist(row)
+        ) {
+            throw StatusException(
+                Status.FAILED_PRECONDITION.withDescription(
+                    "${row.ticker} has recorded mark-to-market marks; delete them before reverting to lot treatment"
+                )
+            )
+        }
         val ratio = request.netExpenseRatio.value.trim().let { raw ->
             if (raw.isEmpty()) null else try {
                 Fraction.of(raw).also {
@@ -215,9 +250,11 @@ class SecurityGrpcService(
                 throw invalid("expense ratio is not a valid fraction: \"$raw\"")
             }
         }
-        securities.updateProfile(row.id, request.description.trim(), type, locus, ratio)
+        securities.updateProfile(row.id, request.description.trim(), type, locus, treatment, ratio)
         return UpdateSecurityProfileResponse.getDefaultInstance()
     }
+
+    private fun mtmMarksExist(row: SecurityRow): Boolean = mtm.listForSecurity(row).isNotEmpty()
 
     override suspend fun setSecurityHidden(request: SetSecurityHiddenRequest): SetSecurityHiddenResponse {
         val row = findSecurity(request.securityId)
@@ -321,6 +358,95 @@ class SecurityGrpcService(
         return DeletePrivatePriceResponse.getDefaultInstance()
     }
 
+    override suspend fun listMtmMarks(request: ListMtmMarksRequest): ListMtmMarksResponse {
+        val row = findSecurity(request.securityId)
+        val builder = ListMtmMarksResponse.newBuilder()
+            .setAcquisitionCostUsd(mtm.acquisitionCostUsd(portfolio(), row).toFormatted())
+        for (mark in mtm.listForSecurity(row)) {
+            builder.addMarks(mark.toProto(mark.id.value))
+        }
+        return builder.build()
+    }
+
+    override suspend fun suggestMtmMark(request: SuggestMtmMarkRequest): SuggestMtmMarkResponse {
+        val row = findSecurity(request.securityId)
+        val taxYear = validTaxYear(request.taxYear)
+        val suggestion = mtm.suggest(portfolio(), row, taxYear)
+        val builder = SuggestMtmMarkResponse.newBuilder().addAllNotes(suggestion.notes)
+        val preview = suggestion.computed?.toProto(markId = 0)
+            ?: MtmMarkProto.newBuilder()
+                .setTaxYear(taxYear)
+                .setMarkDate(suggestion.markDate.toFormattedDate())
+                .setQuantity(suggestion.quantity.toFormatted())
+                .apply {
+                    suggestion.fmvLocal?.let { setFmvLocal(it.toFormatted()) }
+                    suggestion.fxRate?.let { setFxRate(it.toFormattedRate()) }
+                }
+                .build()
+        return builder.setPreview(preview).build()
+    }
+
+    override suspend fun recordMtmMark(request: RecordMtmMarkRequest): RecordMtmMarkResponse {
+        val row = findSecurity(request.securityId)
+        val taxYear = validTaxYear(request.taxYear)
+        val markDate = try {
+            request.markDate.toLocalDate()
+        } catch (e: DateTimeException) {
+            throw invalid("mark date is not a valid date")
+        }
+        val quantity = try {
+            Quantity.of(request.quantity.value.trim())
+        } catch (e: Exception) {
+            throw invalid("quantity is not a valid share count: \"${request.quantity.value}\"")
+        }
+        val fmvLocal = try {
+            Money.of(request.fmvLocal.value.trim(), row.currency)
+        } catch (e: Exception) {
+            throw invalid("FMV is not a valid amount: \"${request.fmvLocal.value}\"")
+        }
+        val fxRate = try {
+            BigDecimal(request.fxRate.value.trim())
+        } catch (e: Exception) {
+            throw invalid("FX rate is not a valid decimal: \"${request.fxRate.value}\"")
+        }
+        val recorded = mtm.record(portfolio(), row, taxYear, markDate, quantity, fmvLocal, fxRate)
+        return RecordMtmMarkResponse.newBuilder()
+            .setMark(recorded.toProto(recorded.id.value))
+            .build()
+    }
+
+    override suspend fun deleteMtmMark(request: DeleteMtmMarkRequest): DeleteMtmMarkResponse {
+        if (request.markId <= 0) throw invalid("mark id is required")
+        mtm.delete(portfolio(), MtmMarkId(request.markId))
+        return DeleteMtmMarkResponse.getDefaultInstance()
+    }
+
+    private fun validTaxYear(raw: Int): Int {
+        if (raw < 1900 || raw > 2200) throw invalid("tax year $raw is out of range")
+        return raw
+    }
+
+    private fun net.stewart.finance.db.MtmMarkRecord.toProto(markId: Long): MtmMarkProto =
+        MtmMarkProto.newBuilder()
+            .setMarkId(markId)
+            .setTaxYear(taxYear)
+            .setMarkDate(markDate.toFormattedDate())
+            .setQuantity(quantity.toFormatted())
+            .setFmvLocal(fmvLocal.toFormatted())
+            .setFxRate(fxRate.toFormattedRate())
+            .setFmvUsd(fmvUsd.toFormatted())
+            .setBasisBefore(basisBeforeUsd.toFormatted())
+            .setBasisAfter(basisAfterUsd.toFormatted())
+            .setOrdinaryIncome(ordinaryIncomeUsd.toFormatted())
+            .build()
+
+    private fun BigDecimal.toFormattedRate(): net.stewart.finance.proto.FormattedDecimal =
+        net.stewart.finance.proto.FormattedDecimal.newBuilder()
+            .setExact(net.stewart.finance.proto.Decimal.newBuilder().setValue(toPlainString()))
+            .setDisplay(stripTrailingZeros().toPlainString())
+            .setSortKey(toDouble())
+            .build()
+
     private fun parseDatePrice(
         dateProto: net.stewart.finance.proto.Date,
         rawPrice: String,
@@ -349,6 +475,7 @@ class SecurityGrpcService(
             .setCurrencyCode(currency.code)
             .setSecurityType(securityType.toProto())
             .setPricingLocus(pricingLocus.toProto())
+            .setTaxTreatment(taxTreatment.toProto())
             .setHidden(hidden)
         netExpenseRatio?.let { builder.setNetExpenseRatio(it.toFormattedPercent()) }
         for (set in classifications.setsFor(id)) {

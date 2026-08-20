@@ -182,6 +182,18 @@ message GetTaxReportRequest {
   Date to = 2;
 }
 
+// One PFIC §1296 year-end mark falling in the report range
+// (build-scope §11): ordinary income, separate from the ST/LT
+// capital-gain columns.
+message MtmIncomeRow {
+  string ticker = 1;
+  int32 tax_year = 2;
+  FormattedDate mark_date = 3;
+  FormattedMoney fmv_usd = 4;
+  FormattedMoney basis_before = 5;
+  FormattedMoney ordinary_income = 6;
+}
+
 message GetTaxReportResponse {
   repeated TaxReportRow rows = 1;
   FormattedMoney total_short_term_gain = 2;
@@ -190,6 +202,9 @@ message GetTaxReportResponse {
   // e.g. the note that non-USD sales are excluded until the FX tax
   // treatment is ruled (build-scope §5 open question).
   repeated string notes = 5;
+  // PFIC mark-to-market ordinary income (build-scope §11).
+  repeated MtmIncomeRow mtm_rows = 6;
+  FormattedMoney total_mtm_ordinary_income = 7;
 }
 
 message AccountChoice {

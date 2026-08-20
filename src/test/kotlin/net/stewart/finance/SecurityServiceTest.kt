@@ -54,14 +54,25 @@ class SecurityServiceTest {
                 net.stewart.finance.feeds.MarketData(marketRepo, emptyList()),
             )
         }
+        private fun mtmService(pricing: net.stewart.finance.api.PricingService) =
+            net.stewart.finance.api.MtmService(
+                net.stewart.finance.db.LotRepository(db.dataSource),
+                net.stewart.finance.db.SaleRepository(db.dataSource),
+                net.stewart.finance.db.MtmMarkRepository(db.dataSource),
+                net.stewart.finance.db.FxRepository(db.dataSource),
+                net.stewart.finance.api.ReportingCurrency(net.stewart.finance.db.FxRepository(db.dataSource)),
+                history = { pricing.history(it) },
+            )
         private val service by lazy {
+            val pricing = pricingNoProviders()
             SecurityGrpcService(
                 PortfolioRepository(db.dataSource),
                 SecurityRepository(db.dataSource),
                 ClassificationRepository(db.dataSource),
                 PrivatePriceRepository(db.dataSource),
                 net.stewart.finance.db.AssetClassRepository(db.dataSource),
-                pricingNoProviders(),
+                pricing,
+                mtmService(pricing),
             )
         }
         private val jeff by lazy { users.createUser("jeff", "hash", "Jeff") }
@@ -321,13 +332,15 @@ class SecurityServiceTest {
                 java.time.YearMonth.parse("2025-01").plusMonths(it) to java.math.BigDecimal("100")
             }
         )
+        val inflationPricing = pricingNoProviders()
         val inflationService = SecurityGrpcService(
             PortfolioRepository(db.dataSource),
             SecurityRepository(db.dataSource),
             ClassificationRepository(db.dataSource),
             PrivatePriceRepository(db.dataSource),
             net.stewart.finance.db.AssetClassRepository(db.dataSource),
-            pricingNoProviders(),
+            inflationPricing,
+            mtmService(inflationPricing),
             cpiSeries = { flat },
         )
         val id = call {
