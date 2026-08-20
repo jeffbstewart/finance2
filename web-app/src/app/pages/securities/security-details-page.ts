@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import {
   PricingLocus,
   SecurityType,
+  TaxTreatment,
   type GetSecurityDetailsResponse,
   type SecurityProfile,
 } from '../../../proto-gen/securities_pb';
@@ -20,6 +21,7 @@ import { isoDate } from '../../core/dates';
 import { Notify } from '../../core/notify';
 import { TimeSeriesChart, type TimeSeries } from '../../shared/charts/time-series-chart';
 import { ClassificationEditor } from './classification-editor';
+import { MtmMarks } from './mtm-marks';
 import { ProfileDialog } from './profile-dialog';
 
 type Indicator = 'none' | 'bollinger' | 'sma' | 'ema';
@@ -56,6 +58,7 @@ const SECURITY_TYPE_LABELS: Record<SecurityType, string> = {
     RouterLink,
     TimeSeriesChart,
     ClassificationEditor,
+    MtmMarks,
   ],
   templateUrl: './security-details-page.html',
   styleUrl: './securities-page.scss',
@@ -78,6 +81,10 @@ export class SecurityDetailsPage {
   readonly security = computed<SecurityProfile | undefined>(() => this.details()?.security);
   readonly manualPricing = computed(
     () => this.security()?.pricingLocus === PricingLocus.MANUAL,
+  );
+
+  readonly markToMarket = computed(
+    () => this.security()?.taxTreatment === TaxTreatment.MARK_TO_MARKET,
   );
 
   readonly typeLabel = computed(() => {

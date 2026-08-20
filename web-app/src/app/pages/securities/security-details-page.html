@@ -64,6 +64,11 @@
             (saved)="reload()"
           />
         </mat-tab>
+        @if (markToMarket()) {
+          <mat-tab label="Mark to Market">
+            <app-mtm-marks [security]="s" (changed)="reload()" />
+          </mat-tab>
+        }
       </mat-tab-group>
     </mat-card-content>
   }

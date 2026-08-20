@@ -45,6 +45,7 @@ export class TaxPage {
     'broker', 'account', 'ticker', 'bought', 'sold', 'buyPrice', 'salePrice',
     'buyCosts', 'saleCosts', 'stGain', 'ltGain',
   ];
+  readonly mtmColumns = ['mtmTicker', 'mtmYear', 'mtmDate', 'mtmFmv', 'mtmBasis', 'mtmIncome'];
 
   constructor() {
     void this.run();
