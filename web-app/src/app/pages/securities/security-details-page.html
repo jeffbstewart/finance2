@@ -1,0 +1,70 @@
+<mat-card appearance="outlined">
+  @if (security(); as s) {
+    <mat-card-header>
+      <mat-card-title>{{ s.ticker }}: {{ s.description || '(no description yet)' }}</mat-card-title>
+      <mat-card-subtitle>
+        {{ tradedLabel() }} · {{ typeLabel() }} · {{ s.currencyCode }}
+        · Net Expense Ratio: {{ s.netExpenseRatio?.display || '—' }}
+        @if (s.hidden) { <span class="hidden-tag">(hidden)</span> }
+      </mat-card-subtitle>
+      <span class="header-spacer"></span>
+      <button matIconButton (click)="editProfile()" aria-label="Edit profile">
+        <mat-icon>edit</mat-icon>
+      </button>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-tab-group [selectedIndex]="+tab()" (selectedIndexChange)="selectTab($event)">
+        <mat-tab label="Price History">
+          <div class="chart-controls">
+            <mat-form-field appearance="outline" class="control">
+              <mat-label>Technical Indicators</mat-label>
+              <mat-select [ngModel]="indicator()" (ngModelChange)="indicator.set($event)">
+                <mat-option value="none">None</mat-option>
+                <mat-option value="bollinger">Bollinger Bands</mat-option>
+                <mat-option value="sma">SMA</mat-option>
+                <mat-option value="ema">EMA</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="control">
+              <mat-label>Duration</mat-label>
+              <mat-select [ngModel]="duration()" (ngModelChange)="duration.set($event)">
+                <mat-option value="all">All</mat-option>
+                <mat-option value="year">1 Year</mat-option>
+                <mat-option value="quarter">1 Quarter</mat-option>
+                <mat-option value="month">1 Month</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-slide-toggle
+              [checked]="inflationAdjusted()"
+              (change)="toggleInflation($event.checked)"
+            >
+              Inflation-adjusted
+            </mat-slide-toggle>
+            <span class="header-spacer"></span>
+            @if (manualPricing()) {
+              <a matButton [routerLink]="['/securities', id(), 'prices']">
+                <mat-icon>edit_calendar</mat-icon>
+                Edit price history
+              </a>
+            }
+          </div>
+          @if (chartSeries()[0]?.points?.length) {
+            <app-time-series-chart [series]="chartSeries()" />
+          } @else {
+            <p class="empty-note">
+              No price history yet.
+              @if (manualPricing()) { Add dates and prices with the editor above. }
+              @else { Prices arrive from the market data provider on first use. }
+            </p>
+          }
+        </mat-tab>
+        <mat-tab label="Asset Allocation">
+          <app-classification-editor
+            [security]="s"
+            (saved)="reload()"
+          />
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card-content>
+  }
+</mat-card>

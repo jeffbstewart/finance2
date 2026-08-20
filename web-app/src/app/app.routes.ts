@@ -22,8 +22,18 @@ export const routes: Routes = [
       },
       {
         path: 'securities',
-        loadComponent: () => import('./pages/placeholder').then((m) => m.Placeholder),
-        data: { title: 'Securities' },
+        loadComponent: () =>
+          import('./pages/securities/securities-page').then((m) => m.SecuritiesPage),
+      },
+      {
+        path: 'securities/:id',
+        loadComponent: () =>
+          import('./pages/securities/security-details-page').then((m) => m.SecurityDetailsPage),
+      },
+      {
+        path: 'securities/:id/prices',
+        loadComponent: () =>
+          import('./pages/securities/private-prices-page').then((m) => m.PrivatePricesPage),
       },
       {
         path: 'positions',
