@@ -281,3 +281,37 @@ Still open:
   401(k)? Which of the three Morgan Stanley entries (Client Serv,
   Alight, Solium Shareworks)? Answered by the step-1 sandbox directory
   query plus Jeff's knowledge of the accounts.
+
+## Amendment: Docker-era handoff (ruling, Jeff 2026-08-20)
+
+Ruling 3's file drop assumed finance2 and bankferry share a
+filesystem; the always-running Docker container broke that assumption.
+Superseding rulings:
+
+- **Handoff is a browser upload through the authenticated session.**
+  bankferry still writes snapshot files to its `.env`-configured
+  output directory; the human uploads one from finance2's Import
+  screen. No shared filesystem, no machine credentials, no new
+  unauthenticated surface. (Embedding Plaid functions in finance2 was
+  considered and rejected again: beyond the standing credential-
+  isolation ruling, the production secret sits behind a FIDO2
+  security-key *touch* — a headless container cannot provide one.)
+- **Snapshots archive verbatim in the database** (encrypted at rest),
+  so processing bugs can be fixed and the same bytes re-run.
+- **Upload and processing are separate steps** with an explicit status
+  marker (`UPLOADED` / `PROCESSED` / `FAILED`). Processing is freely
+  repeatable — including revisiting a snapshot after lot edits to
+  refresh the taxable comparison, and after creating/linking a local
+  account that did not exist at upload time.
+- **Contract details:** `schema_version` is an integer;
+  `plaid_environment` is dropped (no cross-server sandbox exports).
+- **Processing semantics (v1):** linked tax-deferred accounts get
+  holdings quantities and sweeps upserted with `plaid` provenance;
+  taxable accounts are compared against the hand-maintained lots and
+  reported, never mutated; unknown tickers are flagged for the human
+  to add by hand (no auto-creation); vanished holdings are flagged,
+  never deleted. Plaid account → finance2 account links are explicit,
+  human-made, and persist across snapshots. Investment transactions
+  ride along in the archive but are not processed yet.
+- The contract was authored in finance2 first (bootstrap); on cloning
+  to bankferry, that copy becomes the primary source per ruling 2.

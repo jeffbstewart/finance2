@@ -20,6 +20,7 @@ import net.stewart.auth.SessionService
 import net.stewart.finance.api.MtmService
 import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.ReportingCurrency
+import net.stewart.finance.api.SnapshotImportService
 import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.auth.RequestMetaInterceptor
 import net.stewart.finance.auth.TrustedProxyDecorator
@@ -31,8 +32,10 @@ import net.stewart.finance.db.TargetAllocationRepository
 import net.stewart.finance.db.FxRepository
 import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRepository
+import net.stewart.finance.db.PlaidAccountLinkRepository
 import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.PrivatePriceRepository
+import net.stewart.finance.db.SnapshotRepository
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.CpiRepository
@@ -209,6 +212,19 @@ fun main() {
                             AssetClassRepository(db.dataSource), TargetAllocationRepository(db.dataSource),
                             reporting,
                         )
+                    ),
+                    GrpcServiceSpec(
+                        run {
+                            val snapshots = SnapshotRepository(db.dataSource)
+                            val links = PlaidAccountLinkRepository(db.dataSource)
+                            ImportGrpcService(
+                                portfolios, accounts, links, snapshots,
+                                SnapshotImportService(
+                                    snapshots, links, accounts, securities,
+                                    HoldingRepository(db.dataSource), lots, sales,
+                                ),
+                            )
+                        }
                     ),
                 )
             },
