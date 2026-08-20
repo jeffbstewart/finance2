@@ -47,6 +47,13 @@ class SecurityServiceTest {
         // Companion-level lazies: JUnit creates a fresh test-class
         // instance per method, but the user must be created once.
         private val users by lazy { FinanceUserRepository(db.dataSource) }
+        private fun pricingNoProviders(): net.stewart.finance.api.PricingService {
+            val marketRepo = net.stewart.finance.db.MarketPriceRepository(db.dataSource)
+            return net.stewart.finance.api.PricingService(
+                PrivatePriceRepository(db.dataSource), marketRepo,
+                net.stewart.finance.feeds.MarketData(marketRepo, emptyList()),
+            )
+        }
         private val service by lazy {
             SecurityGrpcService(
                 PortfolioRepository(db.dataSource),
@@ -54,6 +61,7 @@ class SecurityServiceTest {
                 ClassificationRepository(db.dataSource),
                 PrivatePriceRepository(db.dataSource),
                 net.stewart.finance.db.AssetClassRepository(db.dataSource),
+                pricingNoProviders(),
             )
         }
         private val jeff by lazy { users.createUser("jeff", "hash", "Jeff") }
@@ -319,6 +327,7 @@ class SecurityServiceTest {
             ClassificationRepository(db.dataSource),
             PrivatePriceRepository(db.dataSource),
             net.stewart.finance.db.AssetClassRepository(db.dataSource),
+            pricingNoProviders(),
             cpiSeries = { flat },
         )
         val id = call {

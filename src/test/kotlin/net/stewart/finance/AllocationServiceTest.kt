@@ -53,10 +53,15 @@ class AllocationServiceTest {
         private val portfolios by lazy { PortfolioRepository(db.dataSource) }
         private val assetClasses by lazy { AssetClassRepository(db.dataSource) }
         private val service by lazy {
+            val marketRepo = net.stewart.finance.db.MarketPriceRepository(db.dataSource)
             AllocationGrpcService(
                 portfolios, AccountRepository(db.dataSource), SecurityRepository(db.dataSource),
                 LotRepository(db.dataSource), SaleRepository(db.dataSource),
-                HoldingRepository(db.dataSource), PrivatePriceRepository(db.dataSource),
+                HoldingRepository(db.dataSource),
+                net.stewart.finance.api.PricingService(
+                    PrivatePriceRepository(db.dataSource), marketRepo,
+                    net.stewart.finance.feeds.MarketData(marketRepo, emptyList()),
+                ),
                 ClassificationRepository(db.dataSource), assetClasses,
                 net.stewart.finance.db.TargetAllocationRepository(db.dataSource),
                 ReportingCurrency(FxRepository(db.dataSource)),

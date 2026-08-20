@@ -4,6 +4,7 @@ import io.grpc.Status
 import io.grpc.StatusException
 import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
+import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.api.toFormatted
 import net.stewart.finance.api.toFormattedPercent
@@ -13,7 +14,6 @@ import net.stewart.finance.db.ClassificationRepository
 import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRepository
 import net.stewart.finance.db.PortfolioRepository
-import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.SecurityRow
@@ -70,7 +70,7 @@ class AllocationGrpcService(
     private val lots: LotRepository,
     private val sales: SaleRepository,
     private val holdings: HoldingRepository,
-    private val privatePrices: PrivatePriceRepository,
+    private val pricing: PricingService,
     private val classifications: ClassificationRepository,
     private val assetClasses: AssetClassRepository,
     private val targets: TargetAllocationRepository,
@@ -162,8 +162,9 @@ class AllocationGrpcService(
         // The planner's candidate pool: priced, classified securities,
         // with prices converted to the reporting currency.
         val weightsBySecurity = classifications.assetClassWeightsBySecurity(portfolioId)
-        val prices = privatePrices.latestBySecurity(portfolioId)
-        val plannerSecurities = securities.list(portfolioId, includeHidden = false).mapNotNull { row ->
+        val candidateRows = securities.list(portfolioId, includeHidden = false)
+        val prices = pricing.latestBySecurity(portfolioId, candidateRows)
+        val plannerSecurities = candidateRows.mapNotNull { row ->
             val price = prices[row.id] ?: return@mapNotNull null
             val weights = weightsBySecurity[row.id] ?: return@mapNotNull null
             PlannerSecurity(
@@ -249,7 +250,7 @@ class AllocationGrpcService(
 
     private fun valuedPositions(portfolioId: PortfolioId, today: LocalDate): List<ValuedPosition> {
         val securityById = securities.list(portfolioId, includeHidden = true).associateBy { it.id }
-        val prices = privatePrices.latestBySecurity(portfolioId)
+        val prices = pricing.latestBySecurity(portfolioId, securityById.values)
         val lotsBySecurity = lots.list(portfolioId).groupBy { it.securityId }
         val salesBySecurity = sales.list(portfolioId).groupBy { it.securityId }
         val holdingsBySecurity = holdings.list(portfolioId).groupBy { it.securityId }

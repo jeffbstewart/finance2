@@ -5,6 +5,7 @@ import io.grpc.StatusException
 import java.time.DateTimeException
 import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
+import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.api.provenanceOf
 import net.stewart.finance.api.toFormatted
@@ -17,7 +18,6 @@ import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRecord
 import net.stewart.finance.db.LotRepository
 import net.stewart.finance.db.PortfolioRepository
-import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SaleRecord
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
@@ -92,7 +92,7 @@ class PositionGrpcService(
     private val lots: LotRepository,
     private val sales: SaleRepository,
     private val holdings: HoldingRepository,
-    private val privatePrices: PrivatePriceRepository,
+    private val pricing: PricingService,
     private val reporting: ReportingCurrency,
     /** The persisted CPI series, or null while unseeded (degraded mode). */
     private val cpiSeries: () -> CpiSeries? = { null },
@@ -103,8 +103,8 @@ class PositionGrpcService(
         val today = LocalDate.now()
         val accountFilter = if (request.accountId > 0) AccountId(request.accountId) else null
         val securityById = securities.list(portfolioId, includeHidden = true).associateBy { it.id }
-        val prices = privatePrices.latestBySecurity(portfolioId)
-        val sparklines = privatePrices.recentBySecurity(portfolioId, today.minusMonths(SPARKLINE_MONTHS))
+        val prices = pricing.latestBySecurity(portfolioId, securityById.values)
+        val sparklines = pricing.sparklines(portfolioId, today.minusMonths(SPARKLINE_MONTHS))
 
         val lotsBySecurity = lots.list(portfolioId, accountFilter).groupBy { it.securityId }
         val salesBySecurity = sales.list(portfolioId, accountFilter).groupBy { it.securityId }
@@ -185,7 +185,7 @@ class PositionGrpcService(
         val lotRecords = lots.list(portfolioId, accountFilter, security.id)
         val saleRecords = sales.list(portfolioId, accountFilter, security.id)
         val rulesSales = saleRecords.map { it.toRules() }
-        val price = priceFor(security, privatePrices.latestBySecurity(portfolioId))
+        val price = priceFor(security, pricing.latestBySecurity(portfolioId, listOf(security)))
 
         val builder = GetLotDetailsResponse.newBuilder().setInflationAdjusted(request.inflationAdjusted)
         for (record in lotRecords) {
@@ -480,7 +480,7 @@ class PositionGrpcService(
                 if (security.pricingLocus == PricingLocus.MANUAL) {
                     "${security.ticker} has no price entries yet — add one to value the position"
                 } else {
-                    "${security.ticker} is market-priced; the price source arrives with Phase 4/5"
+                    "${security.ticker} has no market data yet - configure a provider key or retry"
                 }
             )
         )

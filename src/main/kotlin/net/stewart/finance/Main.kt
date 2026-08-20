@@ -17,6 +17,7 @@ import net.stewart.armeria.auth.AuthGrpcInterceptor
 import net.stewart.armeria.auth.grpcAuthConfig
 import net.stewart.auth.LoginService
 import net.stewart.auth.SessionService
+import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.auth.RequestMetaInterceptor
@@ -34,8 +35,13 @@ import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.CpiRepository
+import net.stewart.finance.db.MarketPriceRepository
 import net.stewart.finance.feeds.CpiFeed
 import net.stewart.finance.feeds.EcbFxFeed
+import net.stewart.finance.feeds.EodhdPriceSource
+import net.stewart.finance.feeds.MarketData
+import net.stewart.finance.feeds.PriceSource
+import net.stewart.finance.feeds.TiingoPriceSource
 import net.stewart.finance.ops.AuthMaintenance
 import net.stewart.finance.ops.PeriodicJob
 import net.stewart.finance.ops.InternalHttpService
@@ -104,6 +110,22 @@ fun main() {
     cpiFeed.seedIfEmpty()
     PeriodicJob("fred-cpi-refresh", java.time.Duration.ofDays(7)) { cpiFeed.refresh() }.start()
 
+    // Decision 4 market data: Tiingo primary, EODHD fallback; each
+    // provider exists only when its key is configured. With none, the
+    // module is dormant and MARKET-locus securities have no prices.
+    val priceSources = buildList<PriceSource> {
+        System.getenv("TIINGO_API_KEY")?.takeIf { it.isNotBlank() }?.let { add(TiingoPriceSource(it)) }
+        System.getenv("EODHD_API_KEY")?.takeIf { it.isNotBlank() }?.let { add(EodhdPriceSource(it)) }
+    }
+    if (priceSources.isEmpty()) {
+        log.warn("no market-data provider keys configured - MARKET-locus pricing is dormant")
+    }
+    val securitiesRepo = SecurityRepository(db.dataSource)
+    val marketData = MarketData(MarketPriceRepository(db.dataSource), priceSources)
+    PeriodicJob("market-price-prefetch", java.time.Duration.ofDays(1)) {
+        marketData.refreshAll(securitiesRepo.listAllMarket())
+    }.start()
+
     val setupToken = if (users.hasUsers()) null else generateSetupToken().also {
         log.info("First-run setup: no user exists. Setup token (required by CreateFirstUser): {}", it)
     }
@@ -146,9 +168,10 @@ fun main() {
                 val brokers = BrokerRepository(db.dataSource)
                 val accounts = AccountRepository(db.dataSource)
                 val reporting = ReportingCurrency(FxRepository(db.dataSource))
-                val securities = SecurityRepository(db.dataSource)
+                val securities = securitiesRepo
                 val classifications = ClassificationRepository(db.dataSource)
                 val privatePrices = PrivatePriceRepository(db.dataSource)
+                val pricing = PricingService(privatePrices, MarketPriceRepository(db.dataSource), marketData)
                 listOf(
                     GrpcServiceSpec(InfoGrpcService()),
                     GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
@@ -157,7 +180,7 @@ fun main() {
                     GrpcServiceSpec(
                         SecurityGrpcService(
                             portfolios, securities, classifications, privatePrices,
-                            AssetClassRepository(db.dataSource),
+                            AssetClassRepository(db.dataSource), pricing,
                             cpiSeries = { cpiFeed.series() },
                         )
                     ),
@@ -165,7 +188,7 @@ fun main() {
                         PositionGrpcService(
                             portfolios, accounts, securities,
                             LotRepository(db.dataSource), SaleRepository(db.dataSource),
-                            HoldingRepository(db.dataSource), privatePrices, reporting,
+                            HoldingRepository(db.dataSource), pricing, reporting,
                             cpiSeries = { cpiFeed.series() },
                         )
                     ),
@@ -173,7 +196,7 @@ fun main() {
                         AllocationGrpcService(
                             portfolios, accounts, securities,
                             LotRepository(db.dataSource), SaleRepository(db.dataSource),
-                            HoldingRepository(db.dataSource), privatePrices, classifications,
+                            HoldingRepository(db.dataSource), pricing, classifications,
                             AssetClassRepository(db.dataSource), TargetAllocationRepository(db.dataSource),
                             reporting,
                         )
