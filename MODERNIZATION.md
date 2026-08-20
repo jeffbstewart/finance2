@@ -299,7 +299,7 @@ copy-paste:
 | 1 | License | Apache-2.0, pending Phase 1 assessment |
 | 2 | Decimal implementation (BigDecimal / library / ported bespoke type) | Decide after Phase 2 audit, downstream of Decision 0 |
 | 3 | Embedded DB engine & access layer | SQLite-family; specifics follow Decision 0 / MediaManager patterns |
-| 4 | Price provider(s), free vs paid | Evaluate in Phase 4 |
+| 4 | Price provider(s), free vs paid | Assessed 2026-08-19 — recommend **Tiingo primary + EODHD fallback** (both free tiers); see [decisions/4-price-providers.md](decisions/4-price-providers.md); awaiting Jeff's ruling |
 | 5 | FX rate source | ECB reference rates, leaning |
 | 6 | UI framework | Angular (current) by default; confirm before Phase 6 |
 | 7 | Proto transport (gRPC-web vs Connect) | Follows Decision 0 toolchain |
