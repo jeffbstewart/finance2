@@ -43,6 +43,23 @@ enum class ClassificationKind {
 }
 
 /**
+ * How the security is taxed (build-scope §11): LOTS = purchase-lot
+ * basis with ST/LT capital gains (the default); MARK_TO_MARKET = the
+ * PFIC §1296 election — annual year-end marks recognize ordinary
+ * income and reset the basis, floored at acquisition cost.
+ */
+enum class TaxTreatment {
+    LOTS,
+    MARK_TO_MARKET;
+
+    companion object {
+        fun parse(dbValue: String): TaxTreatment =
+            entries.firstOrNull { it.name == dbValue }
+                ?: throw IllegalArgumentException("unknown tax treatment \"$dbValue\" in database")
+    }
+}
+
+/**
  * Who prices the security (build-scope §4): MARKET = the external
  * provider; MANUAL = hand-entered private price rows.
  */

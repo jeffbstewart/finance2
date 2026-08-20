@@ -44,6 +44,21 @@ class FxRepository(dataSource: DataSource) {
         }
     }
 
+    /** The oldest stored rate date for the pair, or null when none —
+     *  the feed's cue to backfill deep history (build-scope §11 needs
+     *  purchase-date conversions arbitrarily far back). */
+    fun earliestRateDate(base: CurrencyUnit, quote: CurrencyUnit): LocalDate? = jdbi.sql { handle ->
+        handle.createQuery(
+            "SELECT MIN(rate_date) FROM fx_rates " +
+                "WHERE base_currency = :base AND quote_currency = :quote"
+        )
+            .bind("base", base.code)
+            .bind("quote", quote.code)
+            .mapTo(LocalDate::class.java)
+            .findOne()
+            .orElse(null)
+    }
+
     /** The most recent quote-per-base rate on or before [asOf], or null.
      *  A currency converts to itself at exactly 1 — no lookup. */
     fun latestRate(base: CurrencyUnit, quote: CurrencyUnit, asOf: LocalDate): BigDecimal? {

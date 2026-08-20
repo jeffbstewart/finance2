@@ -17,6 +17,7 @@ import net.stewart.finance.db.AccountRow
 import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRecord
 import net.stewart.finance.db.LotRepository
+import net.stewart.finance.db.MtmMarkRepository
 import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.SaleRecord
 import net.stewart.finance.db.SaleRepository
@@ -32,6 +33,7 @@ import net.stewart.finance.domain.PricingLocus
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SaleId
 import net.stewart.finance.domain.SecurityId
+import net.stewart.finance.domain.TaxTreatment
 import net.stewart.finance.domain.UserId
 import net.stewart.finance.proto.AccountChoice
 import net.stewart.finance.proto.AddPurchaseRequest
@@ -50,6 +52,7 @@ import net.stewart.finance.proto.GetTaxReportRequest
 import net.stewart.finance.proto.GetTaxReportResponse
 import net.stewart.finance.proto.ListPositionsRequest
 import net.stewart.finance.proto.ListPositionsResponse
+import net.stewart.finance.proto.MtmIncomeRow
 import net.stewart.finance.proto.LotRow
 import net.stewart.finance.proto.PositionRow
 import net.stewart.finance.proto.PositionServiceGrpcKt
@@ -92,6 +95,7 @@ class PositionGrpcService(
     private val lots: LotRepository,
     private val sales: SaleRepository,
     private val holdings: HoldingRepository,
+    private val mtmMarks: MtmMarkRepository,
     private val pricing: PricingService,
     private val reporting: ReportingCurrency,
     /** The persisted CPI series, or null while unseeded (degraded mode). */
@@ -308,6 +312,15 @@ class PositionGrpcService(
         val portfolioId = portfolio()
         val account = taxableAccount(request.accountId, portfolioId)
         val security = findSecurity(request.securityId, portfolioId)
+        // Guard (build-scope §11): sale-year treatment under the
+        // mark-to-market election is not yet ruled.
+        if (security.taxTreatment == TaxTreatment.MARK_TO_MARKET) {
+            throw StatusException(
+                Status.FAILED_PRECONDITION.withDescription(
+                    "${security.ticker} is marked-to-market; sale treatment is not yet ruled (build-scope §11)"
+                )
+            )
+        }
         val sold = parseDate(request.sold, "sale date")
         val totalShares = parseQuantity(request.shares.value, "shares").also {
             if (it.signum() <= 0) throw invalid("shares must be positive")
@@ -394,6 +407,10 @@ class PositionGrpcService(
         // lot/sale history and then filter to the range.
         for ((securityId, saleGroup) in inRange.groupBy { it.securityId }) {
             val security = securityById.getValue(securityId)
+            // Marked-to-market securities never reach here (RecordSale
+            // rejects them), but stay defensive: their gains are
+            // ordinary income, not ST/LT capital gain.
+            if (security.taxTreatment == TaxTreatment.MARK_TO_MARKET) continue
             if (security.currency != reporting.currency) {
                 // Non-USD sales await the FX tax-treatment ruling
                 // (build-scope §5 open question).
@@ -432,10 +449,27 @@ class PositionGrpcService(
                 "$excluded sale(s) in non-USD accounts are excluded pending the FX tax-treatment ruling"
             )
         }
+        // PFIC mark-to-market ordinary income (build-scope §11):
+        // year-end marks in range, separate from capital gains.
+        var totalMtm = reporting.zero()
+        for (mark in mtmMarks.listForTaxReport(portfolioId, from, to)) {
+            val security = securityById.getValue(mark.securityId)
+            builder.addMtmRows(
+                MtmIncomeRow.newBuilder()
+                    .setTicker(security.ticker)
+                    .setTaxYear(mark.taxYear)
+                    .setMarkDate(mark.markDate.toFormattedDate())
+                    .setFmvUsd(mark.fmvUsd.toFormatted())
+                    .setBasisBefore(mark.basisBeforeUsd.toFormatted())
+                    .setOrdinaryIncome(mark.ordinaryIncomeUsd.toFormatted())
+            )
+            totalMtm += mark.ordinaryIncomeUsd
+        }
         return builder
             .setTotalShortTermGain(totalSt.toFormatted())
             .setTotalLongTermGain(totalLt.toFormatted())
             .setTotalGain((totalSt + totalLt).toFormatted())
+            .setTotalMtmOrdinaryIncome(totalMtm.toFormatted())
             .build()
     }
 

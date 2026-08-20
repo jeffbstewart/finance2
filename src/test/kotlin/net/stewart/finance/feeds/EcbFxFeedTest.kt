@@ -56,8 +56,11 @@ class EcbFxFeedTest {
 
     @Test
     fun `refresh persists rates idempotently and latestRate serves them`() {
+        db.dataSource.connection.use { conn ->
+            conn.createStatement().executeUpdate("DELETE FROM fx_rates")
+        }
         val fx = FxRepository(db.dataSource)
-        val feed = EcbFxFeed(fx) { ECB_XML }
+        val feed = EcbFxFeed(fx, fetch = { ECB_XML }, fetchFullHistory = { ECB_XML })
         feed.refresh()
         feed.refresh() // MERGE: reruns must not fail or duplicate
         assertEquals(
@@ -76,5 +79,34 @@ class EcbFxFeedTest {
             assertEquals(2, rs.getInt(1))
             assertEquals("ecb", rs.getString(2))
         }
+    }
+
+    @Test
+    fun `first refresh backfills the full archive, later runs use the window`() {
+        db.dataSource.connection.use { conn ->
+            conn.createStatement().executeUpdate("DELETE FROM fx_rates")
+        }
+        val fx = FxRepository(db.dataSource)
+        var fullFetches = 0
+        var windowFetches = 0
+        val deepHistory = ECB_XML.replace("2026-08-18", "1999-01-04")
+        val feed = EcbFxFeed(
+            fx,
+            fetch = { windowFetches++; ECB_XML },
+            fetchFullHistory = { fullFetches++; deepHistory },
+        )
+        // Empty store: purchase-date conversions need arbitrarily old
+        // rates (build-scope §11), so the full archive comes first.
+        feed.refresh()
+        assertEquals(1, fullFetches)
+        assertEquals(0, windowFetches)
+        // With deep history present, the daily run uses the window.
+        feed.refresh()
+        assertEquals(1, fullFetches)
+        assertEquals(1, windowFetches)
+        assertEquals(
+            BigDecimal("1.15800000"),
+            fx.latestRate(CurrencyUnit.EUR, CurrencyUnit.USD, LocalDate.parse("2000-01-01")),
+        )
     }
 }

@@ -16,6 +16,12 @@ import org.xml.sax.InputSource
  *  ride out any realistic downtime of the always-running container. */
 const val ECB_90_DAY_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
 
+/** ECB's full daily archive since 1999, same document structure —
+ *  fetched once when the store lacks deep history: purchase-date
+ *  conversions (build-scope §11 acquisition cost) reach arbitrarily
+ *  far back. */
+const val ECB_FULL_HISTORY_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
+
 /**
  * The EUR→USD reference rates by date from an ECB eurofxref XML
  * document. Rates parse as exact decimals — never floats.
@@ -55,11 +61,23 @@ fun parseEcbUsdRates(xml: String): Map<LocalDate, BigDecimal> {
 class EcbFxFeed(
     private val fx: FxRepository,
     private val fetch: () -> String = { httpGet(ECB_90_DAY_URL) },
+    private val fetchFullHistory: () -> String = { httpGet(ECB_FULL_HISTORY_URL) },
 ) {
     private val log = LoggerFactory.getLogger(EcbFxFeed::class.java)
 
     fun refresh() {
-        val rates = parseEcbUsdRates(fetch())
+        // A store whose oldest rate is inside the 90-day window has
+        // never been deep-backfilled: take the full archive once so
+        // purchase-date conversions (build-scope §11) work for
+        // arbitrarily old lots. Later runs ride the small window.
+        val earliest = fx.earliestRateDate(CurrencyUnit.EUR, CurrencyUnit.USD)
+        val needsDeepHistory = earliest == null || earliest > LocalDate.now().minusDays(100)
+        val rates = if (needsDeepHistory) {
+            log.info("ECB FX: no deep history stored — fetching the full archive")
+            parseEcbUsdRates(fetchFullHistory())
+        } else {
+            parseEcbUsdRates(fetch())
+        }
         for ((date, usdPerEur) in rates) {
             fx.upsert(CurrencyUnit.EUR, CurrencyUnit.USD, date, usdPerEur, RateSource.ECB)
         }
