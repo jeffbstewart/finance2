@@ -11,6 +11,7 @@ import io.grpc.ServerInterceptor
 import io.grpc.Status
 import java.net.InetSocketAddress
 import java.util.concurrent.CopyOnWriteArrayList
+import net.stewart.armeria.auth.requestAuthority
 
 // Request/response plumbing SessionGrpcService needs beyond what the
 // toolkit's AuthGrpcInterceptor provides: the trusted client IP for
@@ -77,11 +78,36 @@ class RequestMetaInterceptor : ServerInterceptor {
 
         val cookies = ResponseCookies()
         val wrapped = object : SimpleForwardingServerCall<ReqT, RespT>(call) {
+            // The transport (grpc-kotlin over Armeria) calls
+            // sendHeaders before the handler body has run, so any
+            // cookie the RPC deposits would miss a flush done here.
+            // Hold the headers and flush them at the first message —
+            // or at close, so error responses still carry them.
+            private var pendingHeaders: Metadata? = null
+            private var headersSent = false
+
             override fun sendHeaders(responseHeaders: Metadata) {
+                pendingHeaders = responseHeaders
+            }
+
+            override fun sendMessage(message: RespT) {
+                flushHeaders()
+                super.sendMessage(message)
+            }
+
+            override fun close(status: Status, trailers: Metadata) {
+                flushHeaders()
+                super.close(status, trailers)
+            }
+
+            private fun flushHeaders() {
+                val headers = pendingHeaders ?: return
+                if (headersSent) return
+                headersSent = true
                 for (cookie in cookies.drain()) {
-                    responseHeaders.put(SET_COOKIE_KEY, cookie)
+                    headers.put(SET_COOKIE_KEY, cookie)
                 }
-                super.sendHeaders(responseHeaders)
+                super.sendHeaders(headers)
             }
         }
         var ctx = Context.current()
@@ -89,7 +115,10 @@ class RequestMetaInterceptor : ServerInterceptor {
             .withValue(CLIENT_IP_KEY, clientIp(call, headers))
         headers.get(COOKIE_KEY)?.let { ctx = ctx.withValue(COOKIE_HEADER_KEY, it) }
         headers.get(ORIGIN_METADATA_KEY)?.let { ctx = ctx.withValue(ORIGIN_KEY, it) }
-        call.authority?.let { ctx = ctx.withValue(AUTHORITY_KEY, it) }
+        // requestAuthority, not call.authority: Armeria's gRPC bridge
+        // returns null authority (gRPC-Web especially), which would
+        // fail-close SessionGrpcService's Origin check for browsers.
+        requestAuthority(call)?.let { ctx = ctx.withValue(AUTHORITY_KEY, it) }
         userAgent?.let { ctx = ctx.withValue(USER_AGENT_KEY, it) }
         return Contexts.interceptCall(ctx, wrapped, headers, next)
     }

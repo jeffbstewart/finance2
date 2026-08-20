@@ -32,9 +32,10 @@ class RequestMetaInterceptorTest {
     private inner class RecordingCall : ServerCall<Int, Int>() {
         var closedStatus: Status? = null
         var sentHeaders: Metadata? = null
+        var messagesSent = 0
         override fun request(numMessages: Int) {}
         override fun sendHeaders(headers: Metadata) { sentHeaders = headers }
-        override fun sendMessage(message: Int) {}
+        override fun sendMessage(message: Int) { messagesSent++ }
         override fun close(status: Status, trailers: Metadata) { closedStatus = status }
         override fun isCancelled(): Boolean = false
         override fun getMethodDescriptor(): MethodDescriptor<Int, Int> = descriptor
@@ -88,16 +89,57 @@ class RequestMetaInterceptorTest {
     }
 
     @Test
-    fun `deposited cookies flush into response headers`() {
+    fun `cookies deposited after the eager header send still flush`() {
+        // The real transport calls sendHeaders BEFORE the handler body
+        // runs, then the handler deposits its cookie, then the response
+        // message goes out. The cookie must ride the actual header
+        // write, not the too-early sendHeaders call.
         val call = RecordingCall()
         val seen = intercept(call, metadata("x-forwarded-for" to "203.0.113.9"))
-        (seen["sink"] as ResponseCookies).add("finance_session=new; Path=/")
         @Suppress("UNCHECKED_CAST")
-        (seen["call"] as ServerCall<Int, Int>).sendHeaders(Metadata())
+        val wrapped = seen["call"] as ServerCall<Int, Int>
+        wrapped.sendHeaders(Metadata())
+        assertNull(call.sentHeaders, "headers must be held until the response flows")
+        (seen["sink"] as ResponseCookies).add("finance_session=new; Path=/")
+        wrapped.sendMessage(0)
         val setCookie = call.sentHeaders!!.get(
             Metadata.Key.of("set-cookie", Metadata.ASCII_STRING_MARSHALLER)
         )
         assertEquals("finance_session=new; Path=/", setCookie)
+        assertTrue(call.messagesSent == 1, "message must follow the header flush")
+
+        // A second header send must not happen at close.
+        call.sentHeaders = null
+        wrapped.close(Status.OK, Metadata())
+        assertNull(call.sentHeaders)
+        assertEquals(Status.Code.OK, call.closedStatus?.code)
+    }
+
+    @Test
+    fun `error responses without a message still flush held headers`() {
+        val call = RecordingCall()
+        val seen = intercept(call, metadata("x-forwarded-for" to "203.0.113.9"))
+        @Suppress("UNCHECKED_CAST")
+        val wrapped = seen["call"] as ServerCall<Int, Int>
+        wrapped.sendHeaders(Metadata())
+        (seen["sink"] as ResponseCookies).add("finance_session=; Max-Age=0")
+        wrapped.close(Status.UNAUTHENTICATED, Metadata())
+        val setCookie = call.sentHeaders!!.get(
+            Metadata.Key.of("set-cookie", Metadata.ASCII_STRING_MARSHALLER)
+        )
+        assertEquals("finance_session=; Max-Age=0", setCookie)
+        assertEquals(Status.Code.UNAUTHENTICATED, call.closedStatus?.code)
+    }
+
+    @Test
+    fun `trailers-only close without headers stays trailers-only`() {
+        val call = RecordingCall()
+        val seen = intercept(call, metadata("x-forwarded-for" to "203.0.113.9"))
+        @Suppress("UNCHECKED_CAST")
+        val wrapped = seen["call"] as ServerCall<Int, Int>
+        wrapped.close(Status.PERMISSION_DENIED, Metadata())
+        assertNull(call.sentHeaders, "no sendHeaders from grpc means none forwarded")
+        assertEquals(Status.Code.PERMISSION_DENIED, call.closedStatus?.code)
     }
 
     @Test
