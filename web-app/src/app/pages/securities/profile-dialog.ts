@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import {
   PricingLocus,
   SecurityType,
+  TaxTreatment,
   type SecurityProfile,
 } from '../../../proto-gen/securities_pb';
 import { api } from '../../core/api';
@@ -58,6 +59,15 @@ export interface ProfileDialogData {
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline">
+        <mat-label>Tax Treatment</mat-label>
+        <mat-select [(ngModel)]="taxTreatment">
+          <mat-option [value]="TaxTreatment.LOTS">Purchase lots (capital gains)</mat-option>
+          <mat-option [value]="TaxTreatment.MARK_TO_MARKET">
+            Mark-to-market (PFIC §1296, ordinary income)
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
         <mat-label>Net Expense Ratio (fraction, e.g. 0.0004)</mat-label>
         <input matInput [(ngModel)]="netExpenseRatio">
         @if (!ratioValid()) {
@@ -81,6 +91,7 @@ export class ProfileDialog {
 
   readonly SecurityType = SecurityType;
   readonly PricingLocus = PricingLocus;
+  readonly TaxTreatment = TaxTreatment;
 
   description = this.data.security.description;
   securityType =
@@ -91,6 +102,10 @@ export class ProfileDialog {
     this.data.security.pricingLocus === PricingLocus.PRICING_LOCUS_UNSPECIFIED
       ? PricingLocus.MARKET
       : this.data.security.pricingLocus;
+  taxTreatment =
+    this.data.security.taxTreatment === TaxTreatment.TAX_TREATMENT_UNSPECIFIED
+      ? TaxTreatment.LOTS
+      : this.data.security.taxTreatment;
   netExpenseRatio = this.data.security.netExpenseRatio?.exact?.value ?? '0';
   readonly busy = signal(false);
 
@@ -106,6 +121,7 @@ export class ProfileDialog {
         description: this.description.trim(),
         securityType: this.securityType,
         pricingLocus: this.pricingLocus,
+        taxTreatment: this.taxTreatment,
         netExpenseRatio: { value: this.netExpenseRatio.trim() },
       });
       this.notify.success('Profile updated');
