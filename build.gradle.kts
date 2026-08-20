@@ -31,6 +31,9 @@ dependencies {
     // JSON tree parsing for provider clients (no @Serializable classes,
     // so no compiler plugin): numbers stay raw strings -> BigDecimal.
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    // Named SQL parameters in repositories (also rides in via the auth
+    // toolkit's api dependency; declared here because we use it directly).
+    implementation("org.jdbi:jdbi3-core:3.49.4")
 
     runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
 
