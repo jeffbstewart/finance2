@@ -9,7 +9,14 @@ import net.stewart.finance.domain.RateSource
 /** Dated FX rates — the only path between currencies (build-scope §5). */
 class FxRepository(private val dataSource: DataSource) {
 
-    /** Inserts or replaces the rate for (base, quote, date). */
+    /**
+     * Inserts or replaces the rate for (base, quote, date).
+     *
+     * Semantics: [rate] is quote units per one base unit —
+     * amountInQuote = amountInBase × rate (e.g. base EUR, quote USD,
+     * rate 1.16 means 1 EUR = 1.16 USD). A pair converts to itself
+     * only via [latestRate]'s identity; storing one is a caller bug.
+     */
     fun upsert(
         base: CurrencyUnit,
         quote: CurrencyUnit,
@@ -17,6 +24,7 @@ class FxRepository(private val dataSource: DataSource) {
         rate: BigDecimal,
         source: RateSource,
     ) {
+        require(base != quote) { "self-conversion rates are not stored: $base" }
         require(rate.signum() > 0) { "rate must be positive: $rate" }
         dataSource.connection.use { conn ->
             conn.prepareStatement(
