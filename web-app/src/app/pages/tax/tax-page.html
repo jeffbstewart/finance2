@@ -1,0 +1,96 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>Tax Report</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="range-row">
+      <mat-form-field appearance="outline">
+        <mat-label>From</mat-label>
+        <input matInput [matDatepicker]="fromPicker" [(ngModel)]="from">
+        <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+        <mat-datepicker #fromPicker />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>To</mat-label>
+        <input matInput [matDatepicker]="toPicker" [(ngModel)]="to">
+        <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+        <mat-datepicker #toPicker />
+      </mat-form-field>
+      <button matButton="filled" [disabled]="!rangeValid()" (click)="run()">Submit</button>
+      @if (!rangeValid()) {
+        <span class="validation-error">From must be on or before To</span>
+      }
+    </div>
+
+    @if (report(); as r) {
+      <table mat-table [dataSource]="r.rows">
+        <ng-container matColumnDef="broker">
+          <th mat-header-cell *matHeaderCellDef>Broker</th>
+          <td mat-cell *matCellDef="let row">{{ row.brokerName }}</td>
+          <td mat-footer-cell *matFooterCellDef>Total</td>
+        </ng-container>
+        <ng-container matColumnDef="account">
+          <th mat-header-cell *matHeaderCellDef>Account</th>
+          <td mat-cell *matCellDef="let row">{{ row.accountName }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="ticker">
+          <th mat-header-cell *matHeaderCellDef>Ticker</th>
+          <td mat-cell *matCellDef="let row">{{ row.ticker }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="bought">
+          <th mat-header-cell *matHeaderCellDef>Date Bought</th>
+          <td mat-cell *matCellDef="let row">{{ row.bought?.display }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="sold">
+          <th mat-header-cell *matHeaderCellDef>Date Sold</th>
+          <td mat-cell *matCellDef="let row">{{ row.sold?.display }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="buyPrice">
+          <th mat-header-cell *matHeaderCellDef class="num">Purchase Price/Share</th>
+          <td mat-cell *matCellDef="let row" class="num">{{ blankZero(row.purchasePricePerShare) }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="salePrice">
+          <th mat-header-cell *matHeaderCellDef class="num">Sale Price/Share</th>
+          <td mat-cell *matCellDef="let row" class="num">{{ blankZero(row.salePricePerShare) }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="buyCosts">
+          <th mat-header-cell *matHeaderCellDef class="num">Purchase Costs</th>
+          <td mat-cell *matCellDef="let row" class="num">{{ blankZero(row.purchaseCosts) }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="saleCosts">
+          <th mat-header-cell *matHeaderCellDef class="num">Sale Costs</th>
+          <td mat-cell *matCellDef="let row" class="num">{{ blankZero(row.saleCosts) }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        <ng-container matColumnDef="stGain">
+          <th mat-header-cell *matHeaderCellDef class="num">Short Term Gain</th>
+          <td mat-cell *matCellDef="let row" class="num">{{ blankZero(row.shortTermGain) }}</td>
+          <td mat-footer-cell *matFooterCellDef class="num">{{ r.totalShortTermGain?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="ltGain">
+          <th mat-header-cell *matHeaderCellDef class="num">Long Term Gain</th>
+          <td mat-cell *matCellDef="let row" class="num">{{ blankZero(row.longTermGain) }}</td>
+          <td mat-footer-cell *matFooterCellDef class="num">{{ r.totalLongTermGain?.display }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        <tr mat-footer-row *matFooterRowDef="columns"></tr>
+      </table>
+
+      @if (!r.rows.length) {
+        <p class="empty-note">No taxable sales in this range.</p>
+      }
+      <p class="totals-line">Total gain: {{ r.totalGain?.display }}</p>
+      @for (note of r.notes; track note) {
+        <p class="footnote">{{ note }}</p>
+      }
+    }
+  </mat-card-content>
+</mat-card>

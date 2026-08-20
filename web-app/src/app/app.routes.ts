@@ -62,8 +62,7 @@ export const routes: Routes = [
       },
       {
         path: 'tax',
-        loadComponent: () => import('./pages/placeholder').then((m) => m.Placeholder),
-        data: { title: 'Tax Report' },
+        loadComponent: () => import('./pages/tax/tax-page').then((m) => m.TaxPage),
       },
     ],
   },
