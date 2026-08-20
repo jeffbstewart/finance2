@@ -33,6 +33,8 @@ import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
+import net.stewart.finance.db.CpiRepository
+import net.stewart.finance.feeds.CpiFeed
 import net.stewart.finance.feeds.EcbFxFeed
 import net.stewart.finance.ops.AuthMaintenance
 import net.stewart.finance.ops.PeriodicJob
@@ -95,6 +97,13 @@ fun main() {
     val fxFeed = EcbFxFeed(net.stewart.finance.db.FxRepository(db.dataSource))
     PeriodicJob("ecb-fx-refresh", java.time.Duration.ofDays(1)) { fxFeed.refresh() }.start()
 
+    // CPI: seeded from the embedded snapshot so inflation adjustment
+    // works offline from first boot (spec S10); FRED publishes monthly,
+    // so a weekly background pull is plenty.
+    val cpiFeed = CpiFeed(CpiRepository(db.dataSource))
+    cpiFeed.seedIfEmpty()
+    PeriodicJob("fred-cpi-refresh", java.time.Duration.ofDays(7)) { cpiFeed.refresh() }.start()
+
     val setupToken = if (users.hasUsers()) null else generateSetupToken().also {
         log.info("First-run setup: no user exists. Setup token (required by CreateFirstUser): {}", it)
     }
@@ -149,6 +158,7 @@ fun main() {
                         SecurityGrpcService(
                             portfolios, securities, classifications, privatePrices,
                             AssetClassRepository(db.dataSource),
+                            cpiSeries = { cpiFeed.series() },
                         )
                     ),
                     GrpcServiceSpec(
@@ -156,6 +166,7 @@ fun main() {
                             portfolios, accounts, securities,
                             LotRepository(db.dataSource), SaleRepository(db.dataSource),
                             HoldingRepository(db.dataSource), privatePrices, reporting,
+                            cpiSeries = { cpiFeed.series() },
                         )
                     ),
                     GrpcServiceSpec(

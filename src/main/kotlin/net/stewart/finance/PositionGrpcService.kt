@@ -64,6 +64,7 @@ import net.stewart.finance.proto.TaxReportRow
 import net.stewart.finance.proto.UpdatePurchaseRequest
 import net.stewart.finance.proto.UpdatePurchaseResponse
 import net.stewart.finance.rules.CLOSED_TOLERANCE
+import net.stewart.finance.rules.CpiSeries
 import net.stewart.finance.rules.Lot
 import net.stewart.finance.rules.Sale
 import net.stewart.finance.rules.SaleAllocation
@@ -93,6 +94,8 @@ class PositionGrpcService(
     private val holdings: HoldingRepository,
     private val privatePrices: PrivatePriceRepository,
     private val reporting: ReportingCurrency,
+    /** The persisted CPI series, or null while unseeded (degraded mode). */
+    private val cpiSeries: () -> CpiSeries? = { null },
 ) : PositionServiceGrpcKt.PositionServiceCoroutineImplBase() {
 
     override suspend fun listPositions(request: ListPositionsRequest): ListPositionsResponse {
@@ -168,15 +171,15 @@ class PositionGrpcService(
     }
 
     override suspend fun getLotDetails(request: GetLotDetailsRequest): GetLotDetailsResponse {
-        if (request.inflationAdjusted) {
-            throw StatusException(
-                Status.UNIMPLEMENTED.withDescription(
-                    "inflation-adjusted presentation arrives with the CPI wiring"
-                )
-            )
-        }
         val portfolioId = portfolio()
         val today = LocalDate.now()
+        // Constant-dollar cost columns (spec §5.7, §9.11): purchase-date
+        // dollars re-expressed as of today, in one direction only.
+        // Current prices/values stay as-is; gains compare against the
+        // adjusted basis.
+        val cpi = if (!request.inflationAdjusted) null else cpiSeries() ?: throw StatusException(
+            Status.FAILED_PRECONDITION.withDescription("CPI data is not loaded yet")
+        )
         val security = findSecurity(request.securityId, portfolioId)
         val accountFilter = if (request.accountId > 0) AccountId(request.accountId) else null
         val lotRecords = lots.list(portfolioId, accountFilter, security.id)
@@ -184,24 +187,34 @@ class PositionGrpcService(
         val rulesSales = saleRecords.map { it.toRules() }
         val price = priceFor(security, privatePrices.latestBySecurity(portfolioId))
 
-        val builder = GetLotDetailsResponse.newBuilder().setInflationAdjusted(false)
+        val builder = GetLotDetailsResponse.newBuilder().setInflationAdjusted(request.inflationAdjusted)
         for (record in lotRecords) {
             val state = lotState(record.toRules(), rulesSales)
             if (state.closed) continue
+            val adjust: (Money) -> Money = if (cpi == null) ({ it }) else ({ m ->
+                try {
+                    cpi.convert(m, record.dateBought, today)
+                } catch (e: IllegalArgumentException) {
+                    throw StatusException(
+                        Status.FAILED_PRECONDITION.withDescription(e.message ?: "CPI coverage error")
+                    )
+                }
+            })
             val open = state.openShares()
             val value = price * open
-            val gain = value - state.basis
+            val basis = adjust(state.basis)
+            val gain = value - basis
             val longTerm = heldLongTerm(record.dateBought, today)
             builder.addLots(
                 LotRow.newBuilder()
                     .setLotId(record.id.value)
                     .setBought(record.dateBought.toFormattedDate())
                     .setShares(record.quantity.toFormatted())
-                    .setBuyPricePerShare(record.pricePerShare.toFormatted())
+                    .setBuyPricePerShare(adjust(record.pricePerShare).toFormatted())
                     .setCurrentPricePerShare(price.toFormatted())
-                    .setCommission(record.purchaseCosts.toFormatted())
+                    .setCommission(adjust(record.purchaseCosts).toFormatted())
                     .setSharesStillHeld(open.toFormatted())
-                    .setBasis(state.basis.toFormatted())
+                    .setBasis(basis.toFormatted())
                     .setCurrentValue(value.toFormatted())
                     .setShortTermGain((if (longTerm) Money.zero(security.currency) else gain).toFormatted())
                     .setLongTermGain((if (longTerm) gain else Money.zero(security.currency)).toFormatted())

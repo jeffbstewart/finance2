@@ -58,8 +58,27 @@ class CpiTest {
     @Test
     fun `series construction validates its shape`() {
         assertFailsWith<IllegalArgumentException> { series() }
-        assertFailsWith<IllegalArgumentException> { series("2020-01" to "100", "2020-03" to "110") } // gap
         assertFailsWith<IllegalArgumentException> { series("2020-01" to "0") }
+    }
+
+    @Test
+    fun `interpolation spans missing months (the 2025-10 CPIAUCSL gap)`() {
+        val gapped = series("2020-01" to "100", "2020-03" to "120")
+        // Feb 1 sits 31 of 60 days into the Jan→Mar span:
+        // 100 + 20 × 31/60 = 110.333…
+        assertEquals(
+            usd("110.3333"),
+            gapped.convert(usd("100"), LocalDate.parse("2020-01-01"), LocalDate.parse("2020-02-01")),
+        )
+    }
+
+    @Test
+    fun `parser skips empty values, the shutdown-gap publication form`() {
+        val parsed = parseFredCsv(
+            "DATE,CPIAUCSL\n2025-09-01,324.368\n2025-10-01,\n2025-11-01,326.0\n"
+        )
+        assertEquals(YearMonth.parse("2025-09"), parsed.firstMonth)
+        assertEquals(YearMonth.parse("2025-11"), parsed.lastMonth)
     }
 
     @Test
