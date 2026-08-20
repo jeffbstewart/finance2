@@ -30,14 +30,15 @@ message ClassContributor {
 }
 
 message ClassAllocation {
-  int64 asset_class_id = 1;
-  string name = 2;
-  FormattedMoney current = 3;
-  FormattedDecimal current_fraction = 4;
-  FormattedMoney target = 5;
-  FormattedDecimal target_fraction = 6;
-  FormattedMoney delta = 7; // target − current, in dollars
-  repeated ClassContributor contributors = 8;
+  // Classes are identified by their seeded name; numeric ids are a
+  // database implementation detail that never crosses the wire.
+  string name = 1;
+  FormattedMoney current = 2;
+  FormattedDecimal current_fraction = 3;
+  FormattedMoney target = 4;
+  FormattedDecimal target_fraction = 5;
+  FormattedMoney delta = 6; // target − current, in dollars
+  repeated ClassContributor contributors = 7;
 }
 
 message GetAllocationRequest {}
@@ -51,7 +52,8 @@ message GetAllocationResponse {
 }
 
 message TargetEntry {
-  int64 asset_class_id = 1;
+  // The seeded class name (see ClassAllocation.name).
+  string asset_class = 1;
   Decimal fraction = 2;
 }
 
@@ -84,15 +86,14 @@ message CandidateFund {
 }
 
 message RebalanceClass {
-  int64 asset_class_id = 1;
-  string name = 2;
-  FormattedDecimal before_fraction = 3;
-  FormattedDecimal after_fraction = 4; // with the plan's trades applied
-  FormattedDecimal target_fraction = 5;
-  FormattedMoney residual = 6; // current + spent − target
+  string name = 1;
+  FormattedDecimal before_fraction = 2;
+  FormattedDecimal after_fraction = 3; // with the plan's trades applied
+  FormattedDecimal target_fraction = 4;
+  FormattedMoney residual = 5; // current + spent − target
   // Disables the class's buy affordance when at or over target.
-  bool at_or_over_target = 7;
-  repeated CandidateFund candidates = 8;
+  bool at_or_over_target = 6;
+  repeated CandidateFund candidates = 7;
 }
 
 message ScoreRebalanceRequest {

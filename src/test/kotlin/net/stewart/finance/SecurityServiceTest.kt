@@ -53,6 +53,7 @@ class SecurityServiceTest {
                 SecurityRepository(db.dataSource),
                 ClassificationRepository(db.dataSource),
                 PrivatePriceRepository(db.dataSource),
+                net.stewart.finance.db.AssetClassRepository(db.dataSource),
             )
         }
         private val jeff by lazy { users.createUser("jeff", "hash", "Jeff") }

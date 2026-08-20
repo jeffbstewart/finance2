@@ -11,6 +11,7 @@ import net.stewart.finance.api.toFormatted
 import net.stewart.finance.api.toFormattedPercent
 import net.stewart.finance.api.toLocalDate
 import net.stewart.finance.api.toProto
+import net.stewart.finance.db.AssetClassRepository
 import net.stewart.finance.db.ClassificationRepository
 import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.PrivatePriceRepository
@@ -80,6 +81,7 @@ class SecurityGrpcService(
     private val securities: SecurityRepository,
     private val classifications: ClassificationRepository,
     private val prices: PrivatePriceRepository,
+    private val assetClasses: AssetClassRepository,
     /** Days after which a classification set suggests a refresh (build-scope §4). */
     private val classificationRefreshDays: Long = 365,
 ) : SecurityServiceGrpcKt.SecurityServiceCoroutineImplBase() {
@@ -236,7 +238,7 @@ class SecurityGrpcService(
             fraction
         }
         if (kind == ClassificationKind.ASSET_CLASS) {
-            val known = classifications.assetClassNames().toSet()
+            val known = assetClasses.names()
             weights.keys.firstOrNull { it !in known }?.let {
                 throw invalid("unknown asset class \"$it\"")
             }
