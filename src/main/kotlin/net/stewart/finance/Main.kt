@@ -33,7 +33,9 @@ import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
+import net.stewart.finance.feeds.EcbFxFeed
 import net.stewart.finance.ops.AuthMaintenance
+import net.stewart.finance.ops.PeriodicJob
 import net.stewart.finance.ops.InternalHttpService
 import net.stewart.finance.ops.InternalPortGate
 import net.stewart.finance.proto.InfoServiceGrpc
@@ -85,6 +87,13 @@ fun main() {
     val secureCookies = System.getenv("COOKIE_SECURE")?.toBooleanStrictOrNull() ?: true
 
     AuthMaintenance(sessions, logins).start()
+
+    // ECB publishes reference rates once per business day; a daily
+    // pull of the rolling 90-day feed keeps fx_rates current and
+    // backfills after downtime (build-scope §5; ruling 2026-08-19:
+    // simple in-process scheduling, one always-running container).
+    val fxFeed = EcbFxFeed(net.stewart.finance.db.FxRepository(db.dataSource))
+    PeriodicJob("ecb-fx-refresh", java.time.Duration.ofDays(1)) { fxFeed.refresh() }.start()
 
     val setupToken = if (users.hasUsers()) null else generateSetupToken().also {
         log.info("First-run setup: no user exists. Setup token (required by CreateFirstUser): {}", it)
