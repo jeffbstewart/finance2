@@ -37,8 +37,13 @@ export const routes: Routes = [
       },
       {
         path: 'positions',
-        loadComponent: () => import('./pages/placeholder').then((m) => m.Placeholder),
-        data: { title: 'Positions' },
+        loadComponent: () =>
+          import('./pages/positions/positions-page').then((m) => m.PositionsPage),
+      },
+      {
+        path: 'positions/:id',
+        loadComponent: () =>
+          import('./pages/positions/lot-details-page').then((m) => m.LotDetailsPage),
       },
       {
         path: 'allocation',

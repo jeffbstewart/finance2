@@ -12,6 +12,10 @@ export class Notify {
     this.snackBar.open(message, undefined, { duration: 2500 });
   }
 
+  info(message: string): void {
+    this.snackBar.open(message, undefined, { duration: 4000 });
+  }
+
   error(err: unknown, fallback = 'Something went wrong'): void {
     this.snackBar.open(messageOf(err, fallback), 'Dismiss', { duration: 8000 });
   }

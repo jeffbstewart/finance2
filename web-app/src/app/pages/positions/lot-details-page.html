@@ -1,0 +1,147 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>{{ title() }}</mat-card-title>
+    <span class="header-spacer"></span>
+    <mat-slide-toggle [checked]="inflationAdjusted()" (change)="toggleInflation($event.checked)">
+      Adjust costs for inflation
+    </mat-slide-toggle>
+  </mat-card-header>
+  <mat-card-content>
+    <table mat-table [dataSource]="lots()">
+      <ng-container matColumnDef="select">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let l">
+          @if ((l.sharesStillHeld?.sortKey ?? 0) > 0) {
+            <mat-checkbox
+              [checked]="isSelected(l)"
+              (change)="toggleLot(l, $event.checked)"
+              aria-label="Select lot"
+            />
+          }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="account">
+        <th mat-header-cell *matHeaderCellDef>Account</th>
+        <td mat-cell *matCellDef="let l">{{ l.accountName }}</td>
+      </ng-container>
+      <ng-container matColumnDef="bought">
+        <th mat-header-cell *matHeaderCellDef>Bought</th>
+        <td mat-cell *matCellDef="let l">{{ l.bought?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="shares">
+        <th mat-header-cell *matHeaderCellDef class="num">Shares</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.shares?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="buyPrice">
+        <th mat-header-cell *matHeaderCellDef class="num">Buy $/Share{{ dagger() }}</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.buyPricePerShare?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="nowPrice">
+        <th mat-header-cell *matHeaderCellDef class="num">Now $/Share</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.currentPricePerShare?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="commission">
+        <th mat-header-cell *matHeaderCellDef class="num">Comm.{{ dagger() }}</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.commission?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="stillHeld">
+        <th mat-header-cell *matHeaderCellDef class="num">Still Held</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.sharesStillHeld?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="basis">
+        <th mat-header-cell *matHeaderCellDef class="num">Basis{{ dagger() }}</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.basis?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="value">
+        <th mat-header-cell *matHeaderCellDef class="num">Current Value</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.currentValue?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="stGain">
+        <th mat-header-cell *matHeaderCellDef class="num">ST Gain{{ dagger() }}</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.shortTermGain?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="ltGain">
+        <th mat-header-cell *matHeaderCellDef class="num">LT Gain{{ dagger() }}</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.longTermGain?.display }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let l" class="row-actions">
+          <button matIconButton (click)="editLot(l)" aria-label="Edit lot">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button matIconButton (click)="deleteLot(l)" aria-label="Delete lot">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+    </table>
+
+    @if (dagger()) {
+      <p class="footnote">† restated in today's dollars via CPI</p>
+    }
+
+    @if (!lots().length) {
+      <p class="empty-note">No lots for {{ ticker() }} here.</p>
+      @if (!account()) {
+        <button matButton (click)="hideSecurity()">Hide this Security</button>
+      }
+    }
+
+    @if (sales().length) {
+      <h3 class="section-title">Sale History</h3>
+      <table mat-table [dataSource]="sales()">
+        <ng-container matColumnDef="sold">
+          <th mat-header-cell *matHeaderCellDef>Sold</th>
+          <td mat-cell *matCellDef="let s">{{ s.sold?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="saleShares">
+          <th mat-header-cell *matHeaderCellDef class="num">Shares</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ s.shares?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="salePrice">
+          <th mat-header-cell *matHeaderCellDef class="num">$/Share</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ s.pricePerShare?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="saleCosts">
+          <th mat-header-cell *matHeaderCellDef class="num">Sale Costs</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ s.saleCosts?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="saleStGain">
+          <th mat-header-cell *matHeaderCellDef class="num">ST Gain</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ s.shortTermGain?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="saleLtGain">
+          <th mat-header-cell *matHeaderCellDef class="num">LT Gain</th>
+          <td mat-cell *matCellDef="let s" class="num">{{ s.longTermGain?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="saleActions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let s" class="row-actions">
+            <button matIconButton (click)="deleteSale(s)" aria-label="Delete sale">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="saleColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: saleColumns"></tr>
+      </table>
+    }
+  </mat-card-content>
+  <mat-card-actions>
+    <a matButton [routerLink]="['/securities', id()]">
+      <mat-icon>info</mat-icon>
+      Security Details
+    </a>
+    <button matButton (click)="buy()">
+      <mat-icon>add_shopping_cart</mat-icon>
+      Buy
+    </button>
+    <button matButton="filled" [disabled]="!selected().size" (click)="sell()">
+      <mat-icon>sell</mat-icon>
+      Sell
+    </button>
+  </mat-card-actions>
+</mat-card>
