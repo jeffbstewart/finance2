@@ -41,6 +41,19 @@ export function fractionToPercent(fraction: string): string {
   return shiftRight(fraction, 2);
 }
 
+/**
+ * A decimal string as a BigInt scaled by 10^scale, for exact sums and
+ * comparisons (quantities use scale 8 — build-scope §2). Throws when
+ * the value has more fractional digits than the scale.
+ */
+export function toScaledBigInt(s: string, scale: number): bigint {
+  const trimmed = s.trim();
+  if (!isDecimalString(trimmed)) throw new Error(`not a decimal: ${s}`);
+  const [whole, frac = ''] = trimmed.split('.');
+  if (frac.length > scale) throw new Error(`more than ${scale} decimal places: ${s}`);
+  return BigInt(whole + frac.padEnd(scale, '0'));
+}
+
 function trimZeros(s: string): string {
   let out = s;
   if (out.includes('.')) out = out.replace(/0+$/, '').replace(/\.$/, '');
