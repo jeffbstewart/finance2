@@ -1,0 +1,48 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>Securities</mat-card-title>
+    <span class="header-spacer"></span>
+    <mat-slide-toggle [checked]="showHidden()" (change)="toggleHidden($event.checked)">
+      Show hidden
+    </mat-slide-toggle>
+  </mat-card-header>
+  <mat-card-content>
+    <table mat-table [dataSource]="securities()">
+      <ng-container matColumnDef="ticker">
+        <th mat-header-cell *matHeaderCellDef>Ticker</th>
+        <td mat-cell *matCellDef="let s">
+          <a [routerLink]="['/securities', s.securityId]">{{ s.ticker }}</a>
+          @if (s.hidden) { <span class="hidden-tag">(hidden)</span> }
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="sparkline">
+        <th mat-header-cell *matHeaderCellDef>Trend</th>
+        <td mat-cell *matCellDef="let s"><app-sparkline [values]="trend(s)" /></td>
+      </ng-container>
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Description</th>
+        <td mat-cell *matCellDef="let s">{{ s.description }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let s" class="row-actions">
+          @if (s.hidden) {
+            <button matIconButton (click)="unhide(s)" aria-label="Unhide">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          }
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    </table>
+
+    @if (!securities().length) {
+      <p class="empty-note">No securities yet — add the first with the button below.</p>
+    }
+  </mat-card-content>
+</mat-card>
+
+<button matFab class="page-fab" aria-label="Add security" (click)="addSecurity()">
+  <mat-icon>add</mat-icon>
+</button>

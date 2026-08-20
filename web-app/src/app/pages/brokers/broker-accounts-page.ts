@@ -55,7 +55,9 @@ export class BrokerAccountsPage {
     })),
   );
 
-  constructor() {
+  // ngOnInit, not the constructor: required router inputs aren't
+  // bound yet at construction (NG0950).
+  ngOnInit(): void {
     void this.reload();
   }
 
