@@ -59,6 +59,14 @@ made this decision necessary.
 - Both keys ride `.env` (`TIINGO_API_KEY`, `EODHD_API_KEY`);
   integration tests hit the live APIs only when the key is present,
   and skip otherwise, so CI needs no secrets.
+- **Persistence boundary (clarified, Jeff 2026-08-19):** fetched
+  prices persist to the **local encrypted database only** (a
+  market_prices table with provenance — it doubles as the spec §6.1
+  restart-surviving cache). Provider data never enters the source
+  repo: no committed responses, no captured test fixtures (unit tests
+  use synthetic JSON shaped like the API). The committed CPI snapshot
+  is not an exception to this rule — it is public-domain US
+  government data, per the Phase 1 licensing assessment.
 
 Sources: [Tiingo EOD product](https://www.tiingo.com/products/end-of-day-stock-price-data),
 [Tiingo corporate actions](https://www.tiingo.com/documentation/corporate-actions/splits),
