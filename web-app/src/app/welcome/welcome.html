@@ -1,0 +1,60 @@
+<div class="welcome-page">
+  @if (state().kind === 'setup') {
+    <mat-card appearance="outlined" class="welcome-card">
+      <mat-card-header>
+        <mat-card-title>Welcome to Portfolio Manager</mat-card-title>
+        <mat-card-subtitle>Create the account for this server</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>
+          This is a fresh installation. Create the single user account —
+          registration closes permanently afterwards. The setup token is
+          printed in the server log at startup.
+        </p>
+        <form (ngSubmit)="createAccount()">
+          <mat-form-field appearance="outline">
+            <mat-label>Username</mat-label>
+            <input matInput name="username" [(ngModel)]="username" required autocomplete="username">
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Display name</mat-label>
+            <input matInput name="displayName" [(ngModel)]="displayName" autocomplete="name">
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Password</mat-label>
+            <input matInput type="password" name="password" [(ngModel)]="password" required
+                   autocomplete="new-password">
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Setup token (from the server log)</mat-label>
+            <input matInput name="setupToken" [(ngModel)]="setupToken" required autocomplete="off">
+          </mat-form-field>
+          <button matButton="filled" type="submit" [disabled]="busy()">Create account</button>
+        </form>
+      </mat-card-content>
+      @if (busy()) { <mat-progress-bar mode="indeterminate" /> }
+    </mat-card>
+  } @else {
+    <mat-card appearance="outlined" class="welcome-card">
+      <mat-card-header>
+        <mat-card-title>Portfolio Manager</mat-card-title>
+        <mat-card-subtitle>Please log in</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form (ngSubmit)="signIn()">
+          <mat-form-field appearance="outline">
+            <mat-label>Username</mat-label>
+            <input matInput name="username" [(ngModel)]="username" required autocomplete="username">
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Password</mat-label>
+            <input matInput type="password" name="password" [(ngModel)]="password" required
+                   autocomplete="current-password">
+          </mat-form-field>
+          <button matButton="filled" type="submit" [disabled]="busy()">Log in</button>
+        </form>
+      </mat-card-content>
+      @if (busy()) { <mat-progress-bar mode="indeterminate" /> }
+    </mat-card>
+  }
+</div>

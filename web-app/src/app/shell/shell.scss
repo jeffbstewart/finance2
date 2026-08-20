@@ -1,0 +1,47 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.shell-toolbar {
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  flex-shrink: 0;
+
+  .shell-logo {
+    font-size: 28px;
+    margin-right: 12px;
+  }
+
+  .shell-spacer {
+    flex: 1;
+  }
+
+  button {
+    color: inherit;
+  }
+}
+
+.shell-container {
+  flex: 1;
+}
+
+.shell-nav {
+  width: 200px;
+}
+
+.active-link {
+  background: var(--mat-sys-secondary-container);
+}
+
+.shell-content {
+  padding: 24px;
+  max-width: 1200px;
+}
+
+.shell-user-details {
+  padding: 0 16px;
+  font-size: 13px;
+  opacity: 0.75;
+}

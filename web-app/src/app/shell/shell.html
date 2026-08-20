@@ -1,0 +1,36 @@
+<mat-toolbar class="shell-toolbar">
+  <span class="shell-logo">&#937;</span>
+  <span class="shell-title">Portfolio Manager</span>
+  <span class="shell-spacer"></span>
+  @if (user(); as u) {
+    <button matButton [matMenuTriggerFor]="userMenu">
+      <mat-icon>account_circle</mat-icon>
+      {{ u.displayName || u.username }}
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <div class="shell-user-details" mat-menu-item disabled>
+        {{ u.displayName }} ({{ u.username }})
+      </div>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+  }
+</mat-toolbar>
+
+<mat-sidenav-container class="shell-container">
+  <mat-sidenav mode="side" opened disableClose class="shell-nav">
+    <mat-nav-list>
+      @for (section of sections; track section.path) {
+        <a mat-list-item [routerLink]="section.path" routerLinkActive="active-link">
+          <mat-icon matListItemIcon>{{ section.icon }}</mat-icon>
+          <span matListItemTitle>{{ section.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+  <mat-sidenav-content class="shell-content">
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -1,0 +1,16 @@
+.welcome-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 10vh;
+}
+
+.welcome-card {
+  width: min(420px, 90vw);
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+}

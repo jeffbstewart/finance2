@@ -28,10 +28,4 @@ class InternalHttpServiceTest {
         assertTrue(response.contentUtf8().contains("finance_test_counter"))
     }
 
-    @Test
-    fun `root redirects to metrics`() {
-        val response = service.root().aggregate().join()
-        assertTrue(response.status().codeClass() == com.linecorp.armeria.common.HttpStatusClass.REDIRECTION)
-        assertEquals("/metrics", response.headers().get(HttpHeaderNames.LOCATION))
-    }
 }

@@ -46,6 +46,8 @@ import net.stewart.finance.ops.AuthMaintenance
 import net.stewart.finance.ops.PeriodicJob
 import net.stewart.finance.ops.InternalHttpService
 import net.stewart.finance.ops.InternalPortGate
+import net.stewart.finance.ops.RootRedirect
+import net.stewart.finance.ops.SecurityHeaders
 import net.stewart.finance.proto.InfoServiceGrpc
 import net.stewart.finance.proto.SessionServiceGrpc
 import net.stewart.h2toolkit.H2Config
@@ -155,11 +157,9 @@ fun main() {
     // Ops endpoints live only on the internal port (ruling
     // 2026-08-19): the gate 404s everything else arriving there, the
     // toolkit 404s the ops services on the main port, and the proxy
-    // decorator skips the internal port (LAN-direct by design).
-    //
-    // Phase 6 note: the internal "/" (redirect to /metrics) and the
-    // SPA's root redirect both want the "/" route — when the SPA
-    // lands, replace them with one port-aware root handler.
+    // decorator skips the internal port (LAN-direct by design). The
+    // "/" route is one port-aware handler: /metrics on the internal
+    // port, the SPA on the main port.
     ArmeriaAppServer(
         AppServerConfig(
             port = port,
@@ -204,11 +204,12 @@ fun main() {
                 )
             },
             grpcInterceptors = listOf(RequestMetaInterceptor(), authInterceptor),
-            globalDecorators = listOf(InternalPortGate(internalPort)) +
+            globalDecorators = listOf(SecurityHeaders(), InternalPortGate(internalPort)) +
                 if (trustedProxies.isEmpty()) emptyList()
                 else listOf(TrustedProxyDecorator(trustedProxies, internalPort)),
             singlePageApp = SinglePageAppConfig(dir = Path.of("spa"), redirectRoot = false),
             healthPath = null,
+            httpServices = listOf(HttpServiceSpec(RootRedirect(internalPort))),
             internalPort = internalPort,
             internalHttpServices = listOf(HttpServiceSpec(InternalHttpService(registry))),
             customizer = { it.meterRegistry(registry) },
