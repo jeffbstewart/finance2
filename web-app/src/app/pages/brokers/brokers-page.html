@@ -1,0 +1,57 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>Brokerages</mat-card-title>
+    <span class="header-spacer"></span>
+    <mat-slide-toggle [checked]="showHidden()" (change)="toggleHidden($event.checked)">
+      Show hidden
+    </mat-slide-toggle>
+  </mat-card-header>
+  <mat-card-content>
+    <table mat-table [dataSource]="brokers()">
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let b">
+          <a [routerLink]="['/brokers', b.brokerId]">{{ b.name }}</a>
+          @if (b.hidden) { <span class="hidden-tag">(hidden)</span> }
+        </td>
+        <td mat-footer-cell *matFooterCellDef>Total</td>
+      </ng-container>
+      <ng-container matColumnDef="totalHoldings">
+        <th mat-header-cell *matHeaderCellDef class="num">Total Holdings</th>
+        <td mat-cell *matCellDef="let b" class="num">{{ b.totalHoldings?.display }}</td>
+        <td mat-footer-cell *matFooterCellDef class="num">{{ totalHoldings() }}</td>
+      </ng-container>
+      <ng-container matColumnDef="sweeps">
+        <th mat-header-cell *matHeaderCellDef class="num">Sweeps</th>
+        <td mat-cell *matCellDef="let b" class="num">{{ b.sweeps?.display }}</td>
+        <td mat-footer-cell *matFooterCellDef class="num">{{ totalSweeps() }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let b" class="row-actions">
+          @if (b.hidden) {
+            <button matIconButton (click)="unhide(b)" aria-label="Unhide">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          }
+        </td>
+        <td mat-footer-cell *matFooterCellDef></td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      <tr mat-footer-row *matFooterRowDef="columns"></tr>
+    </table>
+
+    @if (slices().length) {
+      <app-pie-chart
+        title="Total Holdings By Broker"
+        [slices]="slices()"
+        (sliceClick)="openBroker($event)"
+      />
+    }
+  </mat-card-content>
+</mat-card>
+
+<button matFab class="page-fab" aria-label="Add broker" (click)="addBroker()">
+  <mat-icon>add</mat-icon>
+</button>
