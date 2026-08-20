@@ -13,8 +13,12 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'brokers' },
       {
         path: 'brokers',
-        loadComponent: () => import('./pages/placeholder').then((m) => m.Placeholder),
-        data: { title: 'Brokerages' },
+        loadComponent: () => import('./pages/brokers/brokers-page').then((m) => m.BrokersPage),
+      },
+      {
+        path: 'brokers/:id',
+        loadComponent: () =>
+          import('./pages/brokers/broker-accounts-page').then((m) => m.BrokerAccountsPage),
       },
       {
         path: 'securities',

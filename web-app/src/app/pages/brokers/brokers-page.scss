@@ -1,0 +1,24 @@
+table {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.num {
+  text-align: right;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.hidden-tag {
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.page-fab {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+}
