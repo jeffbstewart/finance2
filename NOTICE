@@ -13,3 +13,7 @@ Price Index for All Urban Consumers: All Items, U.S. Bureau of Labor
 Statistics), retrieved from FRED, Federal Reserve Bank of St. Louis
 (https://fred.stlouisfed.org/series/CPIAUCSL) — U.S. government work
 product in the public domain (src/main/resources/cpi/CPIAUCSL.csv).
+
+This product bundles the Roboto font and the Material Icons font,
+both Copyright Google LLC and used under the Apache License 2.0
+(web-app/public/fonts/, license copy alongside).

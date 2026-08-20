@@ -24,7 +24,4 @@ class InternalHttpService(private val registry: PrometheusMeterRegistry) {
         MediaType.parse("text/plain; version=0.0.4; charset=utf-8"),
         registry.scrape(),
     )
-
-    @Get("/")
-    fun root(): HttpResponse = HttpResponse.ofRedirect("/metrics")
 }

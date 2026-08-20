@@ -20,3 +20,7 @@ web-app/src/proto-gen/
 # IDE
 .idea/
 *.iml
+/spa/
+
+# Angular build cache
+web-app/.angular/

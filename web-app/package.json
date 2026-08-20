@@ -2,20 +2,42 @@
   "name": "finance2-web",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript side of the finance2 proto contract. Phase 6 replaces this minimal workspace with the real SPA; the codegen + compile check is real from day one.",
+  "description": "The finance2 SPA (Decision 6: Angular + Angular Material). All server calls go through the Connect-ES client generated from proto/ — no hand-written DTOs, no any-typed fetches.",
   "scripts": {
+    "ng": "ng",
     "proto:gen": "node scripts/gen-proto.mjs",
+    "prestart": "npm run proto:gen",
+    "start": "ng serve --proxy-config proxy.conf.json",
+    "prebuild": "npm run proto:gen",
+    "build": "ng build",
     "precheck": "npm run proto:gen",
-    "check": "tsc --noEmit"
+    "check": "ng build",
+    "test": "ng test"
   },
   "dependencies": {
+    "@angular/cdk": "^22.1.0",
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/forms": "^22.1.0",
+    "@angular/material": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "@angular/router": "^22.1.0",
     "@bufbuild/protobuf": "^2.12.0",
     "@connectrpc/connect": "^2.1.1",
-    "@connectrpc/connect-web": "^2.1.1"
+    "@connectrpc/connect-web": "^2.1.1",
+    "echarts": "^6.0.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@angular/build": "^22.1.5",
+    "@angular/cli": "^22.1.5",
+    "@angular/compiler-cli": "^22.1.0",
     "@bufbuild/protoc-gen-es": "^2.12.0",
+    "jsdom": "^28.0.0",
     "protoc": "^35.1.0",
-    "typescript": "~5.9.3"
+    "typescript": "~6.0.2",
+    "vitest": "^4.0.8"
   }
 }
