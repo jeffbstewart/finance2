@@ -20,7 +20,7 @@ class EodhdPriceSource(
     private val token: String,
     /** EODHD tickers carry an exchange suffix; the portfolio is US. */
     private val exchangeSuffix: String = "US",
-    private val get: (String) -> HttpResult = { httpGetRaw(it) },
+    private val get: (String, Map<String, String>) -> HttpResult = ::httpGetRaw,
 ) : PriceSource {
 
     override val id: MarketSource = MarketSource.EODHD
@@ -29,11 +29,14 @@ class EodhdPriceSource(
         val url = buildString {
             append("https://eodhd.com/api/eod/")
             append(java.net.URLEncoder.encode("$ticker.$exchangeSuffix", Charsets.UTF_8))
-            append("?api_token=").append(token).append("&fmt=json")
+            // EODHD only accepts the token as a query parameter; it is
+            // URL-encoded so $ and % in a token survive.
+            append("?api_token=").append(java.net.URLEncoder.encode(token, Charsets.UTF_8))
+            append("&fmt=json")
             if (startDate != null) append("&from=").append(startDate)
         }
         val result = try {
-            get(url)
+            get(url, emptyMap())
         } catch (e: Exception) {
             throw PriceSourceException("eodhd request failed for $ticker", e)
         }

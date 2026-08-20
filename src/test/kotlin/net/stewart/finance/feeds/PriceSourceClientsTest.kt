@@ -29,9 +29,16 @@ class PriceSourceClientsTest {
     @Test
     fun `tiingo parses the full field list as exact decimals, ascending`() {
         var requested = ""
-        val source = TiingoPriceSource("k") { url -> requested = url; HttpResult(200, TIINGO_BODY) }
+        var headers = emptyMap<String, String>()
+        val source = TiingoPriceSource("we\$ird%tok") { url, h ->
+            requested = url; headers = h; HttpResult(200, TIINGO_BODY)
+        }
         val bars = source.dailyBars("VTI", LocalDate.parse("2026-08-01"))
         assertTrue(requested.contains("tiingo/daily/VTI/prices") && requested.contains("startDate=2026-08-01"))
+        // The token rides the Authorization header, never the URL —
+        // $ and % in real tokens must not touch URI parsing.
+        assertEquals("Token we\$ird%tok", headers["Authorization"])
+        assertTrue(!requested.contains("tok"))
         assertEquals(2, bars.size)
         assertEquals(LocalDate.parse("2026-08-17"), bars[0].date) // sorted ascending
         val bar = bars[1]
@@ -45,26 +52,30 @@ class PriceSourceClientsTest {
     @Test
     fun `tiingo maps quota, unknown ticker, and garbage distinctly`() {
         assertFailsWith<QuotaExceededException> {
-            TiingoPriceSource("k") { HttpResult(429, "") }.dailyBars("VTI", null)
+            TiingoPriceSource("k") { _, _ -> HttpResult(429, "") }.dailyBars("VTI", null)
         }
         assertEquals(
             emptyList(),
-            TiingoPriceSource("k") { HttpResult(404, "") }.dailyBars("NOPE", null),
+            TiingoPriceSource("k") { _, _ -> HttpResult(404, "") }.dailyBars("NOPE", null),
         )
         assertFailsWith<PriceSourceException> {
-            TiingoPriceSource("k") { HttpResult(200, "not json") }.dailyBars("VTI", null)
+            TiingoPriceSource("k") { _, _ -> HttpResult(200, "not json") }.dailyBars("VTI", null)
         }
         assertFailsWith<PriceSourceException> {
-            TiingoPriceSource("k") { HttpResult(500, "") }.dailyBars("VTI", null)
+            TiingoPriceSource("k") { _, _ -> HttpResult(500, "") }.dailyBars("VTI", null)
         }
     }
 
     @Test
     fun `eodhd parses bars with US suffix and default corporate actions`() {
         var requested = ""
-        val source = EodhdPriceSource("k") { url -> requested = url; HttpResult(200, EODHD_BODY) }
+        val source = EodhdPriceSource("we\$ird%tok") { url, _ ->
+            requested = url; HttpResult(200, EODHD_BODY)
+        }
         val bars = source.dailyBars("VTI", null)
         assertTrue(requested.contains("/eod/VTI.US?"))
+        // Query-param tokens are URL-encoded so $ and % survive.
+        assertTrue(requested.contains("api_token=we%24ird%25tok"))
         val bar = bars.single()
         assertEquals(BigDecimal("99.9975"), bar.adjustedClose)
         assertEquals(BigDecimal.ZERO, bar.dividend)
@@ -74,10 +85,10 @@ class PriceSourceClientsTest {
     @Test
     fun `eodhd maps payment-required and rate limits to quota`() {
         assertFailsWith<QuotaExceededException> {
-            EodhdPriceSource("k") { HttpResult(402, "") }.dailyBars("VTI", null)
+            EodhdPriceSource("k") { _, _ -> HttpResult(402, "") }.dailyBars("VTI", null)
         }
         assertFailsWith<QuotaExceededException> {
-            EodhdPriceSource("k") { HttpResult(429, "") }.dailyBars("VTI", null)
+            EodhdPriceSource("k") { _, _ -> HttpResult(429, "") }.dailyBars("VTI", null)
         }
     }
 }
