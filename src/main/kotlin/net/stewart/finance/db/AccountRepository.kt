@@ -99,6 +99,20 @@ class AccountRepository(dataSource: DataSource) {
             .execute() > 0
     }
 
+    /** Sweep-only update with provenance — the snapshot importer's path. */
+    fun updateSweep(id: AccountId, sweep: Money, source: EntrySource, asOf: LocalDate): Boolean =
+        jdbi.sql { handle ->
+            handle.createUpdate(
+                "UPDATE accounts SET sweep_balance = :sweep, sweep_source = :sweepSource, " +
+                    "sweep_as_of = :sweepAsOf WHERE id = :id"
+            )
+                .bind("sweep", sweep.amount)
+                .bind("sweepSource", source.dbValue)
+                .bind("sweepAsOf", asOf)
+                .bind("id", id.value)
+                .execute() > 0
+        }
+
     fun setHidden(id: AccountId, hidden: Boolean): Boolean = jdbi.sql { handle ->
         handle.createUpdate("UPDATE accounts SET hidden = :hidden WHERE id = :id")
             .bind("hidden", hidden)

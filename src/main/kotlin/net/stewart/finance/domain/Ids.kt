@@ -50,3 +50,8 @@ value class PriceId(val value: Long) {
 value class MtmMarkId(val value: Long) {
     init { require(value > 0) { "mark id must be positive: $value" } }
 }
+
+@JvmInline
+value class SnapshotId(val value: Long) {
+    init { require(value > 0) { "snapshot id must be positive: $value" } }
+}

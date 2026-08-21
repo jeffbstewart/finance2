@@ -1,0 +1,125 @@
+// ImportService: bankferry snapshot upload, archive, and processing
+// (docs/design/plaid-investments-pipeline.md, amended 2026-08-20:
+// browser upload through the authenticated session replaces the file
+// drop). Snapshots archive verbatim in the database; processing is a
+// separate, freely repeatable step with an explicit status marker, so
+// a processing bug can be fixed and the same bytes re-run — and the
+// taxable comparison can be revisited after lot edits.
+syntax = "proto3";
+
+package finance;
+
+import "common.proto";
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+enum SnapshotStatus {
+  SNAPSHOT_STATUS_UNSPECIFIED = 0;
+  UPLOADED = 1;  // archived, not yet processed
+  PROCESSED = 2; // last processing run completed (report may carry warnings)
+  FAILED = 3;    // last processing run threw; report carries the error
+}
+
+enum ReportSeverity {
+  REPORT_SEVERITY_UNSPECIFIED = 0;
+  INFO = 1;
+  WARNING = 2;
+}
+
+message ReportLine {
+  ReportSeverity severity = 1;
+  string message = 2;
+}
+
+// What one processing run did (build-scope §1 semantics: tax-deferred
+// holdings and sweeps are written with plaid provenance; taxable
+// accounts are compared, never mutated).
+message ImportReport {
+  int32 holdings_updated = 1;
+  int32 sweeps_updated = 2;
+  repeated ReportLine lines = 3;
+}
+
+message SnapshotRow {
+  int64 snapshot_id = 1;
+  string filename = 2;
+  string uploaded_at = 3; // ISO-8601 instant
+  FormattedDate as_of = 4;
+  int32 schema_version = 5;
+  SnapshotStatus status = 6;
+  string processed_at = 7; // ISO-8601 instant; empty until processed
+  ImportReport report = 8; // last run's report, when any
+}
+
+// Raw bytes of a bankferry InvestmentsSnapshot file. Parsed and
+// validated at upload (schema version, decimals, dates); archived
+// verbatim; nothing else changes until ProcessSnapshot.
+message UploadSnapshotRequest {
+  bytes content = 1;
+  string filename = 2;
+}
+
+message UploadSnapshotResponse {
+  SnapshotRow snapshot = 1;
+}
+
+message ListSnapshotsRequest {}
+
+message ListSnapshotsResponse {
+  repeated SnapshotRow snapshots = 1; // newest first
+}
+
+message ProcessSnapshotRequest {
+  int64 snapshot_id = 1;
+}
+
+message ProcessSnapshotResponse {
+  SnapshotRow snapshot = 1;
+}
+
+message DeleteSnapshotRequest {
+  int64 snapshot_id = 1;
+}
+
+message DeleteSnapshotResponse {}
+
+// One Plaid account as seen in an archived snapshot, with its link
+// state. Links are by account_ref and persist across snapshots.
+message PlaidAccountView {
+  string account_ref = 1;
+  string institution_entry = 2;
+  string name = 3;
+  string official_name = 4;
+  string mask = 5;
+  string type = 6;
+  string subtype = 7;
+  int32 holdings = 8;
+  int64 linked_account_id = 9;     // 0 when unlinked
+  string linked_account_name = 10; // "Broker : Account" when linked
+}
+
+message GetSnapshotAccountsRequest {
+  int64 snapshot_id = 1;
+}
+
+message GetSnapshotAccountsResponse {
+  repeated PlaidAccountView accounts = 1;
+}
+
+// account_id 0 removes the link.
+message LinkPlaidAccountRequest {
+  string account_ref = 1;
+  int64 account_id = 2;
+}
+
+message LinkPlaidAccountResponse {}
+
+service ImportService {
+  rpc UploadSnapshot(UploadSnapshotRequest) returns (UploadSnapshotResponse);
+  rpc ListSnapshots(ListSnapshotsRequest) returns (ListSnapshotsResponse);
+  rpc ProcessSnapshot(ProcessSnapshotRequest) returns (ProcessSnapshotResponse);
+  rpc DeleteSnapshot(DeleteSnapshotRequest) returns (DeleteSnapshotResponse);
+  rpc GetSnapshotAccounts(GetSnapshotAccountsRequest) returns (GetSnapshotAccountsResponse);
+  rpc LinkPlaidAccount(LinkPlaidAccountRequest) returns (LinkPlaidAccountResponse);
+}
