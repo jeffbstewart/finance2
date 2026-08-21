@@ -27,19 +27,25 @@ siblings itself) and holds no secrets: every credential arrives at run
 time from `.env`, which `.dockerignore` keeps out of the build context.
 
 ```bash
-cp example.env .env               # set H2_PASSWORD, H2_FILE_PASSWORD, TRUSTED_PROXIES, API keys
+cp example.env .env               # set FINANCE2_DATA, H2_PASSWORD, H2_FILE_PASSWORD, TRUSTED_PROXIES, API keys
 docker compose up -d --build
 docker compose logs -f finance2   # the first boot prints the one-time setup token
 ```
 
-- The encrypted database lives on the `finance2-data` volume (the
-  compose file's comment shows a backup one-liner); the container
-  itself is disposable.
-- `PORT` (default 9090) is meant to be reached only through HAProxy,
+- The encrypted database lives in the host directory `FINANCE2_DATA`
+  (required — compose refuses to start without it), bind-mounted at
+  `/data`; the container itself is disposable. Back the directory up
+  like any other file.
+- Host ports and limits are environment-overridable with defaults:
+  `FINANCE2_PORT` (9090) is meant to be reached only through HAProxy,
   which terminates TLS and is identified by `TRUSTED_PROXIES`;
-  `INTERNAL_PORT` (9091) serves `/healthz` and `/metrics` LAN-direct
-  and backs the image's `HEALTHCHECK`. The compose file uses host
-  networking so that a proxy on the same host is `127.0.0.1`.
+  `FINANCE2_INTERNAL_PORT` (9091) serves `/healthz` and `/metrics`
+  LAN-direct and backs the image's `HEALTHCHECK`. `FINANCE2_MEM_LIMIT`
+  (1g) and `FINANCE2_PIDS_LIMIT` (512) are the limits a NAS container
+  manager can enforce; the JVM sizes its heap from the memory limit.
+- On the bridge network a proxy on another host keeps its own address
+  for `TRUSTED_PROXIES`; a proxy on the same host appears as the
+  bridge gateway (typically `172.17.0.1`), not `127.0.0.1`.
 - A minimal HAProxy backend:
 
   ```
@@ -50,7 +56,7 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
       default_backend finance2
 
   backend finance2
-      server app 127.0.0.1:9090 proto h2
+      server app <docker-host>:9090 proto h2
   ```
 
   `proto h2` matters: native gRPC needs end-to-end HTTP/2 (gRPC-Web

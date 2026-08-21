@@ -101,7 +101,7 @@ jobs:
       # A built image must boot and pass its own health check with a
       # throwaway database, proving the runtime stage is wired up.
       - run: |
-          docker run -d --name finance2 \n            -e H2_PASSWORD=ci -e H2_FILE_PASSWORD=ci -e COOKIE_SECURE=false \n            -p 9090:9090 -p 9091:9091 finance2:ci
+          docker run -d --name finance2 -e H2_PASSWORD=ci -e H2_FILE_PASSWORD=ci -e COOKIE_SECURE=false -p 9090:9090 -p 9091:9091 finance2:ci
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:9091/healthz; then break; fi; sleep 2
           done
