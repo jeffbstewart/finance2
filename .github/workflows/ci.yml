@@ -52,6 +52,21 @@ jobs:
       # Dependency hygiene, CI-enforced from day one (end-state goal 2).
       - run: npm audit
         working-directory: finance2/web-app
+      # UI unit lane (docs/design/ui-testing.md): vitest over fake
+      # in-memory backends.
+      - run: npm test -- --no-watch
+        working-directory: finance2/web-app
+      # UI e2e lane: Playwright boots the real server (test support
+      # on, scratch DB) and drives the seeded portfolio in Chromium.
+      - run: npx playwright install --with-deps chromium
+        working-directory: finance2/web-app
+      - run: npm run e2e
+        working-directory: finance2/web-app
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results
+          path: finance2/web-app/e2e/.results/
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
