@@ -331,3 +331,30 @@ warnings with per-account badges, and the account-scoped positions
 page shows the account's own — all pointing back to the Import screen
 to re-process once fixed. Lines with no account stay on the Import
 screen only.
+
+## Amendment: trust-class securities and the 401(k) sweep (2026-08-21)
+
+The first export showed two things the v1 processor could not handle.
+
+- **Securities without tickers.** Most of a 401(k) is collective
+  investment trusts — the "Tr" class of a public fund — which Plaid
+  reports with a name and a stable `plaid_security_id` but no ticker.
+  Ticker matching still comes first; otherwise a **human-made link**
+  (`plaid_security_links`, keyed by `plaid_security_id`, persistent
+  across snapshots, chosen in a "Securities in {file}" panel on the
+  Import screen) says which finance2 security it is. The human adds
+  that security by hand with a ticker of their choosing and MANUAL
+  pricing — §6.3's no-auto-creation rule stands. For matched
+  MANUAL-locus securities the processor records the institution price
+  as a private price (source `plaid`, on Plaid's price date) in both
+  account kinds: prices belong to the security, and nothing else will
+  ever price a trust fund.
+- **The sweep.** bankferry fills `cash_balance` from Plaid's
+  `balances.available`, which a 401(k) reports as the whole account;
+  v1 believed it and booked the entire balance as sweep. The processor
+  now believes `cash_balance` only when it is less than the account
+  value (or nothing but cash is held); otherwise sweep is the sum of
+  cash-equivalent holdings, else the account value less every valued
+  holding, else left unchanged with a warning. (bankferry could stop
+  exporting `available` as cash; archived snapshots need this logic
+  regardless.)

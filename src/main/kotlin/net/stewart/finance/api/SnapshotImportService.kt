@@ -5,14 +5,19 @@ import io.grpc.Status
 import io.grpc.StatusException
 import java.time.LocalDate
 import net.stewart.bankferry.proto.Account as PlaidAccount
+import net.stewart.bankferry.proto.Holding
 import net.stewart.bankferry.proto.InvestmentsSnapshot
+import net.stewart.bankferry.proto.SecurityRef
 import net.stewart.finance.db.AccountRepository
 import net.stewart.finance.db.AccountRow
 import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRepository
 import net.stewart.finance.db.PlaidAccountLinkRepository
+import net.stewart.finance.db.PlaidSecurityLinkRepository
+import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
+import net.stewart.finance.db.SecurityRow
 import net.stewart.finance.db.SnapshotRecord
 import net.stewart.finance.db.SnapshotRepository
 import net.stewart.finance.domain.AccountId
@@ -20,7 +25,9 @@ import net.stewart.finance.domain.CurrencyUnit
 import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.PortfolioId
+import net.stewart.finance.domain.PricingLocus
 import net.stewart.finance.domain.Quantity
+import net.stewart.finance.domain.SecurityId
 import net.stewart.finance.domain.SnapshotId
 import net.stewart.finance.domain.SnapshotStatus
 import net.stewart.finance.proto.ImportReport
@@ -39,6 +46,20 @@ data class AttributedWarning(
     val message: String,
 )
 
+/** Provenance recorded on private prices written by the importer. */
+const val PLAID_PRICE_SOURCE = "plaid"
+
+/** How a snapshot security resolved to a finance2 security. */
+enum class SecurityMatch { BY_TICKER, BY_LINK, UNMATCHED }
+
+/** One distinct non-cash security a snapshot holds, with its match. */
+data class SnapshotSecurity(
+    val ref: SecurityRef,
+    val accountCount: Int,
+    val match: SecurityMatch,
+    val security: SecurityRow?,
+)
+
 /** The one snapshot schema this reader understands. */
 const val SUPPORTED_SNAPSHOT_SCHEMA = 1
 
@@ -49,7 +70,10 @@ const val SUPPORTED_SNAPSHOT_SCHEMA = 1
  * tax-deferred holdings and sweeps are written with plaid provenance,
  * taxable accounts are compared and reported, never mutated. Unknown
  * tickers are flagged for the human to add by hand (§6.3 — no
- * auto-creation), then re-process.
+ * auto-creation), then re-process. Securities Plaid reports without a
+ * ticker (401(k) trust funds) match only through a human-made link;
+ * matched MANUAL-locus securities get the institution price recorded
+ * as a private price, since nothing else will ever price them.
  */
 class SnapshotImportService(
     private val snapshots: SnapshotRepository,
@@ -59,6 +83,8 @@ class SnapshotImportService(
     private val holdings: HoldingRepository,
     private val lots: LotRepository,
     private val sales: SaleRepository,
+    private val securityLinks: PlaidSecurityLinkRepository,
+    private val privatePrices: PrivatePriceRepository,
 ) {
 
     /** Validates and archives; mutates nothing else. */
@@ -126,6 +152,27 @@ class SnapshotImportService(
         return result
     }
 
+    /** The distinct non-cash securities a snapshot holds, with how each matches. */
+    fun snapshotSecurities(portfolioId: PortfolioId, id: SnapshotId): List<SnapshotSecurity> {
+        val content = snapshots.content(id, portfolioId)
+            ?: throw StatusException(Status.NOT_FOUND.withDescription("no snapshot ${id.value}"))
+        val index = securityIndex(portfolioId)
+        val seen = linkedMapOf<String, Pair<SecurityRef, MutableSet<String>>>()
+        for (item in parse(content).itemsList) {
+            for (account in item.accountsList) {
+                for (holding in account.holdingsList) {
+                    if (holding.security.isCashEquivalent) continue
+                    val key = holding.security.plaidSecurityId.ifEmpty { "name:${holding.security.name}" }
+                    seen.getOrPut(key) { holding.security to mutableSetOf() }.second += account.accountRef
+                }
+            }
+        }
+        return seen.values.map { (ref, accounts) ->
+            val (match, security) = index.resolve(ref)
+            SnapshotSecurity(ref, accounts.size, match, security)
+        }
+    }
+
     /**
      * The warnings the most recent processing run left against real
      * accounts — what the broker and account views show so the human
@@ -155,11 +202,10 @@ class SnapshotImportService(
     ): ImportReport {
         val builder = ImportReport.newBuilder()
         val linkMap = links.all()
-        val securitiesByTicker = securities.list(portfolioId, includeHidden = true)
-            .filter { it.ticker.isNotBlank() }
-            .associateBy { it.ticker.uppercase() }
+        val index = securityIndex(portfolioId)
         var holdingsUpdated = 0
         var sweepsUpdated = 0
+        var pricesRecorded = 0
 
         for (item in snapshot.itemsList) {
             for (plaidAccount in item.accountsList) {
@@ -180,19 +226,19 @@ class SnapshotImportService(
                     continue
                 }
                 if (account.taxDeferred) {
-                    val counts = importTaxDeferred(
-                        builder, label, plaidAccount, account, securitiesByTicker, asOf, portfolioId,
-                    )
+                    val counts = importTaxDeferred(builder, label, plaidAccount, account, index, asOf, portfolioId)
                     holdingsUpdated += counts.first
                     sweepsUpdated += counts.second
                 } else {
-                    compareTaxable(builder, label, plaidAccount, account, securitiesByTicker, portfolioId)
+                    compareTaxable(builder, label, plaidAccount, account, index, portfolioId)
                 }
+                pricesRecorded += recordInstitutionPrices(builder, label, plaidAccount, account, index, asOf)
             }
         }
         return builder
             .setHoldingsUpdated(holdingsUpdated)
             .setSweepsUpdated(sweepsUpdated)
+            .setPricesRecorded(pricesRecorded)
             .build()
     }
 
@@ -202,7 +248,7 @@ class SnapshotImportService(
         label: String,
         plaidAccount: PlaidAccount,
         account: AccountRow,
-        securitiesByTicker: Map<String, net.stewart.finance.db.SecurityRow>,
+        index: SecurityIndex,
         asOf: LocalDate,
         portfolioId: PortfolioId,
     ): Pair<Int, Int> {
@@ -210,39 +256,27 @@ class SnapshotImportService(
         fun info(message: String) = report.addLines(line(ReportSeverity.INFO, message, account.id))
         var holdingsUpdated = 0
         var sweepsUpdated = 0
-        var cashFromHoldings: Money? = null
-        val seenTickers = mutableSetOf<String>()
+        val seenSecurities = mutableSetOf<SecurityId>()
 
         for (holding in plaidAccount.holdingsList) {
-            if (holding.security.isCashEquivalent) {
-                val value = moneyOf(holding.institutionValue, account.currency)
-                if (value != null) {
-                    cashFromHoldings = (cashFromHoldings ?: Money.zero(account.currency)) + value
-                }
-                continue
-            }
-            val ticker = holding.security.ticker.trim().uppercase()
-            if (ticker.isEmpty()) {
-                warn("$label: \"${holding.security.name}\" has no ticker — cannot match; held ${holding.quantity.value}")
-                continue
-            }
-            val security = securitiesByTicker[ticker]
+            if (holding.security.isCashEquivalent) continue
+            val security = index.resolve(holding.security).second
             if (security == null) {
-                warn("$label: ticker $ticker is not a known security — add it by hand and re-process")
+                warn(unmatched(label, holding))
                 continue
             }
             if (security.currency != account.currency) {
-                warn("$label: $ticker is ${security.currency} but the account is ${account.currency} — skipped")
+                warn("$label: ${security.ticker} is ${security.currency} but the account is ${account.currency} — skipped")
                 continue
             }
             val quantity = try {
                 Quantity.of(holding.quantity.value)
             } catch (e: Exception) {
-                warn("$label: $ticker quantity \"${holding.quantity.value}\" is not a valid share count")
+                warn("$label: ${security.ticker} quantity \"${holding.quantity.value}\" is not a valid share count")
                 continue
             }
             holdings.upsert(account.id, security.id, quantity, EntrySource.PLAID, asOf)
-            seenTickers += ticker
+            seenSecurities += security.id
             holdingsUpdated++
         }
 
@@ -250,12 +284,12 @@ class SnapshotImportService(
         // them so the human decides (delete by hand if truly gone).
         for (existing in holdings.list(portfolioId, account.id)) {
             val security = securities.find(existing.securityId, portfolioId) ?: continue
-            if (security.ticker.uppercase() !in seenTickers) {
+            if (security.id !in seenSecurities) {
                 warn("$label: ${security.ticker} is held here but absent from the snapshot — delete the holding by hand if it was sold")
             }
         }
 
-        val cash = moneyOf(plaidAccount.cashBalance, account.currency) ?: cashFromHoldings
+        val cash = sweepOf(plaidAccount, account, ::info, ::warn)
         if (cash != null) {
             accounts.updateSweep(account.id, cash, EntrySource.PLAID, asOf)
             sweepsUpdated++
@@ -265,6 +299,125 @@ class SnapshotImportService(
         return holdingsUpdated to sweepsUpdated
     }
 
+    /**
+     * The account's cash, as far as the snapshot can be trusted.
+     * bankferry fills cash_balance from Plaid's *available* balance,
+     * which a 401(k) reports as the whole account — so it is believed
+     * only when it is less than the account value (or nothing but cash
+     * is held). Otherwise: the cash-equivalent holdings, else the
+     * account value less every valued holding, else nothing.
+     */
+    private fun sweepOf(
+        plaidAccount: PlaidAccount,
+        account: AccountRow,
+        info: (String) -> Unit,
+        warn: (String) -> Unit,
+    ): Money? {
+        val currency = account.currency
+        val reported = moneyOf(plaidAccount.cashBalance, currency)
+        val total = moneyOf(plaidAccount.institutionValue, currency)
+        var cashEquivalents: Money? = null
+        var nonCashValue = Money.zero(currency)
+        var nonCashHeld = false
+        var everyNonCashValued = true
+        for (holding in plaidAccount.holdingsList) {
+            val value = moneyOf(holding.institutionValue, currency)
+            if (holding.security.isCashEquivalent) {
+                if (value != null) cashEquivalents = (cashEquivalents ?: Money.zero(currency)) + value
+            } else {
+                nonCashHeld = true
+                if (value == null) everyNonCashValued = false else nonCashValue += value
+            }
+        }
+        val reportedIsCash = reported != null && (!nonCashHeld || total == null || reported < total)
+        return when {
+            reportedIsCash -> reported
+            cashEquivalents != null -> cashEquivalents
+            total != null && nonCashHeld && everyNonCashValued && (total - nonCashValue).signum() >= 0 -> {
+                info(
+                    "cash balance ${reported?.display() ?: "(absent)"} is not cash (it is the whole account); " +
+                        "sweep derived as account value ${total.display()} less holdings"
+                )
+                total - nonCashValue
+            }
+            else -> {
+                if (reported != null) {
+                    warn("cash balance ${reported.display()} is the whole account, not cash — sweep left unchanged; set it by hand")
+                }
+                null
+            }
+        }
+    }
+
+    /**
+     * Records the institution price of every matched MANUAL-locus
+     * security as a private price on the institution's price date
+     * (else the snapshot date), with plaid provenance — trust funds
+     * have no market feed, so this is the only price they will get.
+     * One line per account, not per holding. Applies to taxable
+     * accounts too: prices belong to the security, not the account.
+     */
+    private fun recordInstitutionPrices(
+        report: ImportReport.Builder,
+        label: String,
+        plaidAccount: PlaidAccount,
+        account: AccountRow,
+        index: SecurityIndex,
+        asOf: LocalDate,
+    ): Int {
+        var recorded = 0
+        for (holding in plaidAccount.holdingsList) {
+            if (holding.security.isCashEquivalent) continue
+            val security = index.resolve(holding.security).second ?: continue
+            if (security.pricingLocus != PricingLocus.MANUAL) continue
+            val price = moneyOf(holding.institutionPrice, security.currency) ?: continue
+            val date = if (holding.hasPriceAsOf()) {
+                try {
+                    LocalDate.of(holding.priceAsOf.year, holding.priceAsOf.month, holding.priceAsOf.day)
+                } catch (e: Exception) {
+                    asOf
+                }
+            } else {
+                asOf
+            }
+            privatePrices.upsert(security.id, date, price, PLAID_PRICE_SOURCE)
+            recorded++
+        }
+        if (recorded > 0) {
+            report.addLines(line(ReportSeverity.INFO, "$label: $recorded institution price(s) recorded", account.id))
+        }
+        return recorded
+    }
+
+    private fun unmatched(label: String, holding: Holding): String {
+        val ref = holding.security
+        return if (ref.ticker.isBlank()) {
+            "$label: \"${ref.name}\" has no ticker — link it to a finance2 security on the Import screen " +
+                "and re-process; held ${holding.quantity.value}"
+        } else {
+            "$label: ticker ${ref.ticker.trim().uppercase()} is not a known security — add it by hand " +
+                "(or link it on the Import screen) and re-process"
+        }
+    }
+
+    /** Ticker first; else the human's link. */
+    private inner class SecurityIndex(rows: List<SecurityRow>, private val links: Map<String, SecurityId>) {
+        private val byTicker = rows.filter { it.ticker.isNotBlank() }.associateBy { it.ticker.uppercase() }
+        private val byId = rows.associateBy { it.id }
+
+        fun resolve(ref: SecurityRef): Pair<SecurityMatch, SecurityRow?> {
+            val ticker = ref.ticker.trim().uppercase()
+            if (ticker.isNotEmpty()) byTicker[ticker]?.let { return SecurityMatch.BY_TICKER to it }
+            if (ref.plaidSecurityId.isNotEmpty()) {
+                links[ref.plaidSecurityId]?.let { id -> byId[id]?.let { return SecurityMatch.BY_LINK to it } }
+            }
+            return SecurityMatch.UNMATCHED to null
+        }
+    }
+
+    private fun securityIndex(portfolioId: PortfolioId) =
+        SecurityIndex(securities.list(portfolioId, includeHidden = true), securityLinks.all())
+
     /** Taxable accounts: compare institution quantities against the
      *  hand-maintained lots; never mutate (build-scope §1, §11 v1 ruling). */
     private fun compareTaxable(
@@ -272,7 +425,7 @@ class SnapshotImportService(
         label: String,
         plaidAccount: PlaidAccount,
         account: AccountRow,
-        securitiesByTicker: Map<String, net.stewart.finance.db.SecurityRow>,
+        index: SecurityIndex,
         portfolioId: PortfolioId,
     ) {
         fun warn(message: String) = report.addLines(line(ReportSeverity.WARNING, message, account.id))
@@ -280,13 +433,12 @@ class SnapshotImportService(
         var matches = 0
         for (holding in plaidAccount.holdingsList) {
             if (holding.security.isCashEquivalent) continue
-            val ticker = holding.security.ticker.trim().uppercase()
-            if (ticker.isEmpty()) continue
-            val security = securitiesByTicker[ticker]
+            val security = index.resolve(holding.security).second
             if (security == null) {
-                warn("$label: ticker $ticker is not a known security — add it by hand and re-process")
+                warn(unmatched(label, holding))
                 continue
             }
+            val ticker = security.ticker
             val institutionQuantity = try {
                 Quantity.of(holding.quantity.value)
             } catch (e: Exception) {

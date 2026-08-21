@@ -4,16 +4,20 @@ import io.grpc.Status
 import io.grpc.StatusException
 import java.time.format.DateTimeFormatter
 import net.stewart.armeria.auth.currentAuthUser
+import net.stewart.finance.api.SecurityMatch
 import net.stewart.finance.api.SnapshotImportService
 import net.stewart.finance.api.toFormattedDate
 import net.stewart.finance.db.AccountRepository
 import net.stewart.finance.db.PlaidAccountLinkRepository
+import net.stewart.finance.db.PlaidSecurityLinkRepository
 import net.stewart.finance.db.PortfolioRepository
+import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.SnapshotRecord
 import net.stewart.finance.db.SnapshotRepository
 import net.stewart.finance.domain.AccountId
 import net.stewart.finance.domain.BrokerId
 import net.stewart.finance.domain.PortfolioId
+import net.stewart.finance.domain.SecurityId
 import net.stewart.finance.domain.SnapshotId
 import net.stewart.finance.domain.SnapshotStatus
 import net.stewart.finance.domain.UserId
@@ -21,18 +25,24 @@ import net.stewart.finance.proto.DeleteSnapshotRequest
 import net.stewart.finance.proto.DeleteSnapshotResponse
 import net.stewart.finance.proto.GetSnapshotAccountsRequest
 import net.stewart.finance.proto.GetSnapshotAccountsResponse
+import net.stewart.finance.proto.GetSnapshotSecuritiesRequest
+import net.stewart.finance.proto.GetSnapshotSecuritiesResponse
 import net.stewart.finance.proto.ImportReport
 import net.stewart.finance.proto.ImportServiceGrpcKt
 import net.stewart.finance.proto.ImportWarning
 import net.stewart.finance.proto.LinkPlaidAccountRequest
 import net.stewart.finance.proto.LinkPlaidAccountResponse
+import net.stewart.finance.proto.LinkPlaidSecurityRequest
+import net.stewart.finance.proto.LinkPlaidSecurityResponse
 import net.stewart.finance.proto.ListImportWarningsRequest
 import net.stewart.finance.proto.ListImportWarningsResponse
 import net.stewart.finance.proto.ListSnapshotsRequest
 import net.stewart.finance.proto.ListSnapshotsResponse
 import net.stewart.finance.proto.PlaidAccountView
+import net.stewart.finance.proto.PlaidSecurityView
 import net.stewart.finance.proto.ProcessSnapshotRequest
 import net.stewart.finance.proto.ProcessSnapshotResponse
+import net.stewart.finance.proto.SecurityMatch as SecurityMatchProto
 import net.stewart.finance.proto.SnapshotRow
 import net.stewart.finance.proto.SnapshotStatus as SnapshotStatusProto
 import net.stewart.finance.proto.UploadSnapshotRequest
@@ -53,6 +63,8 @@ class ImportGrpcService(
     private val links: PlaidAccountLinkRepository,
     private val snapshots: SnapshotRepository,
     private val importer: SnapshotImportService,
+    private val securityLinks: PlaidSecurityLinkRepository,
+    private val securities: SecurityRepository,
 ) : ImportServiceGrpcKt.ImportServiceCoroutineImplBase() {
 
     override suspend fun uploadSnapshot(request: UploadSnapshotRequest): UploadSnapshotResponse {
@@ -123,6 +135,46 @@ class ImportGrpcService(
             ?: throw StatusException(Status.NOT_FOUND.withDescription("no account ${request.accountId}"))
         links.link(accountRef, account.id)
         return LinkPlaidAccountResponse.getDefaultInstance()
+    }
+
+    override suspend fun getSnapshotSecurities(
+        request: GetSnapshotSecuritiesRequest,
+    ): GetSnapshotSecuritiesResponse {
+        val builder = GetSnapshotSecuritiesResponse.newBuilder()
+        for (entry in importer.snapshotSecurities(portfolio(), snapshotId(request.snapshotId))) {
+            val view = PlaidSecurityView.newBuilder()
+                .setPlaidSecurityId(entry.ref.plaidSecurityId)
+                .setName(entry.ref.name)
+                .setTicker(entry.ref.ticker)
+                .setCusip(entry.ref.cusip)
+                .setType(entry.ref.type)
+                .setCurrencyCode(entry.ref.currencyCode)
+                .setAccounts(entry.accountCount)
+                .setMatch(
+                    when (entry.match) {
+                        SecurityMatch.BY_TICKER -> SecurityMatchProto.BY_TICKER
+                        SecurityMatch.BY_LINK -> SecurityMatchProto.BY_LINK
+                        SecurityMatch.UNMATCHED -> SecurityMatchProto.UNMATCHED
+                    }
+                )
+            entry.security?.let { view.setSecurityId(it.id.value).setSecurityTicker(it.ticker) }
+            builder.addSecurities(view)
+        }
+        return builder.build()
+    }
+
+    override suspend fun linkPlaidSecurity(request: LinkPlaidSecurityRequest): LinkPlaidSecurityResponse {
+        val plaidSecurityId = request.plaidSecurityId.trim()
+        if (plaidSecurityId.isEmpty()) throw invalid("plaid security id is required")
+        if (plaidSecurityId.length > 128) throw invalid("plaid security id exceeds 128 characters")
+        if (request.securityId == 0L) {
+            securityLinks.unlink(plaidSecurityId)
+            return LinkPlaidSecurityResponse.getDefaultInstance()
+        }
+        val security = securities.find(SecurityId(request.securityId), portfolio())
+            ?: throw StatusException(Status.NOT_FOUND.withDescription("no security ${request.securityId}"))
+        securityLinks.link(plaidSecurityId, security.id)
+        return LinkPlaidSecurityResponse.getDefaultInstance()
     }
 
     override suspend fun listImportWarnings(

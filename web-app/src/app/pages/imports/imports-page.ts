@@ -7,10 +7,13 @@ import { MatTableModule } from '@angular/material/table';
 import type { AccountSummary } from '../../../proto-gen/accounts_pb';
 import {
   ReportSeverity,
+  SecurityMatch,
   SnapshotStatus,
   type PlaidAccountView,
+  type PlaidSecurityView,
   type SnapshotRow,
 } from '../../../proto-gen/imports_pb';
+import type { SecurityListing } from '../../../proto-gen/securities_pb';
 import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
 
@@ -19,6 +22,8 @@ import { Notify } from '../../core/notify';
  * upload through the session, archive, link Plaid accounts, and run
  * the freely repeatable processor. Everything here is revisitable —
  * fix lots or create the missing account, then process again.
+ * Securities Plaid reports without a ticker (401(k) trust funds) are
+ * linked to a finance2 security here the same way accounts are.
  */
 @Component({
   selector: 'app-imports-page',
@@ -33,12 +38,16 @@ export class ImportsPage {
   readonly selected = signal<SnapshotRow | undefined>(undefined);
   readonly plaidAccounts = signal<PlaidAccountView[]>([]);
   readonly localAccounts = signal<AccountSummary[]>([]);
+  readonly plaidSecurities = signal<PlaidSecurityView[]>([]);
+  readonly localSecurities = signal<SecurityListing[]>([]);
   readonly busy = signal(false);
   readonly columns = ['filename', 'asOf', 'uploaded', 'status', 'processed', 'actions'];
   readonly accountColumns = ['institution', 'plaidName', 'kind', 'holdings', 'link'];
+  readonly securityColumns = ['securityName', 'identifiers', 'securityType', 'accounts', 'securityLink'];
 
   readonly SnapshotStatus = SnapshotStatus;
   readonly ReportSeverity = ReportSeverity;
+  readonly SecurityMatch = SecurityMatch;
   /** Template-safe bigint zero — Angular templates can't write 0n. */
   readonly UNLINKED = BigInt(0);
 
@@ -50,17 +59,22 @@ export class ImportsPage {
 
   async reload(selectId?: bigint): Promise<void> {
     try {
-      const [snapshots, accounts] = await Promise.all([
+      const [snapshots, accounts, securities] = await Promise.all([
         api.imports.listSnapshots({}),
         api.accounts.listAccounts({ includeHidden: true }),
+        api.securities.listSecurities({ includeHidden: true }),
       ]);
       this.snapshots.set(snapshots.snapshots);
       this.localAccounts.set(accounts.accounts);
+      this.localSecurities.set(securities.securities);
       const keep = selectId ?? this.selected()?.snapshotId;
       const selected = snapshots.snapshots.find((s) => s.snapshotId === keep);
       this.selected.set(selected);
-      if (selected) await this.loadAccounts(selected);
-      else this.plaidAccounts.set([]);
+      if (selected) await this.loadPanels(selected);
+      else {
+        this.plaidAccounts.set([]);
+        this.plaidSecurities.set([]);
+      }
     } catch (err) {
       this.notify.error(err);
     }
@@ -99,7 +113,11 @@ export class ImportsPage {
 
   async select(row: SnapshotRow): Promise<void> {
     this.selected.set(row);
-    await this.loadAccounts(row);
+    await this.loadPanels(row);
+  }
+
+  private async loadPanels(row: SnapshotRow): Promise<void> {
+    await Promise.all([this.loadAccounts(row), this.loadSecurities(row)]);
   }
 
   private async loadAccounts(row: SnapshotRow): Promise<void> {
@@ -111,13 +129,23 @@ export class ImportsPage {
     }
   }
 
+  private async loadSecurities(row: SnapshotRow): Promise<void> {
+    try {
+      const response = await api.imports.getSnapshotSecurities({ snapshotId: row.snapshotId });
+      this.plaidSecurities.set(response.securities);
+    } catch (err) {
+      this.notify.error(err);
+    }
+  }
+
   async process(row: SnapshotRow): Promise<void> {
     this.busy.set(true);
     try {
       const response = await api.imports.processSnapshot({ snapshotId: row.snapshotId });
       const report = response.snapshot?.report;
       this.notify.success(
-        `Processed — ${report?.holdingsUpdated ?? 0} holding(s), ${report?.sweepsUpdated ?? 0} sweep(s) updated`,
+        `Processed — ${report?.holdingsUpdated ?? 0} holding(s), ${report?.sweepsUpdated ?? 0} sweep(s) updated` +
+          (report?.pricesRecorded ? `, ${report.pricesRecorded} price(s) recorded` : ''),
       );
       await this.reload(row.snapshotId);
     } catch (err) {
@@ -148,6 +176,31 @@ export class ImportsPage {
     } catch (err) {
       this.notify.error(err);
     }
+  }
+
+  async securityLinkChanged(plaidSecurity: PlaidSecurityView, securityId: bigint): Promise<void> {
+    try {
+      await api.imports.linkPlaidSecurity({
+        plaidSecurityId: plaidSecurity.plaidSecurityId,
+        securityId,
+      });
+      this.notify.success(securityId ? 'Security linked — process to import' : 'Link removed');
+      const selected = this.selected();
+      if (selected) await this.loadSecurities(selected);
+    } catch (err) {
+      this.notify.error(err);
+    }
+  }
+
+  /** Ticker / CUSIP as Plaid reported them; "no ticker" is the whole
+   *  reason the securities panel exists. */
+  identifiers(security: PlaidSecurityView): string {
+    const parts = [security.ticker, security.cusip ? `CUSIP ${security.cusip}` : ''].filter(Boolean);
+    return parts.length ? parts.join(' · ') : 'no ticker';
+  }
+
+  securityLabel(security: SecurityListing): string {
+    return security.description ? `${security.ticker} — ${security.description}` : security.ticker;
   }
 
   accountLabel(account: AccountSummary): string {

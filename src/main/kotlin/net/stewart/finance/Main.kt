@@ -33,6 +33,7 @@ import net.stewart.finance.db.FxRepository
 import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRepository
 import net.stewart.finance.db.PlaidAccountLinkRepository
+import net.stewart.finance.db.PlaidSecurityLinkRepository
 import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SnapshotRepository
@@ -236,12 +237,15 @@ fun main() {
                         run {
                             val snapshots = SnapshotRepository(db.dataSource)
                             val links = PlaidAccountLinkRepository(db.dataSource)
+                            val securityLinks = PlaidSecurityLinkRepository(db.dataSource)
                             ImportGrpcService(
                                 portfolios, accounts, links, snapshots,
                                 SnapshotImportService(
                                     snapshots, links, accounts, securities,
                                     HoldingRepository(db.dataSource), lots, sales,
+                                    securityLinks, privatePrices,
                                 ),
+                                securityLinks, securities,
                             )
                         }
                     ),

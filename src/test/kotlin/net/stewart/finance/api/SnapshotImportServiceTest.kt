@@ -15,6 +15,8 @@ import net.stewart.finance.db.AccountRepository
 import net.stewart.finance.db.HoldingRepository
 import net.stewart.finance.db.LotRepository
 import net.stewart.finance.db.PlaidAccountLinkRepository
+import net.stewart.finance.db.PlaidSecurityLinkRepository
+import net.stewart.finance.db.PrivatePriceRepository
 import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.SnapshotRepository
@@ -54,6 +56,8 @@ class SnapshotImportServiceTest {
             HoldingRepository(db.dataSource),
             LotRepository(db.dataSource),
             SaleRepository(db.dataSource),
+            PlaidSecurityLinkRepository(db.dataSource),
+            PrivatePriceRepository(db.dataSource),
         )
 
     @BeforeEach
@@ -61,6 +65,8 @@ class SnapshotImportServiceTest {
         val statements = listOf(
             "DELETE FROM snapshot_uploads",
             "DELETE FROM plaid_account_links",
+            "DELETE FROM plaid_security_links",
+            "DELETE FROM private_prices",
             "DELETE FROM holdings",
             "DELETE FROM sale_allocations",
             "DELETE FROM sales",
@@ -76,6 +82,9 @@ class SnapshotImportServiceTest {
             "INSERT INTO accounts (id, broker_id, name, account_number, currency, tax_deferred) " +
                 "VALUES (2, 1, 'Brokerage', 'X-2', 'USD', FALSE)",
             "INSERT INTO securities (id, portfolio_id, ticker, currency) VALUES (1, 1, 'VTI', 'USD')",
+            // A 401(k) trust-class fund: no public ticker, priced by hand.
+            "INSERT INTO securities (id, portfolio_id, ticker, currency, pricing_locus) " +
+                "VALUES (2, 1, 'VBTIX-TR', 'USD', 'MANUAL')",
             // Taxable Brokerage holds a 10-share VTI lot by hand.
             "INSERT INTO purchase_lots (account_id, security_id, date_bought, quantity, price_per_share, purchase_costs) " +
                 "VALUES (2, 1, DATE '2026-01-05', 10, 200.0000, 0)",
@@ -104,6 +113,31 @@ class SnapshotImportServiceTest {
             .setQuantity(decimal(quantity))
             .setInstitutionValue(money(value))
             .build()
+
+    /** A trust-class holding the way Plaid reports it: no ticker, a
+     *  stable security id, institution price and value. */
+    private fun trustHolding(quantity: String, price: String, value: String): Holding =
+        Holding.newBuilder()
+            .setSecurity(
+                SecurityRef.newBuilder().setPlaidSecurityId("plaid-sec-trust")
+                    .setName("Inst Tot Bd Mkt Ix Tr").setType("mutual fund").setCurrencyCode("USD")
+            )
+            .setQuantity(decimal(quantity))
+            .setInstitutionPrice(money(price))
+            .setPriceAsOf(PlaidDate.newBuilder().setYear(2026).setMonth(8).setDay(14))
+            .setInstitutionValue(money(value))
+            .build()
+
+    /** A 401(k) as Plaid reports it: available balance = the whole account. */
+    private fun account401k(vararg holdings: Holding, total: String, available: String? = total): PlaidAccount {
+        val builder = PlaidAccount.newBuilder()
+            .setAccountRef("ref-401k").setName("401(k)").setMask("4401")
+            .setType("investment").setSubtype("401k")
+            .setInstitutionValue(money(total))
+            .addAllHoldings(holdings.toList())
+        available?.let { builder.setCashBalance(money(it)) }
+        return builder.build()
+    }
 
     private fun snapshot(vararg accounts: PlaidAccount): InvestmentsSnapshot =
         InvestmentsSnapshot.newBuilder()
@@ -343,6 +377,118 @@ class SnapshotImportServiceTest {
         // IRA and the first snapshot does not carry it.
         assertEquals(3, rerun.size)
         assertTrue(rerun.any { it.account.id == AccountId(1) && "absent from the snapshot" in it.message })
+    }
+
+    @Test
+    fun `no-ticker holdings warn until linked, then import with the institution price recorded`() {
+        PlaidAccountLinkRepository(db.dataSource).link("ref-401k", AccountId(1))
+        val record = service.upload(
+            portfolioId, "s.pb",
+            snapshot(account401k(trustHolding("100.5", "11.2500", "1130.63"), total = "1130.63")).toByteArray(),
+        )
+        val first = ImportReport.parseFrom(service.process(portfolioId, record.id).report!!)
+        val unmatched = first.linesList.single { "has no ticker" in it.message }
+        assertTrue("link it to a finance2 security on the Import screen" in unmatched.message)
+        assertEquals(1L, unmatched.accountId)
+        assertEquals(0, first.holdingsUpdated)
+        assertEquals(0, first.pricesRecorded)
+        assertTrue(PrivatePriceRepository(db.dataSource).list(SecurityId(2)).isEmpty())
+
+        // The human links the Plaid security to the hand-priced fund.
+        PlaidSecurityLinkRepository(db.dataSource).link("plaid-sec-trust", SecurityId(2))
+        val second = ImportReport.parseFrom(service.process(portfolioId, record.id).report!!)
+        assertTrue(lines(second).none { "has no ticker" in it })
+        assertEquals(1, second.holdingsUpdated)
+        assertEquals(1, second.pricesRecorded)
+        val holdingRow = HoldingRepository(db.dataSource).list(portfolioId).single()
+        assertEquals(SecurityId(2), holdingRow.securityId)
+        assertEquals(Quantity.of("100.5"), holdingRow.quantity)
+        // Institution price lands as a private price on Plaid's price date.
+        val price = PrivatePriceRepository(db.dataSource).list(SecurityId(2)).single()
+        assertEquals(LocalDate.of(2026, 8, 14), price.date)
+        assertEquals(0, Money.of("11.25", CurrencyUnit.USD).amount.compareTo(price.price.amount))
+        // Re-processing replaces rather than duplicates the price.
+        service.process(portfolioId, record.id)
+        assertEquals(1, PrivatePriceRepository(db.dataSource).list(SecurityId(2)).size)
+    }
+
+    @Test
+    fun `a 401k whose available balance is the whole account does not become sweep`() {
+        PlaidAccountLinkRepository(db.dataSource).link("ref-401k", AccountId(1))
+        PlaidSecurityLinkRepository(db.dataSource).link("plaid-sec-trust", SecurityId(2))
+        val record = service.upload(
+            portfolioId, "s.pb",
+            snapshot(
+                account401k(
+                    trustHolding("100", "10.00", "1000.00"),
+                    holding("VTI", "2", value = "500.00"),
+                    total = "1500.00",
+                )
+            ).toByteArray(),
+        )
+        val report = ImportReport.parseFrom(service.process(portfolioId, record.id).report!!)
+        // Sweep is the account value less its valued holdings: zero.
+        val account = AccountRepository(db.dataSource).find(AccountId(1), portfolioId)!!
+        assertEquals(0, account.sweep.amount.signum())
+        assertEquals(EntrySource.PLAID, account.sweepSource)
+        assertTrue(lines(report).any { "sweep derived as account value" in it })
+        assertEquals(2, report.holdingsUpdated)
+    }
+
+    @Test
+    fun `a plausible cash balance is still believed, and an unvalued holding blocks derivation`() {
+        PlaidAccountLinkRepository(db.dataSource).link("ref-401k", AccountId(1))
+        // Cash below the account value: that is cash.
+        val plausible = service.upload(
+            portfolioId, "a.pb",
+            snapshot(account401k(holding("VTI", "2", value = "500.00"), total = "600.00", available = "100.00"))
+                .toByteArray(),
+        )
+        service.process(portfolioId, plausible.id)
+        assertEquals(
+            0,
+            Money.of("100.00", CurrencyUnit.USD).amount
+                .compareTo(AccountRepository(db.dataSource).find(AccountId(1), portfolioId)!!.sweep.amount),
+        )
+        // Whole-account "cash" with a holding Plaid did not value: no
+        // derivation possible — leave the sweep alone and say so.
+        val unvalued = service.upload(
+            portfolioId, "b.pb",
+            snapshot(
+                account401k(holding("VTI", "2").toBuilder().clearInstitutionValue().build(), total = "600.00")
+            ).toByteArray(),
+        )
+        val report = ImportReport.parseFrom(service.process(portfolioId, unvalued.id).report!!)
+        assertEquals(0, report.sweepsUpdated)
+        assertTrue(lines(report).any { "sweep left unchanged" in it })
+        assertEquals(
+            0,
+            Money.of("100.00", CurrencyUnit.USD).amount
+                .compareTo(AccountRepository(db.dataSource).find(AccountId(1), portfolioId)!!.sweep.amount),
+        )
+    }
+
+    @Test
+    fun `snapshot securities list each distinct non-cash security with its match`() {
+        PlaidSecurityLinkRepository(db.dataSource).link("plaid-sec-trust", SecurityId(2))
+        val record = service.upload(
+            portfolioId, "s.pb",
+            snapshot(
+                iraAccount(holding("VTI", "1"), holding("VMFXX", "5", cash = true), holding("MYSTERY", "1")),
+                account401k(trustHolding("100", "10.00", "1000.00"), holding("VTI", "2"), total = "1020.00"),
+            ).toByteArray(),
+        )
+        val rows = service.snapshotSecurities(portfolioId, record.id)
+        assertEquals(listOf("VTI", "MYSTERY", ""), rows.map { it.ref.ticker })
+        val vti = rows[0]
+        assertEquals(SecurityMatch.BY_TICKER, vti.match)
+        assertEquals(2, vti.accountCount)
+        assertEquals(SecurityMatch.UNMATCHED, rows[1].match)
+        assertEquals(null, rows[1].security)
+        val trust = rows[2]
+        assertEquals(SecurityMatch.BY_LINK, trust.match)
+        assertEquals("VBTIX-TR", trust.security?.ticker)
+        assertEquals("Inst Tot Bd Mkt Ix Tr", trust.ref.name)
     }
 
     @Test

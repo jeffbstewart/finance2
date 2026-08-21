@@ -146,7 +146,8 @@ test('lists the seeded snapshot as uploaded and never processed', async ({ page 
 test('selecting a snapshot lists its Plaid accounts with the seeded link', async ({ page }) => {
   await page.goto('/app/imports');
   await selectSnapshot(page, 'vanguard-sample.pb');
-  await expect(page.locator('table[mat-table]')).toHaveCount(2);
+  // Snapshots, accounts, securities.
+  await expect(page.locator('table[mat-table]')).toHaveCount(3);
   const accounts = await readTable(page, 1);
   expect(accounts.header).toEqual([
     'Institution', 'Account', 'Type', 'Holdings', 'Linked finance2 account',
@@ -155,6 +156,11 @@ test('selecting a snapshot lists its Plaid accounts with the seeded link', async
   expect(accounts.rows).toEqual([
     ['Vanguard', 'Roth IRA…5678', 'investment / roth', '1', 'Vanguard : Roth IRA (USD)'],
   ]);
+  // The seeded VTI holding matches by ticker, so it gets a chip, not a select.
+  const securities = await readTable(page, 2);
+  expect(securities.header).toEqual(['Security', 'Identifiers', 'Type', 'Accounts', 'finance2 security']);
+  expect(securities.rows).toEqual([['Total Market ETF', 'VTI', '', '1', 'VTI (by ticker)']]);
+  await expect(page.locator('table[mat-table]').nth(2).locator('mat-select')).toHaveCount(0);
   await expect(page.locator('tr.selected-row')).toHaveCount(1);
 });
 
