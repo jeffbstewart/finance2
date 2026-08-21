@@ -113,6 +113,16 @@ public toolkit siblings beside the repo (the Gradle composite cannot
 configure without them), installs web deps, tries to install
 Chromium, builds the server + SPA, and prints the lane commands.
 
+**Cloud sandbox realities (learned from the first cloud worker,
+PR #52):** the sandbox's egress proxy blocks the Chromium download,
+so the full e2e lane is unavailable there — `npm run e2e:typecheck`
+is the expected cloud rung and CI runs the real e2e lane on the PR.
+The sandbox image's Node may be below Angular CLI's minimum;
+`cloud-setup.sh` upgrades via nvm and now fails loudly instead of
+exiting 0 on a broken step. A session's configured default branch
+name does not override rule 1 — use `agent/tests-<slug>`. Pure-function
+assignments (`core-utils`) have no e2e spec by design.
+
 **Rules — these prevent fifteen PRs from colliding:**
 
 1. One assignment per worker. Branch `agent/tests-<slug>`, base
