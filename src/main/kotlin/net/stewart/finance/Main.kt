@@ -133,8 +133,16 @@ fun main() {
         marketData.refreshAll(securitiesRepo.listAllMarket())
     }.start()
 
-    val setupToken = if (users.hasUsers()) null else generateSetupToken().also {
-        log.info("First-run setup: no user exists. Setup token (required by CreateFirstUser): {}", it)
+    // Test harnesses need a deterministic first boot: with test
+    // support enabled, SETUP_TOKEN overrides the random per-run token.
+    val testSupport = System.getenv("FINANCE2_TEST_SUPPORT")?.toBooleanStrictOrNull() ?: false
+    val setupToken = if (users.hasUsers()) null else {
+        val override = if (testSupport) {
+            System.getenv("SETUP_TOKEN")?.takeIf { it.isNotBlank() }
+        } else null
+        (override ?: generateSetupToken()).also {
+            log.info("First-run setup: no user exists. Setup token (required by CreateFirstUser): {}", it)
+        }
     }
 
     val trustedProxies = System.getenv("TRUSTED_PROXIES")
@@ -226,6 +234,17 @@ fun main() {
                             )
                         }
                     ),
+                ) + if (!testSupport) emptyList() else listOf(
+                    // Test-only fixtures (docs/design/ui-testing.md):
+                    // never registered without the env opt-in.
+                    GrpcServiceSpec(
+                        net.stewart.finance.testsupport.TestSupportGrpcService(
+                            portfolios,
+                            net.stewart.finance.testsupport.SampleSeeder(db.dataSource),
+                        )
+                    ).also {
+                        log.warn("FINANCE2_TEST_SUPPORT is enabled — TestSupportService is registered (test deployments only)")
+                    }
                 )
             },
             grpcInterceptors = listOf(RequestMetaInterceptor(), authInterceptor),

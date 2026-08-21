@@ -1,0 +1,37 @@
+// TestSupportService: test-only fixtures for UI unit/integration
+// harnesses (docs/design/ui-testing.md). The server registers this
+// service ONLY when FINANCE2_TEST_SUPPORT=true; it never exists in a
+// normal deployment. Calls are session-authenticated like everything
+// else — harnesses log in first.
+syntax = "proto3";
+
+package finance;
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+// Wipes the caller's portfolio domain data (brokers, accounts,
+// securities, lots, sales, holdings, marks, classifications, targets,
+// prices, snapshots, links). Users, sessions, FX, and CPI stay.
+message ResetPortfolioRequest {}
+
+message ResetPortfolioResponse {}
+
+// Seeds the canonical sample portfolio described in
+// docs/design/ui-testing.md, with all dates computed relative to the
+// server clock so date-sensitive screens (previous-calendar-year tax
+// default, six-month sparklines, MTM year defaults) have data where
+// they look for it. Idempotent only after ResetPortfolio.
+message SeedSamplePortfolioRequest {}
+
+message SeedSamplePortfolioResponse {
+  // Stable keys ("broker.vanguard", "account.roth", "security.vti",
+  // "lot.vti_lt", ...) to entity ids, so tests never scrape ids from
+  // the UI.
+  map<string, int64> ids = 1;
+}
+
+service TestSupportService {
+  rpc ResetPortfolio(ResetPortfolioRequest) returns (ResetPortfolioResponse);
+  rpc SeedSamplePortfolio(SeedSamplePortfolioRequest) returns (SeedSamplePortfolioResponse);
+}

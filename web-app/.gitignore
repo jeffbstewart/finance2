@@ -1,0 +1,4 @@
+
+# E2E lane artifacts (docs/design/ui-testing.md)
+e2e/.auth/
+e2e/.results/

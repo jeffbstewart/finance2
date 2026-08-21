@@ -48,6 +48,9 @@ const PROTO_FILES = [
   // plaid_snapshot.proto is deliberately absent: the browser uploads
   // snapshot bytes opaquely; only the server parses them.
   'imports.proto',
+  // Test-only service (docs/design/ui-testing.md): the e2e harness
+  // calls it from Node; the app itself never does.
+  'testsupport.proto',
 ];
 
 const protocBin = process.platform === 'win32'
