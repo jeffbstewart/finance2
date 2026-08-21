@@ -4,10 +4,15 @@
 #   docker compose up -d --build
 #   docker compose logs -f finance2   # first run prints the setup token
 #
-# Everything an operator tunes comes from the environment (compose reads
-# .env for ${...} substitution as well as for env_file), with defaults
+# Everything comes from the environment - Portainer's stack variables,
+# or a .env beside this file for the compose CLI (read for ${...}
+# substitution only; there is deliberately no env_file). Defaults are
 # shown inline, so this file can be used as published:
 #
+#   H2_PASSWORD, H2_FILE_PASSWORD   database credentials (REQUIRED)
+#   TRUSTED_PROXIES                 HAProxy address(es); see example.env
+#   COOKIE_SECURE                   true unless a plain-HTTP dev setup
+#   TIINGO_API_KEY, EODHD_API_KEY   optional market-data providers
 #   FINANCE2_DATA           host directory for the encrypted database
 #                           (REQUIRED - compose refuses to start without it)
 #   FINANCE2_PORT           host port for the HAProxy-facing server (9090)
@@ -38,11 +43,18 @@ services:
     security_opt: ["no-new-privileges:true"]
     read_only: true
     tmpfs: [/tmp]
-    env_file: .env
     environment:
       # Inside the container the database always lives on the bind
-      # mount, whatever DB_PATH a developer's .env says.
+      # mount; the listening ports are fixed and mapped below.
       DB_PATH: /data/finance2
+      PORT: "9090"
+      INTERNAL_PORT: "9091"
+      H2_PASSWORD: "${H2_PASSWORD:?set H2_PASSWORD (the H2 SA password)}"
+      H2_FILE_PASSWORD: "${H2_FILE_PASSWORD:?set H2_FILE_PASSWORD (the database file encryption password)}"
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      TIINGO_API_KEY: "${TIINGO_API_KEY:-}"
+      EODHD_API_KEY: "${EODHD_API_KEY:-}"
     ports:
       - "${FINANCE2_PORT:-9090}:9090"
       - "${FINANCE2_INTERNAL_PORT:-9091}:9091"
