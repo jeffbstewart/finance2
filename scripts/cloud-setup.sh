@@ -19,23 +19,10 @@ fail() { echo "!! $*" >&2; echo "!! cloud-setup FAILED"; exit 1; }
 echo ">> toolchain check (needed before anything else)"
 java -version 2>&1 | head -1 || fail "JDK 21+ required on PATH (CI uses corretto 25)"
 
-# Angular CLI 22 refuses Node below 22.22.3 (ng exits 3); some sandbox
-# images ship 22.22.2. Upgrade through nvm when it is available.
-MIN_NODE="22.22.3"
-node_ok() {
-  [ "$(printf '%s
-%s
-' "$MIN_NODE" "$(node --version | sed 's/^v//')" | sort -V | head -1)" = "$MIN_NODE" ]
-}
-if ! command -v node >/dev/null || ! node_ok; then
-  if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
-    echo ">> node $(node --version 2>/dev/null || echo missing) is below $MIN_NODE — installing Node 24 via nvm"
-    # shellcheck disable=SC1090
-    . "${NVM_DIR:-$HOME/.nvm}/nvm.sh" && nvm install 24 >/dev/null && nvm use 24 >/dev/null
-  fi
-  node_ok || fail "Node >= $MIN_NODE required (have $(node --version 2>/dev/null || echo none)); install Node 24"
-fi
-echo ">> node $(node --version)"
+# Node: Angular CLI 22 needs >= 22.22.3; provisioned by the sourceable
+# helper every worker shell must also source before running the lanes.
+# shellcheck disable=SC1091
+. "$repo_root/scripts/cloud-env.sh" || fail "Node provisioning failed"
 
 for sibling in armeria-kotlin-toolkit h2-kotlin-toolkit auth-kotlin-toolkit; do
   if [ -d "$parent/$sibling" ]; then
