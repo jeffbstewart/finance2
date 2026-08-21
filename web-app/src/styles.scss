@@ -55,3 +55,18 @@ body {
   background: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
 }
+
+// Material's outlined form field floats its label ~7px ABOVE the
+// field's border box. Dialog content and our wide-table card content
+// are scroll containers (overflow: auto / overflow-x: auto — which
+// clips vertically too) with no top padding, so a form field on the
+// first row loses the top half of its label. Reserve the overhang
+// globally. The last selector exists because Material zeroes the top
+// padding whenever content follows a dialog title
+// (.mat-mdc-dialog-container .mat-mdc-dialog-title + …, 0-3-0) — the
+// extra type selector outranks it (0-3-1) without !important.
+mat-dialog-content.mat-mdc-dialog-content,
+mat-card-content.mat-mdc-card-content,
+.mat-mdc-dialog-container .mat-mdc-dialog-title + mat-dialog-content.mat-mdc-dialog-content {
+  padding-top: 8px;
+}
