@@ -12,7 +12,13 @@ backends**; no server, no network, milliseconds per spec.
 **E2E lane** — Playwright (`npm run e2e`). Boots the real server on a
 scratch database with `FINANCE2_TEST_SUPPORT=true`, logs in once
 (shared `storageState`), and drives the seeded portfolio in Chromium.
-Specs run serially against one server; every spec file reseeds.
+Specs run serially against one server, and **every test reseeds**
+in `beforeEach` — a full reset+seed measures ~46 ms mean (p95
+54 ms) on a warm server, so there is no read-only vs mutation
+test taxonomy to maintain and no cross-test state coupling to
+debug (ruling, Jeff 2026-08-21). If a suite ever grows slow,
+`test.beforeAll` seeding is a local optimization for that file,
+not a framework concept.
 
 Both lanes assert against the same canonical **sample portfolio**, so
 entity names and figures agree everywhere.
@@ -80,7 +86,7 @@ the previous calendar year.
   inputs (unit) or table/text content (e2e).
 - **Don't** sleep — use `settle()` (unit) and Playwright's
   auto-waiting `expect` (e2e).
-- **Don't** depend on spec order; each e2e spec file calls
-  `seedPortfolio()` in `beforeEach`.
+- **Don't** depend on spec order or prior state; call
+  `seedPortfolio()` in `test.beforeEach` — it costs ~46 ms.
 - **Don't** widen `SampleSeeder` casually — pages share it; additive
   changes only, and update this document's inventory when you do.
