@@ -59,7 +59,7 @@ VOLUME /data
 ENV DB_PATH=/data/finance2 \
     PORT=9090 \
     INTERNAL_PORT=9091 \
-    JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+    JAVA_OPTS="-XX:MaxRAMPercentage=50 -XX:+ExitOnOutOfMemoryError"
 EXPOSE 9090 9091
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD curl -fsS "http://127.0.0.1:${INTERNAL_PORT}/healthz" || exit 1
