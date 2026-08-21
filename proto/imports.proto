@@ -42,6 +42,9 @@ message ImportReport {
   int32 holdings_updated = 1;
   int32 sweeps_updated = 2;
   repeated ReportLine lines = 3;
+  // Institution prices recorded as private prices for matched
+  // MANUAL-locus securities (trust funds have no market feed).
+  int32 prices_recorded = 4;
 }
 
 message SnapshotRow {
@@ -118,6 +121,46 @@ message LinkPlaidAccountRequest {
 
 message LinkPlaidAccountResponse {}
 
+// How a Plaid security resolved to a finance2 security.
+enum SecurityMatch {
+  SECURITY_MATCH_UNSPECIFIED = 0;
+  BY_TICKER = 1; // the ticker names a known security; no link needed
+  BY_LINK = 2;   // matched through a human-made link
+  UNMATCHED = 3; // neither — link it (or add the security) and re-process
+}
+
+// One distinct non-cash security an archived snapshot holds, with how
+// it matched. Securities Plaid reports without a ticker — 401(k)
+// collective investment trusts — only ever match by link.
+message PlaidSecurityView {
+  string plaid_security_id = 1;
+  string name = 2;
+  string ticker = 3;
+  string cusip = 4;
+  string type = 5;
+  string currency_code = 6;
+  int32 accounts = 7; // how many of the snapshot's accounts hold it
+  SecurityMatch match = 8;
+  int64 security_id = 9;       // 0 when unmatched
+  string security_ticker = 10; // the finance2 ticker when matched
+}
+
+message GetSnapshotSecuritiesRequest {
+  int64 snapshot_id = 1;
+}
+
+message GetSnapshotSecuritiesResponse {
+  repeated PlaidSecurityView securities = 1;
+}
+
+// security_id 0 removes the link.
+message LinkPlaidSecurityRequest {
+  string plaid_security_id = 1;
+  int64 security_id = 2;
+}
+
+message LinkPlaidSecurityResponse {}
+
 // A warning from the most recently processed snapshot, attributed to
 // the finance2 account it concerns, so the broker and account views
 // can show what still needs fixing. Lines with no account (unlinked
@@ -149,4 +192,6 @@ service ImportService {
   rpc GetSnapshotAccounts(GetSnapshotAccountsRequest) returns (GetSnapshotAccountsResponse);
   rpc LinkPlaidAccount(LinkPlaidAccountRequest) returns (LinkPlaidAccountResponse);
   rpc ListImportWarnings(ListImportWarningsRequest) returns (ListImportWarningsResponse);
+  rpc GetSnapshotSecurities(GetSnapshotSecuritiesRequest) returns (GetSnapshotSecuritiesResponse);
+  rpc LinkPlaidSecurity(LinkPlaidSecurityRequest) returns (LinkPlaidSecurityResponse);
 }

@@ -120,6 +120,25 @@ class PrivatePriceRepository(dataSource: DataSource) {
         )
     }
 
+    /**
+     * Records (or replaces) the price for a date from an import —
+     * `source` names the provenance (e.g. "plaid") the way holdings
+     * carry theirs; hand-entered rows keep the column's default.
+     */
+    fun upsert(securityId: SecurityId, date: LocalDate, price: Money, source: String) {
+        jdbi.sql { handle ->
+            handle.createUpdate(
+                "MERGE INTO private_prices (security_id, price_date, price, source) " +
+                    "KEY (security_id, price_date) VALUES (:securityId, :date, :price, :source)"
+            )
+                .bind("securityId", securityId.value)
+                .bind("date", date)
+                .bind("price", price.amount)
+                .bind("source", source)
+                .execute()
+        }
+    }
+
     /** Throws SQLException on a duplicate (security, date). */
     fun update(id: PriceId, date: LocalDate, price: Money): Boolean = jdbi.sql { handle ->
         handle.createUpdate(

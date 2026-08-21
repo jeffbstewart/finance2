@@ -17,11 +17,15 @@ import {
   ReportSeverity,
   SnapshotRowSchema,
   SnapshotStatus,
+  PlaidSecurityViewSchema,
+  SecurityMatch,
   type PlaidAccountView,
+  type PlaidSecurityView,
   type SnapshotRow,
 } from '../../../proto-gen/imports_pb';
+import { SecurityService } from '../../../proto-gen/securities_pb';
 import { installFakeApi } from '../../../testing/fake-api';
-import { sampleAccounts } from '../../../testing/sample-data';
+import { sampleAccounts, sampleAllSecurities } from '../../../testing/sample-data';
 import { settle } from '../../../testing/settle';
 import { date } from '../../../testing/wire';
 import { Notify } from '../../core/notify';
@@ -129,9 +133,38 @@ function plaidAccounts(): PlaidAccountView[] {
   ];
 }
 
+/** VTI matches by ticker; the 401(k) trust fund has no ticker and is
+ *  unlinked, so only it gets a select. */
+function plaidSecurities(): PlaidSecurityView[] {
+  return [
+    create(PlaidSecurityViewSchema, {
+      plaidSecurityId: 'plaid-sec-vti',
+      name: 'Vanguard Total Stock Market ETF',
+      ticker: 'VTI',
+      cusip: '922908769',
+      type: 'etf',
+      currencyCode: 'USD',
+      accounts: 2,
+      match: SecurityMatch.BY_TICKER,
+      securityId: 1n,
+      securityTicker: 'VTI',
+    }),
+    create(PlaidSecurityViewSchema, {
+      plaidSecurityId: 'plaid-sec-trust',
+      name: 'Inst Tot Bd Mkt Ix Tr',
+      type: 'mutual fund',
+      currencyCode: 'USD',
+      accounts: 1,
+      match: SecurityMatch.UNMATCHED,
+    }),
+  ];
+}
+
 type Recorded = {
   list: number;
   accounts: bigint[];
+  securities: bigint[];
+  securityLinks: { plaidSecurityId: string; securityId: bigint }[];
   processed: bigint[];
   deleted: bigint[];
   links: { accountRef: string; accountId: bigint }[];
@@ -144,6 +177,8 @@ describe('ImportsPage', () => {
   let calls: Recorded;
   let snapshots: SnapshotRow[];
   let accountViews: PlaidAccountView[];
+  let securityViews: PlaidSecurityView[];
+  let onSecurityLink: () => void;
   let onList: () => void;
   let onGetAccounts: () => void;
   let onLink: () => void;
@@ -153,9 +188,21 @@ describe('ImportsPage', () => {
   let error: MockInstance<(err: unknown, fallback?: string) => void>;
 
   beforeEach(() => {
-    calls = { list: 0, accounts: [], processed: [], deleted: [], links: [], uploads: [], listAccounts: [] };
+    calls = {
+      list: 0,
+      accounts: [],
+      securities: [],
+      securityLinks: [],
+      processed: [],
+      deleted: [],
+      links: [],
+      uploads: [],
+      listAccounts: [],
+    };
     snapshots = [uploadedSnapshot()];
     accountViews = plaidAccounts();
+    securityViews = plaidSecurities();
+    onSecurityLink = () => {};
     onList = () => {};
     onGetAccounts = () => {};
     onLink = () => {};
@@ -200,6 +247,21 @@ describe('ImportsPage', () => {
           onLink();
           return {};
         },
+        getSnapshotSecurities: (request) => {
+          calls.securities.push(request.snapshotId);
+          return { securities: securityViews };
+        },
+        linkPlaidSecurity: (request) => {
+          calls.securityLinks.push({
+            plaidSecurityId: request.plaidSecurityId,
+            securityId: request.securityId,
+          });
+          onSecurityLink();
+          return {};
+        },
+      });
+      service(SecurityService, {
+        listSecurities: () => ({ securities: sampleAllSecurities() }),
       });
       service(AccountService, {
         listAccounts: (request) => {
@@ -375,8 +437,9 @@ describe('ImportsPage', () => {
   it('shows each link select on its linked account, or the unlinked placeholder', async () => {
     const fixture = await render();
     await selectSnapshot(fixture, 'vanguard-sample.pb');
+    // Two account selects, then the unmatched trust fund's.
     const selects = Array.from(host(fixture).querySelectorAll<HTMLElement>('mat-select'));
-    expect(selects).toHaveLength(2);
+    expect(selects).toHaveLength(3);
     // linked_account_id 2 resolves against listAccounts, not the row's
     // linked_account_name, so the label is the select's option text.
     expect(selects[0].textContent!.trim()).toBe('Vanguard : Roth IRA (USD)');
@@ -410,6 +473,78 @@ describe('ImportsPage', () => {
     await pickLink(fixture, 1, 'Vanguard : Brokerage (USD)');
     expect(success).not.toHaveBeenCalled();
     expect((error.mock.calls[0][0] as ConnectError).rawMessage).toBe('no account 1');
+  });
+
+  it('lists the snapshot’s securities: ticker matches as chips, no-ticker ones with a link select', async () => {
+    const fixture = await render();
+    await selectSnapshot(fixture, 'vanguard-sample.pb');
+    expect(calls.securities).toEqual([10n]);
+    expect(textOf(fixture)).toContain('Securities in vanguard-sample.pb');
+    const rows = cells(tables(fixture)[2], 'tr[mat-row]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual([
+      'Vanguard Total Stock Market ETF',
+      'VTI · CUSIP 922908769',
+      'etf',
+      '2',
+      'VTI (by ticker)',
+    ]);
+    expect(rows[1].slice(0, 4)).toEqual(['Inst Tot Bd Mkt Ix Tr', 'no ticker', 'mutual fund', '1']);
+    expect(rows[1][4]).toBe('Not linked');
+    expect(tables(fixture)[2].querySelectorAll('mat-select')).toHaveLength(1);
+  });
+
+  it('links a no-ticker security to a finance2 security and refetches only that panel', async () => {
+    const fixture = await render();
+    await selectSnapshot(fixture, 'vanguard-sample.pb');
+    await pickLink(fixture, 2, 'BONDX — Aggregate Bond Fund');
+    expect(calls.securityLinks).toEqual([{ plaidSecurityId: 'plaid-sec-trust', securityId: 2n }]);
+    expect(success).toHaveBeenCalledWith('Security linked — process to import');
+    expect(calls.securities).toEqual([10n, 10n]);
+    expect(calls.accounts).toEqual([10n]); // accounts panel untouched
+  });
+
+  it('shows a linked security on its select and unlinks with the zero sentinel', async () => {
+    securityViews = [
+      { ...plaidSecurities()[1], match: SecurityMatch.BY_LINK, securityId: 2n, securityTicker: 'BONDX' },
+    ];
+    const fixture = await render();
+    await selectSnapshot(fixture, 'vanguard-sample.pb');
+    const select = tables(fixture)[2].querySelector<HTMLElement>('mat-select')!;
+    expect(select.textContent!.trim()).toBe('BONDX — Aggregate Bond Fund');
+    await pickLink(fixture, 2, 'Not linked');
+    expect(calls.securityLinks).toEqual([{ plaidSecurityId: 'plaid-sec-trust', securityId: 0n }]);
+    expect(success).toHaveBeenCalledWith('Link removed');
+  });
+
+  it('routes a failed security link to the error snackbar', async () => {
+    const fixture = await render();
+    await selectSnapshot(fixture, 'vanguard-sample.pb');
+    onSecurityLink = () => {
+      throw new ConnectError('no security 2', Code.NotFound);
+    };
+    await pickLink(fixture, 2, 'BONDX — Aggregate Bond Fund');
+    expect(success).not.toHaveBeenCalled();
+    expect((error.mock.calls[0][0] as ConnectError).rawMessage).toBe('no security 2');
+  });
+
+  it('mentions recorded prices in the process toast and report header only when there were any', async () => {
+    onProcess = (id) => {
+      const row = processedSnapshot();
+      row.report!.pricesRecorded = 3;
+      snapshots = snapshots.map((s) => (s.snapshotId === id ? row : s));
+      return row;
+    };
+    const fixture = await render();
+    await selectSnapshot(fixture, 'vanguard-sample.pb');
+    iconButton(rowFor(fixture, 'vanguard-sample.pb'), 'Process snapshot').click();
+    await settle(fixture);
+    expect(success).toHaveBeenCalledWith(
+      'Processed — 1 holding(s), 1 sweep(s) updated, 3 price(s) recorded',
+    );
+    expect(textOf(fixture)).toContain(
+      'Last processing report (1 holding(s), 1 sweep(s) updated, 3 price(s) recorded)',
+    );
   });
 
   it('processes a snapshot, reports the counts, and re-reads the list', async () => {
