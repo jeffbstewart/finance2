@@ -61,7 +61,10 @@ the previous calendar year.
   sale of 5 sh @ $200 from the LT lot; BONDX 100 sh @ $10.
 - **EUFUND ledger**: 100 sh @ €90+€10 (cost floor **$9,911.00** at
   the 1.10 purchase rate); marks for lastYear−1 (€9,500 × 1.05) and
-  lastYear (€10,000 × 1.08), chained.
+  lastYear (€10,000 × 1.08), chained. The lastYear mark's figures:
+  FMV **$10,800.00**, basis before **$9,975.00**, ordinary income
+  **$825.00** (the PFIC row on the default tax report); the earlier
+  mark: FMV $9,975.00 over the $9,911.00 floor, income $64.00.
 - **Holdings** (Roth): VTI 12 sh (`manual`), GOLD 5 sh (`plaid`).
 - **Target allocation**: Cash 10 / US Stock 40 / Non US Stock 20 /
   Bond 20 / Other 10.
@@ -86,6 +89,13 @@ the previous calendar year.
   inputs (unit) or table/text content (e2e).
 - **Don't** sleep — use `settle()` (unit) and Playwright's
   auto-waiting `expect` (e2e).
+- **Don't** mutate component fields directly in unit specs and expect
+  a re-render — zoneless change detection never sees it. Drive the
+  DOM (dispatch `input` events, click buttons) or call the component
+  method the template calls, then `settle()`.
+- **Do** locate buttons by role + name on datepicker pages — the
+  first `<button>` in a datepicker form field is the calendar toggle,
+  not the action button.
 - **Don't** depend on spec order or prior state; call
   `seedPortfolio()` in `test.beforeEach` — it costs ~46 ms.
 - **Don't** widen `SampleSeeder` casually — pages share it; additive
