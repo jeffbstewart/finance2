@@ -9,6 +9,7 @@ import com.linecorp.armeria.server.HttpService
 import com.linecorp.armeria.server.ServiceRequestContext
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import org.slf4j.LoggerFactory
 
 /**
  * Deployment-topology enforcement (build-scope §10, rulings 2026-08-18
@@ -25,10 +26,13 @@ class TrustedProxyDecorator(
     private val internalPort: Int = 0,
 ) : DecoratingHttpServiceFunction {
 
+    private val log = LoggerFactory.getLogger(TrustedProxyDecorator::class.java)
     private val trusted: Set<InetAddress> = trustedProxies.map { InetAddress.getByName(it) }.toSet()
+    private val trustedForLog: String = trusted.joinToString(", ") { it.hostAddress }
 
     init {
         require(trusted.isNotEmpty()) { "TrustedProxyDecorator requires at least one proxy address" }
+        log.info("Trusted proxies: [{}]; internal port {} is exempt", trustedForLog, internalPort)
     }
 
     override fun serve(delegate: HttpService, ctx: ServiceRequestContext, req: HttpRequest): HttpResponse {
@@ -37,12 +41,27 @@ class TrustedProxyDecorator(
         }
         val peer = (ctx.remoteAddress() as? InetSocketAddress)?.address
         if (peer == null || peer !in trusted) {
+            // Diagnosable on purpose: the usual cause is the proxy reaching
+            // us from an address other than the one in TRUSTED_PROXIES
+            // (Docker bridge gateway, IPv6 loopback, a NAT hop), and the
+            // 403 body deliberately says nothing about which.
+            log.error(
+                "Rejected {} {} from untrusted peer {} (local {}:{}); trusted proxies: [{}]",
+                req.method(), req.path(),
+                peer?.hostAddress ?: "<unknown: ${ctx.remoteAddress()}>",
+                ctx.localAddress().address?.hostAddress, ctx.localAddress().port,
+                trustedForLog,
+            )
             return HttpResponse.of(
                 HttpStatus.FORBIDDEN, MediaType.PLAIN_TEXT_UTF_8,
                 "requests are accepted only via the configured proxy",
             )
         }
         if (req.headers().get("x-forwarded-for").isNullOrBlank()) {
+            log.error(
+                "Rejected {} {} from trusted proxy {}: no X-Forwarded-For header (proxy must set it)",
+                req.method(), req.path(), peer.hostAddress,
+            )
             return HttpResponse.of(
                 HttpStatus.BAD_REQUEST, MediaType.PLAIN_TEXT_UTF_8,
                 "missing forwarded client address",
