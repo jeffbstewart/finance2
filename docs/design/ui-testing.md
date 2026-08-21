@@ -113,6 +113,22 @@ public toolkit siblings beside the repo (the Gradle composite cannot
 configure without them), installs web deps, tries to install
 Chromium, builds the server + SPA, and prints the lane commands.
 
+**Cloud sandbox realities (learned from the first cloud worker,
+PR #52):** the sandbox's egress proxy blocks the Chromium download,
+so the full e2e lane is unavailable there — `npm run e2e:typecheck`
+is the expected cloud rung and CI runs the real e2e lane on the PR.
+The sandbox image's Node (22.22.2) is below Angular CLI's minimum
+(22.22.3) and the box has no version manager, so `cloud-setup.sh`
+fetches a pinned Node 24 tarball from nodejs.org (reachable through
+the proxy) via `scripts/cloud-env.sh` — **every worker shell must
+`source scripts/cloud-env.sh` before running any lane**, since PATH
+does not persist across processes or worktrees. The script now
+fails loudly and ends with `cloud-setup OK` on success. Sandbox
+checkouts may hide `.github/`; CI nonetheless runs on GitHub for
+every PR, including the real e2e lane. A session's configured default branch
+name does not override rule 1 — use `agent/tests-<slug>`. Pure-function
+assignments (`core-utils`) have no e2e spec by design.
+
 **Rules — these prevent fifteen PRs from colliding:**
 
 1. One assignment per worker. Branch `agent/tests-<slug>`, base
