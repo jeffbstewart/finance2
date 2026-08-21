@@ -12,9 +12,9 @@
 #                           (REQUIRED - compose refuses to start without it)
 #   FINANCE2_PORT           host port for the HAProxy-facing server (9090)
 #   FINANCE2_INTERNAL_PORT  host port for /healthz + /metrics, LAN-direct (9091)
-#   FINANCE2_MEM_LIMIT      container memory ceiling (1g); the JVM sizes
+#   FINANCE2_MEM_LIMIT      container memory ceiling (512m); the JVM sizes
 #                           its heap from it (MaxRAMPercentage=75)
-#   FINANCE2_PIDS_LIMIT     process/thread ceiling (512)
+#   FINANCE2_PIDS_LIMIT     process/thread ceiling (256)
 #   FINANCE2_UID / _GID     unprivileged uid:gid the server runs as
 #                           (10001:10001); give FINANCE2_DATA to it
 #
@@ -31,6 +31,13 @@ services:
     # Never root. The image's own user is 10001; override to match the
     # owner of FINANCE2_DATA on the host.
     user: "${FINANCE2_UID:-10001}:${FINANCE2_GID:-10001}"
+    # Drop every privilege: no capabilities, no privilege escalation, a
+    # read-only root filesystem. The server writes only to /data (the
+    # database) and /tmp (JVM scratch, tmpfs).
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
     env_file: .env
     environment:
       # Inside the container the database always lives on the bind
@@ -44,7 +51,8 @@ services:
       # file the operator backs up like any other.
       - "${FINANCE2_DATA:?set FINANCE2_DATA to the host directory that holds the database}:/data"
     # Limits a NAS container manager (Synology) can enforce: memory and
-    # pids. CPU is left to the host scheduler.
-    mem_limit: ${FINANCE2_MEM_LIMIT:-1g}
-    memswap_limit: ${FINANCE2_MEM_LIMIT:-1g}
-    pids_limit: ${FINANCE2_PIDS_LIMIT:-512}
+    # pids, each about twice the measured steady state (~115 JVM threads,
+    # under 300 MiB RSS). CPU is left to the host scheduler.
+    mem_limit: ${FINANCE2_MEM_LIMIT:-512m}
+    memswap_limit: ${FINANCE2_MEM_LIMIT:-512m}
+    pids_limit: ${FINANCE2_PIDS_LIMIT:-256}

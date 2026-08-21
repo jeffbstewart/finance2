@@ -38,14 +38,18 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
   like any other file. The server runs unprivileged as
   `FINANCE2_UID:FINANCE2_GID` (10001:10001 by default), so the
   directory must be writable by that uid — `chown` it or set the
-  variables to its owner.
+  variables to its owner. The container drops all capabilities, forbids
+  privilege escalation, and runs on a read-only root filesystem; only
+  `/data` and a tmpfs `/tmp` are writable.
 - Host ports and limits are environment-overridable with defaults:
   `FINANCE2_PORT` (9090) is meant to be reached only through HAProxy,
   which terminates TLS and is identified by `TRUSTED_PROXIES`;
   `FINANCE2_INTERNAL_PORT` (9091) serves `/healthz` and `/metrics`
   LAN-direct and backs the image's `HEALTHCHECK`. `FINANCE2_MEM_LIMIT`
-  (1g) and `FINANCE2_PIDS_LIMIT` (512) are the limits a NAS container
-  manager can enforce; the JVM sizes its heap from the memory limit.
+  (512m) and `FINANCE2_PIDS_LIMIT` (256) are the limits a NAS container
+  manager can enforce, set at about twice the measured steady state
+  (~115 JVM threads — each a pid — and well under 300 MiB RSS); the JVM
+  sizes its heap from the memory limit.
 - On the bridge network a proxy on another host keeps its own address
   for `TRUSTED_PROXIES`; a proxy on the same host appears as the
   bridge gateway (typically `172.17.0.1`), not `127.0.0.1`.
