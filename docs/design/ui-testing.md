@@ -90,3 +90,68 @@ the previous calendar year.
   `seedPortfolio()` in `test.beforeEach` — it costs ~46 ms.
 - **Don't** widen `SampleSeeder` casually — pages share it; additive
   changes only, and update this document's inventory when you do.
+
+## Cloud worker dispatch (2026-08-21)
+
+The per-page test work runs as independent cloud workers with zero
+shared context. Everything a worker needs is in this repo: this
+document, [ui-test-inventory.md](ui-test-inventory.md) (the per-page
+facts), the exemplars, and `scripts/cloud-setup.sh`.
+
+**Bootstrap:** run `bash scripts/cloud-setup.sh` first. It clones the
+public toolkit siblings beside the repo (the Gradle composite cannot
+configure without them), installs web deps, tries to install
+Chromium, builds the server + SPA, and prints the lane commands.
+
+**Rules — these prevent fifteen PRs from colliding:**
+
+1. One assignment per worker. Branch `agent/tests-<slug>`, base
+   `main`, one PR. Touch ONLY your assignment's new spec files.
+2. **Never modify shared files**: anything under `src/testing/`,
+   `e2e/support/`, `e2e/*.ts|mjs`, `SampleSeeder.kt`,
+   `TestSupportService`, this document, or another page's code. If a
+   shared helper or seed datum is missing, work around it locally in
+   your spec and record the gap in your PR description under
+   "Shared-infrastructure gaps" — the gaps get consolidated into one
+   follow-up PR.
+3. Found a real product bug? Do NOT fix it. Write the test to pin the
+   CURRENT behavior with a `// BUG:` comment, and list it in the PR
+   description under "Suspected bugs".
+4. **Validation ladder** — state in the PR which rung you reached:
+   - `npm test -- --no-watch` green (mandatory, always achievable).
+   - `npm run e2e` green (requires the JVM boot + Chromium; do this
+     if the sandbox supports it).
+   - `npm run e2e:typecheck` green (the minimum bar for e2e specs
+     when the full lane cannot run — CI runs the real thing on your
+     PR either way).
+5. Unit specs live beside their page (`<page>.spec.ts`); e2e specs in
+   `e2e/specs/<slug>.spec.ts`. Seed via `seedPortfolio()` in
+   `test.beforeEach` (~46 ms).
+
+**Assignments** (slug — scope):
+
+| Slug | Scope |
+|---|---|
+| `core-utils` | `core/decimals.ts` + `core/dates.ts` pure-function unit specs (no e2e) |
+| `welcome` | Welcome page + auth guard redirect |
+| `shell` | Shell nav, user menu, logout |
+| `brokers` | BrokersPage + BrokerDialog (extend the exemplars) |
+| `broker-accounts` | BrokerAccountsPage + AccountDialog |
+| `securities-list` | SecuritiesPage + AddSecurityDialog |
+| `security-details` | SecurityDetailsPage price-history tab + ProfileDialog |
+| `classification` | ClassificationEditor (Asset Allocation tab) |
+| `mtm` | MtmMarks + MtmMarkDialog |
+| `private-prices` | PrivatePricesPage + PrivatePriceDialog |
+| `positions` | PositionsPage + BuyDialog + HoldingDialog |
+| `lot-details` | LotDetailsPage + SellDialog |
+| `allocation` | AllocationPage + TargetDialog + ClassDetailsPage |
+| `rebalance` | RebalancePage + RebalanceBuyDialog |
+| `tax` | TaxPage |
+| `imports` | ImportsPage |
+
+**Dispatch prompt template** (one line per worker):
+
+> Read docs/design/ui-testing.md (including "Cloud worker dispatch")
+> and docs/design/ui-test-inventory.md, run scripts/cloud-setup.sh,
+> then build the unit and e2e tests for assignment `<slug>` following
+> the rules and exemplars. Branch `agent/tests-<slug>`, open a PR.
