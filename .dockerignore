@@ -1,0 +1,21 @@
+# Secrets never enter the build context, let alone the image.
+.env
+# Local data (database, provider data, snapshots) — runtime volume, not image.
+data/
+# Build outputs and caches: every stage regenerates what it needs.
+build/
+.gradle/
+.kotlin/
+spa/
+web-app/node_modules/
+web-app/.angular/
+web-app/src/proto-gen/
+web-app/e2e/.results/
+# Not needed to build.
+.git/
+.github/
+.idea/
+*.iml
+Dockerfile
+docker-compose.yml
+.angular/

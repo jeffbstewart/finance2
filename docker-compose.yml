@@ -1,0 +1,32 @@
+# Durable single-host deployment (README.md "Run with Docker").
+#
+#   cp example.env .env   # fill in the H2 passwords, proxies, API keys
+#   docker compose up -d --build
+#   docker compose logs -f finance2   # first run prints the setup token
+#
+# Host networking keeps the peer addresses honest: HAProxy on this host
+# reaches the server at 127.0.0.1:$PORT and is therefore identified by
+# TRUSTED_PROXIES=127.0.0.1 as in example.env, and $INTERNAL_PORT is
+# LAN-direct with no port mapping. (On a bridge network the proxy would
+# instead appear as the bridge gateway, e.g. 172.17.0.1, and
+# TRUSTED_PROXIES would have to name that address.)
+services:
+  finance2:
+    build: .
+    image: finance2:local
+    container_name: finance2
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    environment:
+      # Inside the container the database always lives on the volume,
+      # whatever DB_PATH a developer's .env says.
+      DB_PATH: /data/finance2
+    volumes:
+      - finance2-data:/data
+
+volumes:
+  # The encrypted H2 database. Back it up with, e.g.:
+  #   docker run --rm -v finance2-data:/data -v "$PWD":/backup ubuntu \
+  #     tar czf /backup/finance2-data.tgz -C /data .
+  finance2-data:

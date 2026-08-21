@@ -89,3 +89,23 @@ jobs:
           FORGE_LINT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: go run github.com/jeffbstewart/cloister/cmd/forge-lint@main -config .github/forge-lint.yaml -allow-unverified
         working-directory: finance2
+
+  # The container image builds from the same sources (README.md "Run
+  # with Docker"). Build only — nothing is pushed; the Dockerfile clones
+  # its own toolkit siblings, so the plain checkout is the whole context.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag finance2:ci .
+      # A built image must boot and pass its own health check with a
+      # throwaway database, proving the runtime stage is wired up.
+      - run: |
+          docker run -d --name finance2 \n            -e H2_PASSWORD=ci -e H2_FILE_PASSWORD=ci -e COOKIE_SECURE=false \n            -p 9090:9090 -p 9091:9091 finance2:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9091/healthz; then break; fi; sleep 2
+          done
+          curl -fsS -o /dev/null -w '%{http_code}' http://127.0.0.1:9090/app/ | grep -q 200
+          docker logs finance2 | grep -qi 'setup token'
+      - run: docker logs finance2
+        if: always()

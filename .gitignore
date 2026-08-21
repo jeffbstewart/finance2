@@ -24,3 +24,6 @@ web-app/src/proto-gen/
 
 # Angular build cache
 web-app/.angular/
+
+# Stray Angular cache at the repo root
+/.angular/
