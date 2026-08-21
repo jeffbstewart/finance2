@@ -1,0 +1,58 @@
+# Durable single-host deployment (README.md "Run with Docker").
+#
+#   cp example.env .env   # fill in the H2 passwords, proxies, API keys
+#   docker compose up -d --build
+#   docker compose logs -f finance2   # first run prints the setup token
+#
+# Everything an operator tunes comes from the environment (compose reads
+# .env for ${...} substitution as well as for env_file), with defaults
+# shown inline, so this file can be used as published:
+#
+#   FINANCE2_DATA           host directory for the encrypted database
+#                           (REQUIRED - compose refuses to start without it)
+#   FINANCE2_PORT           host port for the HAProxy-facing server (9090)
+#   FINANCE2_INTERNAL_PORT  host port for /healthz + /metrics, LAN-direct (9091)
+#   FINANCE2_MEM_LIMIT      container memory ceiling (512m); the JVM sizes
+#                           its heap from it (MaxRAMPercentage=75)
+#   FINANCE2_PIDS_LIMIT     process/thread ceiling (256)
+#   FINANCE2_UID / _GID     unprivileged uid:gid the server runs as
+#                           (10001:10001); give FINANCE2_DATA to it
+#
+# Peer addresses on the bridge network: a proxy on another host keeps
+# its own address (set TRUSTED_PROXIES to it); a proxy on this same
+# host appears as the bridge gateway (docker network inspect bridge,
+# typically 172.17.0.1), not 127.0.0.1.
+services:
+  finance2:
+    build: .
+    image: finance2:local
+    container_name: finance2
+    restart: unless-stopped
+    # Never root. The image's own user is 10001; override to match the
+    # owner of FINANCE2_DATA on the host.
+    user: "${FINANCE2_UID:-10001}:${FINANCE2_GID:-10001}"
+    # Drop every privilege: no capabilities, no privilege escalation, a
+    # read-only root filesystem. The server writes only to /data (the
+    # database) and /tmp (JVM scratch, tmpfs).
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    env_file: .env
+    environment:
+      # Inside the container the database always lives on the bind
+      # mount, whatever DB_PATH a developer's .env says.
+      DB_PATH: /data/finance2
+    ports:
+      - "${FINANCE2_PORT:-9090}:9090"
+      - "${FINANCE2_INTERNAL_PORT:-9091}:9091"
+    volumes:
+      # Host directory, not a Docker-managed volume: the database is a
+      # file the operator backs up like any other.
+      - "${FINANCE2_DATA:?set FINANCE2_DATA to the host directory that holds the database}:/data"
+    # Limits a NAS container manager (Synology) can enforce: memory and
+    # pids, each about twice the measured steady state (~115 JVM threads,
+    # under 300 MiB RSS). CPU is left to the host scheduler.
+    mem_limit: ${FINANCE2_MEM_LIMIT:-512m}
+    memswap_limit: ${FINANCE2_MEM_LIMIT:-512m}
+    pids_limit: ${FINANCE2_PIDS_LIMIT:-256}
