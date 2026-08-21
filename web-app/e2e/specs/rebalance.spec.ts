@@ -38,7 +38,7 @@ function classRow(page: Page, name: string, tableIndex = 0): Locator {
 
 /** Picks the destination account and waits for the first score. */
 async function scoreFromBrokerage(page: Page): Promise<void> {
-  await page.goto('/app/rebalance');
+  await page.goto('/app/allocation/rebalance');
   await pickSelect(page, 'Account', 'Vanguard : Brokerage');
   await expect(page.locator('table[mat-table]')).toHaveCount(1);
 }
@@ -46,7 +46,7 @@ async function scoreFromBrokerage(page: Page): Promise<void> {
 test('offers every visible account, tax-deferred included, and scores nothing first', async ({
   page,
 }) => {
-  await page.goto('/app/rebalance');
+  await page.goto('/app/allocation/rebalance');
   await expect(page.locator('.empty-note')).toHaveText('Pick an account to score the plan.');
   await expect(page.locator('table[mat-table]')).toHaveCount(0);
   await expect(page.locator('mat-card-title')).toHaveText('Rebalance');
@@ -56,11 +56,12 @@ test('offers every visible account, tax-deferred included, and scores nothing fi
   await expect(options).toHaveCount(3);
   // getPurchaseFormInfo does not filter tax-deferred accounts here —
   // a rebalance may buy into the Roth IRA. Hidden accounts are gone.
+  // Ordered by broker name, then account name — EuroBank first; the
+  // EUR account's sweeps are shown in its own currency.
   await expect(options).toHaveText([
+    /EuroBank : EUR Brokerage — sweeps .?250\.00/,
     'Vanguard : Brokerage — sweeps $500.00',
     'Vanguard : Roth IRA — sweeps $55.25',
-    // The EUR account's sweeps are shown in its own currency.
-    /EuroBank : EUR Brokerage — sweeps .?250\.00/,
   ]);
 });
 
@@ -136,7 +137,7 @@ test('builds a cart through the buy dialog and re-scores with it', async ({ page
 
   const price = dialog.getByRole('textbox', { name: 'Price Per Share' });
   await expect(price).toHaveValue('$10.50');
-  await expect(price).toHaveAttribute('readonly', '');
+  await expect(price).toHaveJSProperty('readOnly', true);
   // The server's suggestion auto-fills; its size depends on the whole
   // portfolio, so only its shape is pinned here.
   const shares = dialog.getByRole('textbox', { name: 'Shares', exact: true });
