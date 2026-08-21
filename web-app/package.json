@@ -13,7 +13,8 @@
     "precheck": "npm run proto:gen",
     "check": "ng build",
     "test": "ng test",
-    "e2e": "playwright test --config e2e/playwright.config.ts"
+    "e2e": "playwright test --config e2e/playwright.config.ts",
+    "e2e:typecheck": "tsc -p e2e --noEmit"
   },
   "dependencies": {
     "@angular/cdk": "^22.1.0",
@@ -37,6 +38,7 @@
     "@angular/compiler-cli": "^22.1.0",
     "@bufbuild/protoc-gen-es": "^2.12.0",
     "@playwright/test": "^1.62.1",
+    "@types/node": "^26.2.0",
     "jsdom": "^28.0.0",
     "protoc": "^35.1.0",
     "typescript": "~6.0.2",

@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./.results/tsc",
+    "noEmit": true,
+    "types": [
+      "node"
+    ],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "rootDir": ".."
+  },
+  "include": [
+    "./**/*.ts",
+    "../src/proto-gen/**/*.ts"
+  ]
+}

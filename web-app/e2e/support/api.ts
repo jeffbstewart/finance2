@@ -15,11 +15,11 @@ import { BASE_URL, SETUP_TOKEN } from '../playwright.config';
 
 export const E2E_USER = { username: 'e2e', password: 'correct-horse-battery-e2e', displayName: 'E2E' };
 
-function frame(bytes: Uint8Array): Uint8Array {
+function frame(bytes: Uint8Array): ArrayBuffer {
   const framed = new Uint8Array(5 + bytes.length);
   new DataView(framed.buffer).setUint32(1, bytes.length);
   framed.set(bytes, 5);
-  return framed;
+  return framed.buffer as ArrayBuffer;
 }
 
 async function rawUnary<S extends DescMessage>(
