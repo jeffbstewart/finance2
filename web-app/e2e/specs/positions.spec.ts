@@ -55,6 +55,9 @@ test('portfolio-wide list shows every held security with footer totals', async (
   // No scope: no subtitle detail and no edit-account button.
   await expect(page.getByRole('button', { name: 'Edit account' })).toHaveCount(0);
 
+  // The table mounts with header + footer before listPositions
+  // resolves; wait for the four seeded rows before the one-shot read.
+  await expect(page.locator('table[mat-table] tr[mat-row]')).toHaveCount(4);
   const table = await readTable(page);
   expect(table.header.slice(0, 7)).toEqual([
     'Ticker', 'Trend', 'Shares', 'Basis', 'Current Value', 'ST Gain', 'LT Gain',
@@ -179,11 +182,13 @@ test('the buy dialog omits tax-deferred accounts and records a purchase', async 
   await expect(page.getByText('If you paid no commission, enter 0 here.')).toBeVisible();
 
   // Tax-deferred accounts don't take lot purchases (build-scope §1).
+  // GetPurchaseFormInfo lists accounts by broker name, then account
+  // name — so EuroBank precedes Vanguard.
   await page.getByRole('combobox', { name: 'Account' }).click();
   const options = await page.getByRole('option').allInnerTexts();
   expect(options.map((o) => o.trim())).toEqual([
-    'Vanguard : Brokerage (USD)',
     'EuroBank : EUR Brokerage (EUR)',
+    'Vanguard : Brokerage (USD)',
   ]);
   await page.getByRole('option', { name: 'Vanguard : Brokerage (USD)' }).click();
 
