@@ -24,7 +24,10 @@ composite builds from checkouts beside this one.
 
 The image is self-contained (`docker build .` clones the toolkit
 siblings itself) and holds no secrets: every credential arrives at run
-time from `.env`, which `.dockerignore` keeps out of the build context.
+time from the environment — Portainer's stack variables, or a `.env`
+beside the compose file for the CLI (`.dockerignore` keeps it out of
+the build context). The compose file lists every variable it forwards
+and refuses to start without the required ones.
 
 ```bash
 cp example.env .env               # set FINANCE2_DATA, H2_PASSWORD, H2_FILE_PASSWORD, TRUSTED_PROXIES, API keys
