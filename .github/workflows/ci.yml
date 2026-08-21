@@ -105,7 +105,12 @@ jobs:
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:9091/healthz; then break; fi; sleep 2
           done
-          curl -fsS -o /dev/null -w '%{http_code}' http://127.0.0.1:9090/app/ | grep -q 200
-          docker logs finance2 | grep -qi 'setup token'
+          # No `| grep -q` here: under pipefail a quitting grep SIGPIPEs
+          # the producer and fails the step with nothing in the log.
+          curl -fsS http://127.0.0.1:9091/healthz
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:9090/app/)" = 200
+          docker logs finance2 2>&1 | grep -i 'setup token'
+          # The process runs as the unprivileged image user, never root.
+          test "$(docker exec finance2 id -u)" = 10001
       - run: docker logs finance2
         if: always()

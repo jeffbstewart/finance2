@@ -15,6 +15,8 @@
 #   FINANCE2_MEM_LIMIT      container memory ceiling (1g); the JVM sizes
 #                           its heap from it (MaxRAMPercentage=75)
 #   FINANCE2_PIDS_LIMIT     process/thread ceiling (512)
+#   FINANCE2_UID / _GID     unprivileged uid:gid the server runs as
+#                           (10001:10001); give FINANCE2_DATA to it
 #
 # Peer addresses on the bridge network: a proxy on another host keeps
 # its own address (set TRUSTED_PROXIES to it); a proxy on this same
@@ -26,6 +28,9 @@ services:
     image: finance2:local
     container_name: finance2
     restart: unless-stopped
+    # Never root. The image's own user is 10001; override to match the
+    # owner of FINANCE2_DATA on the host.
+    user: "${FINANCE2_UID:-10001}:${FINANCE2_GID:-10001}"
     env_file: .env
     environment:
       # Inside the container the database always lives on the bind

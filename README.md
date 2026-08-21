@@ -35,7 +35,10 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
 - The encrypted database lives in the host directory `FINANCE2_DATA`
   (required — compose refuses to start without it), bind-mounted at
   `/data`; the container itself is disposable. Back the directory up
-  like any other file.
+  like any other file. The server runs unprivileged as
+  `FINANCE2_UID:FINANCE2_GID` (10001:10001 by default), so the
+  directory must be writable by that uid — `chown` it or set the
+  variables to its owner.
 - Host ports and limits are environment-overridable with defaults:
   `FINANCE2_PORT` (9090) is meant to be reached only through HAProxy,
   which terminates TLS and is identified by `TRUSTED_PROXIES`;
