@@ -65,6 +65,9 @@ import { MtmMarkDialog } from './mtm-mark-dialog';
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let m" class="row-actions">
+            <button matIconButton (click)="editMark(m)" aria-label="Edit mark">
+              <mat-icon>edit</mat-icon>
+            </button>
             @if (m === latest()) {
               <button matIconButton (click)="deleteMark(m)" aria-label="Delete latest mark">
                 <mat-icon>delete</mat-icon>
@@ -146,6 +149,25 @@ export class MtmMarks {
       .afterClosed()
       .subscribe((recorded) => {
         if (recorded) {
+          void this.reload();
+          this.changed.emit();
+        }
+      });
+  }
+
+  editMark(mark: MtmMark): void {
+    this.dialog
+      .open(MtmMarkDialog, {
+        data: {
+          security: this.security(),
+          taxYear: mark.taxYear,
+          mark,
+          hasLaterMarks: mark !== this.latest(),
+        },
+      })
+      .afterClosed()
+      .subscribe((changed) => {
+        if (changed) {
           void this.reload();
           this.changed.emit();
         }

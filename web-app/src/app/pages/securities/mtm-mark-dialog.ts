@@ -6,7 +6,7 @@ import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import type { SecurityProfile } from '../../../proto-gen/securities_pb';
+import type { MtmMark, SecurityProfile } from '../../../proto-gen/securities_pb';
 import { api } from '../../core/api';
 import { civilFromJs, jsFromCivil } from '../../core/dates';
 import { isDecimalString } from '../../core/decimals';
@@ -15,6 +15,11 @@ import { Notify, messageOf } from '../../core/notify';
 export interface MtmMarkDialogData {
   security: SecurityProfile;
   taxYear: number;
+  /** Edit mode: the mark being changed (tax year immutable — the
+   *  server recomputes this mark and every later one). */
+  mark?: MtmMark;
+  /** Edit mode: whether later marks exist that will restate. */
+  hasLaterMarks?: boolean;
 }
 
 /**
@@ -36,11 +41,22 @@ export interface MtmMarkDialogData {
   ],
   providers: [provideNativeDateAdapter()],
   template: `
-    <h2 mat-dialog-title>Record Year-End Mark — {{ data.security.ticker }}</h2>
+    <h2 mat-dialog-title>
+      {{ editing ? 'Edit' : 'Record' }} Year-End Mark — {{ data.security.ticker }}
+    </h2>
     <mat-dialog-content class="mark-form">
       <mat-form-field appearance="outline">
         <mat-label>Tax Year</mat-label>
-        <input matInput type="number" [ngModel]="taxYear()" (ngModelChange)="yearChanged($event)">
+        <input
+          matInput
+          type="number"
+          [ngModel]="taxYear()"
+          (ngModelChange)="yearChanged($event)"
+          [disabled]="editing"
+        >
+        @if (editing) {
+          <mat-hint>The tax year is fixed — delete and re-record to move a mark</mat-hint>
+        }
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Mark Date</mat-label>
@@ -70,7 +86,7 @@ export interface MtmMarkDialogData {
     <mat-dialog-actions align="end">
       <button matButton mat-dialog-close>Cancel</button>
       <button matButton="filled" [disabled]="busy() || !valid()" (click)="submit()">
-        Record Mark
+        {{ editing ? 'Save Mark' : 'Record Mark' }}
       </button>
     </mat-dialog-actions>
   `,
@@ -85,6 +101,7 @@ export class MtmMarkDialog {
   private readonly ref = inject(MatDialogRef<MtmMarkDialog>);
   private readonly notify = inject(Notify);
 
+  readonly editing = this.data.mark !== undefined;
   readonly taxYear = signal(this.data.taxYear);
   markDate: Date | null = null;
   quantity = '';
@@ -95,7 +112,19 @@ export class MtmMarkDialog {
   readonly busy = signal(false);
 
   constructor() {
-    void this.loadSuggestion();
+    const mark = this.data.mark;
+    if (mark) {
+      // Edit mode prefills from the recorded mark; no suggestion.
+      this.markDate = mark.markDate?.exact ? jsFromCivil(mark.markDate.exact) : null;
+      this.quantity = mark.quantity?.exact?.value ?? '';
+      this.fmvLocal = mark.fmvLocal?.exact?.amount?.value ?? '';
+      this.fxRate = mark.fxRate?.exact?.value ?? '';
+      if (this.data.hasLaterMarks) {
+        this.notes.set(['later marks restate automatically against the edited basis']);
+      }
+    } else {
+      void this.loadSuggestion();
+    }
   }
 
   yearChanged(year: number): void {
@@ -140,16 +169,24 @@ export class MtmMarkDialog {
   async submit(): Promise<void> {
     this.busy.set(true);
     try {
-      const response = await api.securities.recordMtmMark({
-        securityId: this.data.security.securityId,
-        taxYear: this.taxYear(),
+      const fields = {
         markDate: civilFromJs(this.markDate!),
         quantity: { value: this.quantity.trim() },
         fmvLocal: { value: this.fmvLocal.trim() },
         fxRate: { value: this.fxRate.trim() },
-      });
+      };
+      const mark = this.data.mark
+        ? (await api.securities.updateMtmMark({ markId: this.data.mark.markId, ...fields })).mark
+        : (
+            await api.securities.recordMtmMark({
+              securityId: this.data.security.securityId,
+              taxYear: this.taxYear(),
+              ...fields,
+            })
+          ).mark;
       this.notify.success(
-        `${this.taxYear()} mark recorded — ordinary income ${response.mark?.ordinaryIncome?.display}`,
+        `${this.taxYear()} mark ${this.data.mark ? 'updated' : 'recorded'} — ` +
+          `ordinary income ${mark?.ordinaryIncome?.display}`,
       );
       this.ref.close(true);
     } catch (err) {

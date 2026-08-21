@@ -145,6 +145,89 @@ class MtmServiceTest {
     }
 
     @Test
+    fun `editing an early mark recomputes every later mark's chain`() {
+        val first = service.record(
+            portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
+            Quantity.of("100"), eur("9500.0000"), BigDecimal("1.00000000"),
+        )
+        val second = service.record(
+            portfolioId, security, 2025, LocalDate.of(2025, 12, 31),
+            Quantity.of("100"), eur("10000.0000"), BigDecimal("1.20000000"),
+        )
+        // Pre-edit: 2024 floored at cost (basis 9911), 2025 income 2089.
+        assertEquals(usd("2089.0000"), second.ordinaryIncomeUsd)
+
+        // The filed 2024 FMV was actually EUR 10500 (× 1.00 = USD
+        // 10500, above the 9911 floor): 2024 recognizes 589, and 2025
+        // restates against the new basis — 12000 − 10500 = 1500.
+        val edited = service.update(
+            portfolioId, security, first.id, LocalDate.of(2024, 12, 30),
+            Quantity.of("100"), eur("10500.0000"), BigDecimal("1.00000000"),
+        )
+        assertEquals(LocalDate.of(2024, 12, 30), edited.markDate)
+        assertEquals(usd("10500.0000"), edited.basisAfterUsd)
+        assertEquals(usd("589.0000"), edited.ordinaryIncomeUsd)
+
+        val restated = service.listForSecurity(security)
+        assertEquals(usd("10500.0000"), restated[1].basisBeforeUsd)
+        assertEquals(usd("1500.0000"), restated[1].ordinaryIncomeUsd)
+        // The 2025 mark's own stored inputs were untouched.
+        assertEquals(eur("10000.0000"), restated[1].fmvLocal)
+        // Cumulative income still equals final basis − cost:
+        // 589 + 1500 = 12000 − 9911.
+        assertEquals(usd("12000.0000"), restated[1].basisAfterUsd)
+    }
+
+    @Test
+    fun `a restated future mark clamps at the acquisition-cost floor`() {
+        // Floor is USD 9911 (EUR 9010 × 1.10 at purchase).
+        service.record(
+            portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
+            Quantity.of("100"), eur("12000.0000"), BigDecimal("1.00000000"),
+        )
+        // 2025 FMV USD 9000 sits below the floor: basis clamps at
+        // 9911 and only the 2024 inclusions reverse.
+        val second = service.record(
+            portfolioId, security, 2025, LocalDate.of(2025, 12, 31),
+            Quantity.of("100"), eur("9000.0000"), BigDecimal("1.00000000"),
+        )
+        assertEquals(usd("9911.0000"), second.basisAfterUsd)
+        assertEquals(usd("-2089.0000"), second.ordinaryIncomeUsd)
+
+        // Editing 2024 down to FMV 10000 shrinks its inclusions to 89.
+        // The restated 2025 mark would go 2089 below cost if it simply
+        // took basis to FMV; the floor must hold in the chain walk
+        // too, reversing only the remaining 89.
+        val edited = service.update(
+            portfolioId, security, service.listForSecurity(security)[0].id,
+            LocalDate.of(2024, 12, 31),
+            Quantity.of("100"), eur("10000.0000"), BigDecimal("1.00000000"),
+        )
+        assertEquals(usd("89.0000"), edited.ordinaryIncomeUsd)
+        val restated = service.listForSecurity(security)[1]
+        assertEquals(usd("10000.0000"), restated.basisBeforeUsd)
+        assertEquals(usd("9911.0000"), restated.basisAfterUsd)
+        assertEquals(usd("-89.0000"), restated.ordinaryIncomeUsd)
+        // Cumulative income equals final basis − acquisition cost: 0.
+        assertEquals(usd("0.0000"), edited.ordinaryIncomeUsd + restated.ordinaryIncomeUsd)
+    }
+
+    @Test
+    fun `an edit cannot move a mark to another tax year`() {
+        val mark = service.record(
+            portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
+            Quantity.of("100"), eur("9500.0000"), BigDecimal("1.00000000"),
+        )
+        val rejected = assertFailsWith<StatusException> {
+            service.update(
+                portfolioId, security, mark.id, LocalDate.of(2025, 1, 2),
+                Quantity.of("100"), eur("9500.0000"), BigDecimal("1.00000000"),
+            )
+        }
+        assertEquals(Status.Code.INVALID_ARGUMENT, rejected.status.code)
+    }
+
+    @Test
     fun `only the latest mark deletes`() {
         val first = service.record(
             portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
