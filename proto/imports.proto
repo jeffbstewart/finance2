@@ -30,6 +30,9 @@ enum ReportSeverity {
 message ReportLine {
   ReportSeverity severity = 1;
   string message = 2;
+  // The finance2 account the line concerns; 0 when it has none (an
+  // unlinked Plaid account, a processing failure).
+  int64 account_id = 3;
 }
 
 // What one processing run did (build-scope §1 semantics: tax-deferred
@@ -115,6 +118,29 @@ message LinkPlaidAccountRequest {
 
 message LinkPlaidAccountResponse {}
 
+// A warning from the most recently processed snapshot, attributed to
+// the finance2 account it concerns, so the broker and account views
+// can show what still needs fixing. Lines with no account (unlinked
+// Plaid accounts) only appear on the Imports page.
+message ImportWarning {
+  int64 snapshot_id = 1;
+  FormattedDate as_of = 2;
+  int64 account_id = 3;
+  int64 broker_id = 4;
+  string account_name = 5;
+  string message = 6;
+}
+
+// Both filters 0 = every account; account_id wins when both are set.
+message ListImportWarningsRequest {
+  int64 broker_id = 1;
+  int64 account_id = 2;
+}
+
+message ListImportWarningsResponse {
+  repeated ImportWarning warnings = 1;
+}
+
 service ImportService {
   rpc UploadSnapshot(UploadSnapshotRequest) returns (UploadSnapshotResponse);
   rpc ListSnapshots(ListSnapshotsRequest) returns (ListSnapshotsResponse);
@@ -122,4 +148,5 @@ service ImportService {
   rpc DeleteSnapshot(DeleteSnapshotRequest) returns (DeleteSnapshotResponse);
   rpc GetSnapshotAccounts(GetSnapshotAccountsRequest) returns (GetSnapshotAccountsResponse);
   rpc LinkPlaidAccount(LinkPlaidAccountRequest) returns (LinkPlaidAccountResponse);
+  rpc ListImportWarnings(ListImportWarningsRequest) returns (ListImportWarningsResponse);
 }

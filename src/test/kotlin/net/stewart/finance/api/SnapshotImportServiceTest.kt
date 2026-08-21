@@ -287,6 +287,65 @@ class SnapshotImportServiceTest {
     }
 
     @Test
+    fun `report lines carry the account they concern, unlinked ones none`() {
+        PlaidAccountLinkRepository(db.dataSource).link("ref-ira", AccountId(1))
+        val record = service.upload(
+            portfolioId, "s.pb",
+            snapshot(iraAccount(holding("MYSTERY", "3")), brokerageAccount(holding("VTI", "1"))).toByteArray(),
+        )
+        val report = ImportReport.parseFrom(service.process(portfolioId, record.id).report!!)
+        val mystery = report.linesList.single { "MYSTERY" in it.message }
+        assertEquals(1L, mystery.accountId)
+        val unlinked = report.linesList.single { "not linked" in it.message }
+        assertEquals(0L, unlinked.accountId)
+    }
+
+    @Test
+    fun `latest warnings follow the most recent processing run and skip unattributed lines`() {
+        assertTrue(service.latestWarnings(portfolioId).isEmpty())
+        PlaidAccountLinkRepository(db.dataSource).link("ref-ira", AccountId(1))
+        PlaidAccountLinkRepository(db.dataSource).link("ref-brok", AccountId(2))
+        val first = service.upload(
+            portfolioId, "first.pb",
+            snapshot(iraAccount(holding("MYSTERY", "3")), brokerageAccount(holding("VTI", "12"))).toByteArray(),
+        )
+        // Uploaded but unprocessed: still nothing to show.
+        assertTrue(service.latestWarnings(portfolioId).isEmpty())
+        service.process(portfolioId, first.id)
+
+        val warnings = service.latestWarnings(portfolioId)
+        assertEquals(listOf(AccountId(1), AccountId(2)), warnings.map { it.account.id })
+        assertEquals(LocalDate.of(2026, 8, 15), warnings[0].asOf)
+        assertTrue("MYSTERY" in warnings[0].message)
+        assertTrue("institution reports 12" in warnings[1].message)
+        // Info lines and the unlinked Plaid account never surface here.
+        assertTrue(warnings.none { "holding(s) updated" in it.message || "not linked" in it.message })
+
+        // A newer snapshot with a clean IRA and an unlinked brokerage:
+        // only its warnings count, and the unlinked one has no account.
+        val second = service.upload(
+            portfolioId, "second.pb",
+            snapshot(
+                iraAccount(holding("VTI", "1")),
+                brokerageAccount(holding("VTI", "12")).toBuilder().setAccountRef("ref-other").build(),
+            ).toByteArray(),
+        )
+        service.process(portfolioId, second.id)
+        assertTrue(service.latestWarnings(portfolioId).isEmpty())
+
+        // Re-running the older snapshot makes it the latest run again
+        // (ordered by processed_at; the pause keeps the two runs apart).
+        Thread.sleep(5)
+        service.process(portfolioId, first.id)
+        val rerun = service.latestWarnings(portfolioId)
+        assertTrue(rerun.all { it.snapshotId == first.id })
+        // The original two, plus: the second run imported VTI into the
+        // IRA and the first snapshot does not carry it.
+        assertEquals(3, rerun.size)
+        assertTrue(rerun.any { it.account.id == AccountId(1) && "absent from the snapshot" in it.message })
+    }
+
+    @Test
     fun `severity levels distinguish info from warnings`() {
         PlaidAccountLinkRepository(db.dataSource).link("ref-ira", AccountId(1))
         val record = service.upload(

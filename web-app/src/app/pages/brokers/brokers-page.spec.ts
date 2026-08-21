@@ -13,9 +13,10 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BrokerService, type BrokerSummary } from '../../../proto-gen/brokers_pb';
+import { ImportService, type ImportWarning } from '../../../proto-gen/imports_pb';
 import { installFakeApi } from '../../../testing/fake-api';
 import { settle } from '../../../testing/settle';
-import { sampleBrokers } from '../../../testing/sample-data';
+import { sampleBrokers, sampleImportWarnings } from '../../../testing/sample-data';
 import { PieChartStub } from '../../../testing/chart-stubs';
 import { Notify } from '../../core/notify';
 import { PieChart } from '../../shared/charts/pie-chart';
@@ -40,6 +41,8 @@ describe('BrokersPage', () => {
   let hideRequests: { brokerId: bigint; hidden: boolean }[];
   let dialogOpens: { component: unknown; config: unknown }[];
   let brokers: BrokerSummary[];
+  let warnings: ImportWarning[];
+  let warningRequests: { brokerId: bigint; accountId: bigint }[];
   let totals: { holdings: string; sweeps: string };
   let listError: ConnectError | undefined;
   let hideError: ConnectError | undefined;
@@ -52,6 +55,8 @@ describe('BrokersPage', () => {
     hideRequests = [];
     dialogOpens = [];
     brokers = sampleBrokers();
+    warnings = [];
+    warningRequests = [];
     totals = { holdings: '$64,000.00', sweeps: '$845.25' };
     listError = undefined;
     hideError = undefined;
@@ -73,6 +78,18 @@ describe('BrokersPage', () => {
           const broker = brokers.find((b) => b.brokerId === request.brokerId);
           if (broker) broker.hidden = request.hidden;
           return {};
+        },
+      });
+      service(ImportService, {
+        listImportWarnings: (request) => {
+          warningRequests.push({ brokerId: request.brokerId, accountId: request.accountId });
+          return {
+            warnings: warnings.filter(
+              (w) =>
+                (request.accountId ? w.accountId === request.accountId : true) &&
+                (request.brokerId && !request.accountId ? w.brokerId === request.brokerId : true),
+            ),
+          };
         },
       });
     });
@@ -304,6 +321,27 @@ describe('BrokersPage', () => {
     await settle(fixture);
     expect(dialogOpens).toEqual([{ component: BrokerDialog, config: { data: {} } }]);
     expect(listRequests).toEqual([{ includeHidden: false }, { includeHidden: false }]);
+  });
+
+  it('badges a broker with its count of unresolved import warnings', async () => {
+    warnings = sampleImportWarnings();
+    const fixture = await render();
+    expect(warningRequests).toEqual([{ brokerId: 0n, accountId: 0n }]);
+    const host = fixture.nativeElement as HTMLElement;
+    const badges = Array.from(host.querySelectorAll<HTMLAnchorElement>('.warning-badge'));
+    expect(badges).toHaveLength(1);
+    expect(badges[0].textContent!.replace(/\s+/g, '')).toBe('warning2');
+    expect(badges[0].getAttribute('href')).toBe('/brokers/1');
+    expect(badges[0].getAttribute('aria-label')).toBe('2 import warnings');
+    // Vanguard carries the badge; EuroBank has nothing to fix.
+    expect(rows(fixture)[0][0]).toContain('Vanguard');
+    expect(rows(fixture)[1]).toEqual(['EuroBank', '$12,000.00', '$290.00', '']);
+  });
+
+  it('shows no badge when the last import left nothing to fix', async () => {
+    const fixture = await render();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.warning-badge')).toBeNull();
   });
 
   it('does not reload when the add dialog is dismissed', async () => {

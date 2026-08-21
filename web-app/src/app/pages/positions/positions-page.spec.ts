@@ -25,9 +25,11 @@ import {
   type PositionRow,
 } from '../../../proto-gen/positions_pb';
 import { ProvenanceSchema } from '../../../proto-gen/common_pb';
+import { ImportService, type ImportWarning } from '../../../proto-gen/imports_pb';
 import { SparklineSchema } from '../../../proto-gen/securities_pb';
 import { PieChartStub } from '../../../testing/chart-stubs';
 import { installFakeApi } from '../../../testing/fake-api';
+import { sampleImportWarnings } from '../../../testing/sample-data';
 import { settle } from '../../../testing/settle';
 import { civil, decimal, money, quantity } from '../../../testing/wire';
 import { Notify } from '../../core/notify';
@@ -161,6 +163,8 @@ describe('PositionsPage', () => {
   let positionsFor: (accountId: bigint) => ListPositionsResponse;
   let accountFor: (accountId: bigint) => ReturnType<typeof brokerage>;
   let failMutation: ConnectError | undefined;
+  let warnings: ImportWarning[];
+  let warningRequests: { brokerId: bigint; accountId: bigint }[];
 
   beforeEach(() => {
     listRequests = [];
@@ -171,6 +175,8 @@ describe('PositionsPage', () => {
     positionsFor = (accountId) => (accountId === 2n ? rothPositions() : allPositions());
     accountFor = (accountId) => (accountId === 2n ? roth() : brokerage());
     dialog = new DialogStub();
+    warnings = [];
+    warningRequests = [];
 
     restoreApi = installFakeApi(({ service }) => {
       service(PositionService, {
@@ -193,6 +199,18 @@ describe('PositionsPage', () => {
           if (failMutation) throw failMutation;
           deleteCalls.push(request.accountId);
           return {};
+        },
+      });
+      service(ImportService, {
+        listImportWarnings: (request) => {
+          warningRequests.push({ brokerId: request.brokerId, accountId: request.accountId });
+          return {
+            warnings: warnings.filter(
+              (w) =>
+                (request.accountId ? w.accountId === request.accountId : true) &&
+                (request.brokerId && !request.accountId ? w.brokerId === request.brokerId : true),
+            ),
+          };
         },
       });
     });
@@ -270,6 +288,13 @@ describe('PositionsPage', () => {
       ]);
     });
 
+    it('never asks for import warnings portfolio-wide', async () => {
+      warnings = sampleImportWarnings();
+      const fixture = await render();
+      expect(warningRequests).toEqual([]);
+      expect(textOf(fixture)).not.toContain('Import reconciliation');
+    });
+
     it('asks for accountId 0 and never fetches an account', async () => {
       await render();
       expect(listRequests).toEqual([0n]);
@@ -344,6 +369,28 @@ describe('PositionsPage', () => {
   });
 
   describe('account scope', () => {
+    it("shows the scoped account's import warnings without account links", async () => {
+      warnings = sampleImportWarnings();
+      const fixture = await render('2');
+      expect(warningRequests).toEqual([{ brokerId: 0n, accountId: 2n }]);
+      const text = textOf(fixture);
+      expect(text).toContain('Import reconciliation — 1 item(s) to fix');
+      expect(text).toContain('ticker INTLX is not a known security');
+      expect(text).not.toContain('institution reports 12 shares');
+      const panelLinks = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
+          'app-import-warnings a',
+        ),
+        (a) => a.getAttribute('href'),
+      );
+      expect(panelLinks).toEqual(['/imports']);
+    });
+
+    it('renders no warning panel when the account is clean', async () => {
+      const fixture = await render('1');
+      expect(textOf(fixture)).not.toContain('Import reconciliation');
+    });
+
     it('titles and subtitles from the fetched account', async () => {
       const fixture = await render('2');
       expect(listRequests).toEqual([2n]);

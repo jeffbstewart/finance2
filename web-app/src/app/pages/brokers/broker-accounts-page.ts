@@ -4,16 +4,20 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 import type { AccountSummary } from '../../../proto-gen/accounts_pb';
+import type { ImportWarning } from '../../../proto-gen/imports_pb';
 import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
 import { PieChart, type PieSlice } from '../../shared/charts/pie-chart';
+import { ImportWarnings } from '../../shared/imports/import-warnings';
 import { AccountDialog } from './account-dialog';
 import { BrokerDialog } from './broker-dialog';
 
 /** Accounts at one broker (spec §9.3): accounts table with totals,
- *  holdings pie, add/edit, and hide-empty-brokerage. */
+ *  holdings pie, add/edit, hide-empty-brokerage, and the broker's
+ *  unresolved import warnings (pipeline design §E). */
 @Component({
   selector: 'app-broker-accounts-page',
   imports: [
@@ -22,6 +26,8 @@ import { BrokerDialog } from './broker-dialog';
     MatDialogModule,
     MatIconModule,
     MatTableModule,
+    MatTooltipModule,
+    ImportWarnings,
     PieChart,
     RouterLink,
   ],
@@ -40,6 +46,7 @@ export class BrokerAccountsPage {
   readonly brokerName = signal('');
   readonly totalInvestment = signal('');
   readonly totalSweeps = signal('');
+  readonly warnings = signal<ImportWarning[]>([]);
   readonly columns = ['name', 'accountNumber', 'taxDeferred', 'sweep', 'investmentValue', 'actions'];
 
   private get brokerId(): bigint {
@@ -55,6 +62,16 @@ export class BrokerAccountsPage {
     })),
   );
 
+  readonly warningCounts = computed(() => {
+    const counts = new Map<bigint, number>();
+    for (const w of this.warnings()) counts.set(w.accountId, (counts.get(w.accountId) ?? 0) + 1);
+    return counts;
+  });
+
+  warningCount(account: AccountSummary): number {
+    return this.warningCounts().get(account.accountId) ?? 0;
+  }
+
   // ngOnInit, not the constructor: required router inputs aren't
   // bound yet at construction (NG0950).
   ngOnInit(): void {
@@ -63,8 +80,12 @@ export class BrokerAccountsPage {
 
   async reload(): Promise<void> {
     try {
-      const response = await api.accounts.listAccounts({ brokerId: this.brokerId });
+      const [response, warnings] = await Promise.all([
+        api.accounts.listAccounts({ brokerId: this.brokerId }),
+        api.imports.listImportWarnings({ brokerId: this.brokerId }),
+      ]);
       this.accounts.set(response.accounts);
+      this.warnings.set(warnings.warnings);
       this.brokerName.set(response.accounts[0]?.brokerName ?? '');
       this.totalInvestment.set(response.totalInvestmentValue?.display ?? '');
       this.totalSweeps.set(response.totalSweeps?.display ?? '');

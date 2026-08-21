@@ -20,10 +20,12 @@ import { BrokerSummarySchema, type BrokerSummary } from '../proto-gen/brokers_pb
 import { ProvenanceSchema } from '../proto-gen/common_pb';
 import {
   ImportReportSchema,
+  ImportWarningSchema,
   ReportLineSchema,
   ReportSeverity,
   SnapshotRowSchema,
   SnapshotStatus,
+  type ImportWarning,
   type SnapshotRow,
 } from '../proto-gen/imports_pb';
 import {
@@ -538,6 +540,30 @@ export function sampleTaxReport(lastYear = new Date().getFullYear() - 1): GetTax
 }
 
 // --------------------------------------------------------------- imports
+
+/** The processed sample's warnings, attributed to Vanguard's two
+ *  accounts (ListImportWarnings with no filter). */
+export function sampleImportWarnings(): ImportWarning[] {
+  return [
+    create(ImportWarningSchema, {
+      snapshotId: 2n,
+      asOf: date('2026-08-10'),
+      accountId: 2n,
+      brokerId: 1n,
+      accountName: 'Roth IRA',
+      message: 'Vanguard "Roth IRA" …5678: ticker INTLX is not a known security — add it by hand and re-process',
+    }),
+    create(ImportWarningSchema, {
+      snapshotId: 2n,
+      asOf: date('2026-08-10'),
+      accountId: 1n,
+      brokerId: 1n,
+      accountName: 'Brokerage',
+      message:
+        'Vanguard "Brokerage" …1234: VTI — institution reports 12 shares, lots hold 10 (taxable accounts are never changed by imports; reconcile the lots by hand)',
+    }),
+  ];
+}
 
 export function sampleSnapshots(): SnapshotRow[] {
   return [

@@ -70,6 +70,22 @@ class SnapshotRepository(dataSource: DataSource) {
             .orElse(null)
     }
 
+    /**
+     * The snapshot whose processing run is the most recent — the one
+     * whose report describes the current state of the import. A
+     * re-run of an older snapshot after lot fixes counts as newest.
+     */
+    fun latestProcessed(portfolioId: PortfolioId): SnapshotRecord? = jdbi.sql { handle ->
+        handle.createQuery(
+            "$SELECT WHERE portfolio_id = :portfolioId AND processed_at IS NOT NULL " +
+                "ORDER BY processed_at DESC, id DESC LIMIT 1"
+        )
+            .bind("portfolioId", portfolioId.value)
+            .map { rs, _ -> rs.toRecord() }
+            .findFirst()
+            .orElse(null)
+    }
+
     /** The archived snapshot bytes, exactly as uploaded. */
     fun content(id: SnapshotId, portfolioId: PortfolioId): ByteArray? = jdbi.sql { handle ->
         handle.createQuery(

@@ -15,6 +15,7 @@ import net.stewart.finance.db.SaleRepository
 import net.stewart.finance.db.SecurityRepository
 import net.stewart.finance.db.SnapshotRecord
 import net.stewart.finance.db.SnapshotRepository
+import net.stewart.finance.domain.AccountId
 import net.stewart.finance.domain.CurrencyUnit
 import net.stewart.finance.domain.EntrySource
 import net.stewart.finance.domain.Money
@@ -29,6 +30,14 @@ import net.stewart.finance.rules.Lot
 import net.stewart.finance.rules.Sale
 import net.stewart.finance.rules.SaleAllocation
 import net.stewart.finance.rules.lotState
+
+/** One report warning tied to the account it concerns. */
+data class AttributedWarning(
+    val snapshotId: SnapshotId,
+    val asOf: LocalDate,
+    val account: AccountRow,
+    val message: String,
+)
 
 /** The one snapshot schema this reader understands. */
 const val SUPPORTED_SNAPSHOT_SCHEMA = 1
@@ -117,6 +126,28 @@ class SnapshotImportService(
         return result
     }
 
+    /**
+     * The warnings the most recent processing run left against real
+     * accounts — what the broker and account views show so the human
+     * is prompted to fix lots, add securities, or delete holdings.
+     * Lines with no account (unlinked Plaid accounts, a failed run)
+     * belong only on the Imports page. Accounts deleted since the run
+     * are dropped. Empty until something has been processed.
+     */
+    fun latestWarnings(portfolioId: PortfolioId): List<AttributedWarning> {
+        val record = snapshots.latestProcessed(portfolioId) ?: return emptyList()
+        val report = ImportReport.parseFrom(record.report ?: return emptyList())
+        val accountCache = mutableMapOf<AccountId, AccountRow?>()
+        return report.linesList
+            .filter { it.severity == ReportSeverity.WARNING && it.accountId != 0L }
+            .mapNotNull { line ->
+                val id = AccountId(line.accountId)
+                val account = accountCache.getOrPut(id) { accounts.find(id, portfolioId) }
+                    ?: return@mapNotNull null
+                AttributedWarning(record.id, record.asOf, account, line.message)
+            }
+    }
+
     private fun runProcessing(
         portfolioId: PortfolioId,
         snapshot: InvestmentsSnapshot,
@@ -175,6 +206,8 @@ class SnapshotImportService(
         asOf: LocalDate,
         portfolioId: PortfolioId,
     ): Pair<Int, Int> {
+        fun warn(message: String) = report.addLines(line(ReportSeverity.WARNING, message, account.id))
+        fun info(message: String) = report.addLines(line(ReportSeverity.INFO, message, account.id))
         var holdingsUpdated = 0
         var sweepsUpdated = 0
         var cashFromHoldings: Money? = null
@@ -190,36 +223,22 @@ class SnapshotImportService(
             }
             val ticker = holding.security.ticker.trim().uppercase()
             if (ticker.isEmpty()) {
-                report.addLines(
-                    line(
-                        ReportSeverity.WARNING,
-                        "$label: \"${holding.security.name}\" has no ticker — cannot match; held ${holding.quantity.value}"
-                    )
-                )
+                warn("$label: \"${holding.security.name}\" has no ticker — cannot match; held ${holding.quantity.value}")
                 continue
             }
             val security = securitiesByTicker[ticker]
             if (security == null) {
-                report.addLines(
-                    line(ReportSeverity.WARNING, "$label: ticker $ticker is not a known security — add it by hand and re-process")
-                )
+                warn("$label: ticker $ticker is not a known security — add it by hand and re-process")
                 continue
             }
             if (security.currency != account.currency) {
-                report.addLines(
-                    line(
-                        ReportSeverity.WARNING,
-                        "$label: $ticker is ${security.currency} but the account is ${account.currency} — skipped"
-                    )
-                )
+                warn("$label: $ticker is ${security.currency} but the account is ${account.currency} — skipped")
                 continue
             }
             val quantity = try {
                 Quantity.of(holding.quantity.value)
             } catch (e: Exception) {
-                report.addLines(
-                    line(ReportSeverity.WARNING, "$label: $ticker quantity \"${holding.quantity.value}\" is not a valid share count")
-                )
+                warn("$label: $ticker quantity \"${holding.quantity.value}\" is not a valid share count")
                 continue
             }
             holdings.upsert(account.id, security.id, quantity, EntrySource.PLAID, asOf)
@@ -232,12 +251,7 @@ class SnapshotImportService(
         for (existing in holdings.list(portfolioId, account.id)) {
             val security = securities.find(existing.securityId, portfolioId) ?: continue
             if (security.ticker.uppercase() !in seenTickers) {
-                report.addLines(
-                    line(
-                        ReportSeverity.WARNING,
-                        "$label: ${security.ticker} is held here but absent from the snapshot — delete the holding by hand if it was sold"
-                    )
-                )
+                warn("$label: ${security.ticker} is held here but absent from the snapshot — delete the holding by hand if it was sold")
             }
         }
 
@@ -245,9 +259,9 @@ class SnapshotImportService(
         if (cash != null) {
             accounts.updateSweep(account.id, cash, EntrySource.PLAID, asOf)
             sweepsUpdated++
-            report.addLines(line(ReportSeverity.INFO, "$label: sweep set to ${cash.display()}"))
+            info("$label: sweep set to ${cash.display()}")
         }
-        report.addLines(line(ReportSeverity.INFO, "$label: $holdingsUpdated holding(s) updated"))
+        info("$label: $holdingsUpdated holding(s) updated")
         return holdingsUpdated to sweepsUpdated
     }
 
@@ -261,6 +275,8 @@ class SnapshotImportService(
         securitiesByTicker: Map<String, net.stewart.finance.db.SecurityRow>,
         portfolioId: PortfolioId,
     ) {
+        fun warn(message: String) = report.addLines(line(ReportSeverity.WARNING, message, account.id))
+        fun info(message: String) = report.addLines(line(ReportSeverity.INFO, message, account.id))
         var matches = 0
         for (holding in plaidAccount.holdingsList) {
             if (holding.security.isCashEquivalent) continue
@@ -268,17 +284,13 @@ class SnapshotImportService(
             if (ticker.isEmpty()) continue
             val security = securitiesByTicker[ticker]
             if (security == null) {
-                report.addLines(
-                    line(ReportSeverity.WARNING, "$label: ticker $ticker is not a known security — add it by hand and re-process")
-                )
+                warn("$label: ticker $ticker is not a known security — add it by hand and re-process")
                 continue
             }
             val institutionQuantity = try {
                 Quantity.of(holding.quantity.value)
             } catch (e: Exception) {
-                report.addLines(
-                    line(ReportSeverity.WARNING, "$label: $ticker quantity \"${holding.quantity.value}\" is not a valid share count")
-                )
+                warn("$label: $ticker quantity \"${holding.quantity.value}\" is not a valid share count")
                 continue
             }
             val lotRecords = lots.list(portfolioId, account.id, security.id)
@@ -297,17 +309,14 @@ class SnapshotImportService(
             if (stillHeld == institutionQuantity) {
                 matches++
             } else {
-                report.addLines(
-                    line(
-                        ReportSeverity.WARNING,
-                        "$label: $ticker — institution reports ${holding.quantity.value} shares, " +
-                            "lots hold ${stillHeld.amount.stripTrailingZeros().toPlainString()} " +
-                            "(taxable accounts are never changed by imports; reconcile the lots by hand)"
-                    )
+                warn(
+                    "$label: $ticker — institution reports ${holding.quantity.value} shares, " +
+                    "lots hold ${stillHeld.amount.stripTrailingZeros().toPlainString()} " +
+                    "(taxable accounts are never changed by imports; reconcile the lots by hand)"
                 )
             }
         }
-        report.addLines(line(ReportSeverity.INFO, "$label: taxable — compared only; $matches position(s) match"))
+        info("$label: taxable — compared only; $matches position(s) match")
     }
 
     private fun parse(content: ByteArray): InvestmentsSnapshot = try {
@@ -327,8 +336,13 @@ class SnapshotImportService(
         }
     }
 
-    private fun line(severity: ReportSeverity, message: String): ReportLine =
-        ReportLine.newBuilder().setSeverity(severity).setMessage(message).build()
+    /** [account] is the finance2 account the line concerns, when any;
+     *  it is what lets the broker and account views show the line. */
+    private fun line(severity: ReportSeverity, message: String, account: AccountId? = null): ReportLine {
+        val builder = ReportLine.newBuilder().setSeverity(severity).setMessage(message)
+        account?.let { builder.setAccountId(it.value) }
+        return builder.build()
+    }
 
     private fun invalid(message: String) =
         StatusException(Status.INVALID_ARGUMENT.withDescription(message))
