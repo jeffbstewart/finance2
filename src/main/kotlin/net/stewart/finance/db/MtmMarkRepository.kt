@@ -108,6 +108,37 @@ class MtmMarkRepository(dataSource: DataSource) {
         )
     }
 
+    /** Rewrites a mark's inputs and computed chain figures; the tax
+     *  year never changes (delete + re-record moves years). */
+    fun update(
+        id: MtmMarkId,
+        markDate: LocalDate,
+        quantity: Quantity,
+        fmvLocal: Money,
+        fxRate: BigDecimal,
+        fmvUsd: Money,
+        basisBeforeUsd: Money,
+        basisAfterUsd: Money,
+        ordinaryIncomeUsd: Money,
+    ): Boolean = jdbi.sql { handle ->
+        handle.createUpdate(
+            "UPDATE mtm_marks SET mark_date = :markDate, quantity = :quantity, " +
+                "fmv_local = :fmvLocal, fx_rate = :fxRate, fmv_usd = :fmvUsd, " +
+                "basis_before_usd = :basisBefore, basis_after_usd = :basisAfter, " +
+                "ordinary_income_usd = :ordinaryIncome WHERE id = :id"
+        )
+            .bind("markDate", markDate)
+            .bind("quantity", quantity.amount)
+            .bind("fmvLocal", fmvLocal.amount)
+            .bind("fxRate", fxRate)
+            .bind("fmvUsd", fmvUsd.amount)
+            .bind("basisBefore", basisBeforeUsd.amount)
+            .bind("basisAfter", basisAfterUsd.amount)
+            .bind("ordinaryIncome", ordinaryIncomeUsd.amount)
+            .bind("id", id.value)
+            .execute() > 0
+    }
+
     fun delete(id: MtmMarkId): Boolean = jdbi.sql { handle ->
         handle.createUpdate("DELETE FROM mtm_marks WHERE id = :id")
             .bind("id", id.value)

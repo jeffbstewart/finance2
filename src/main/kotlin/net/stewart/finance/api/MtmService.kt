@@ -47,6 +47,11 @@ class MtmService(
     fun listForSecurity(security: SecurityRow): List<MtmMarkRecord> =
         marks.listForSecurity(security.id)
 
+    /** The security a mark belongs to, for id-only RPCs. */
+    fun markSecurityId(portfolioId: PortfolioId, markId: MtmMarkId): net.stewart.finance.domain.SecurityId =
+        marks.find(markId, portfolioId)?.securityId
+            ?: throw StatusException(Status.NOT_FOUND.withDescription("no mark ${markId.value}"))
+
     /** Total USD acquisition cost of lots bought on or before [asOf]. */
     fun acquisitionCostUsd(
         portfolioId: PortfolioId,
@@ -145,6 +150,59 @@ class MtmService(
         return computed.copy(id = id)
     }
 
+    /**
+     * Edits a recorded mark's inputs (tax year immutable) and
+     * recomputes the basis chain from it forward — every later mark's
+     * basis and ordinary income restate from its own stored inputs.
+     */
+    fun update(
+        portfolioId: PortfolioId,
+        security: SecurityRow,
+        markId: MtmMarkId,
+        markDate: LocalDate,
+        quantity: Quantity,
+        fmvLocal: Money,
+        fxRate: BigDecimal,
+    ): MtmMarkRecord {
+        requireMtm(security)
+        requireNoSales(portfolioId, security)
+        val mark = marks.find(markId, portfolioId)
+            ?: throw StatusException(Status.NOT_FOUND.withDescription("no mark ${markId.value}"))
+        if (mark.securityId != security.id) {
+            throw StatusException(Status.NOT_FOUND.withDescription("no mark ${markId.value}"))
+        }
+        if (markDate.year != mark.taxYear) {
+            throw invalid(
+                "mark date $markDate is not in tax year ${mark.taxYear} — " +
+                    "delete and re-record to move a mark between years"
+            )
+        }
+        if (quantity.signum() <= 0) throw invalid("quantity must be positive")
+        if (fmvLocal.signum() < 0) throw invalid("FMV must not be negative")
+        if (fxRate.signum() <= 0) throw invalid("FX rate must be positive")
+
+        val all = marks.listForSecurity(security.id)
+        var previous = all.lastOrNull { it.taxYear < mark.taxYear }
+        var edited: MtmMarkRecord? = null
+        for (current in all.filter { it.taxYear >= mark.taxYear }) {
+            val figures = if (current.id == mark.id) {
+                computeFigures(portfolioId, security, previous, mark.taxYear, markDate, quantity, fmvLocal, fxRate)
+            } else {
+                computeFigures(
+                    portfolioId, security, previous, current.taxYear,
+                    current.markDate, current.quantity, current.fmvLocal, current.fxRate,
+                )
+            }
+            marks.update(
+                current.id, figures.markDate, figures.quantity, figures.fmvLocal, figures.fxRate,
+                figures.fmvUsd, figures.basisBeforeUsd, figures.basisAfterUsd, figures.ordinaryIncomeUsd,
+            )
+            previous = figures.copy(id = current.id)
+            if (current.id == mark.id) edited = previous
+        }
+        return checkNotNull(edited)
+    }
+
     /** Only the latest mark may go — the basis chain feeds forward. */
     fun delete(portfolioId: PortfolioId, markId: MtmMarkId): MtmMarkRecord {
         val mark = marks.find(markId, portfolioId)
@@ -181,6 +239,23 @@ class MtmService(
         quantity: Quantity,
         fmvLocal: Money,
         fxRate: BigDecimal,
+    ): MtmMarkRecord = computeFigures(
+        portfolioId, security,
+        marks.listForSecurity(security.id).lastOrNull { it.taxYear < taxYear },
+        taxYear, markDate, quantity, fmvLocal, fxRate,
+    )
+
+    /** One mark's figures against an explicit predecessor — the shared
+     *  step for recording, suggesting, and the edit chain recompute. */
+    private fun computeFigures(
+        portfolioId: PortfolioId,
+        security: SecurityRow,
+        previous: MtmMarkRecord?,
+        taxYear: Int,
+        markDate: LocalDate,
+        quantity: Quantity,
+        fmvLocal: Money,
+        fxRate: BigDecimal,
     ): MtmMarkRecord {
         val floor = acquisitionCostUsd(portfolioId, security, markDate)
         if (floor.isZero()) {
@@ -190,7 +265,6 @@ class MtmService(
                 )
             )
         }
-        val previous = marks.listForSecurity(security.id).lastOrNull { it.taxYear < taxYear }
         // Basis carries the prior mark forward plus any purchases since
         // it; the first mark starts from acquisition cost.
         val basisBefore = if (previous == null) floor else {

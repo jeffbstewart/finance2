@@ -62,6 +62,8 @@ import net.stewart.finance.proto.RecordMtmMarkRequest
 import net.stewart.finance.proto.RecordMtmMarkResponse
 import net.stewart.finance.proto.SuggestMtmMarkRequest
 import net.stewart.finance.proto.SuggestMtmMarkResponse
+import net.stewart.finance.proto.UpdateMtmMarkRequest
+import net.stewart.finance.proto.UpdateMtmMarkResponse
 import net.stewart.finance.proto.PricePoint
 import net.stewart.finance.proto.PricingLocus as PricingLocusProto
 import net.stewart.finance.proto.PrivatePriceRow
@@ -394,25 +396,59 @@ class SecurityGrpcService(
         } catch (e: DateTimeException) {
             throw invalid("mark date is not a valid date")
         }
-        val quantity = try {
-            Quantity.of(request.quantity.value.trim())
-        } catch (e: Exception) {
-            throw invalid("quantity is not a valid share count: \"${request.quantity.value}\"")
-        }
-        val fmvLocal = try {
-            Money.of(request.fmvLocal.value.trim(), row.currency)
-        } catch (e: Exception) {
-            throw invalid("FMV is not a valid amount: \"${request.fmvLocal.value}\"")
-        }
-        val fxRate = try {
-            BigDecimal(request.fxRate.value.trim())
-        } catch (e: Exception) {
-            throw invalid("FX rate is not a valid decimal: \"${request.fxRate.value}\"")
-        }
-        val recorded = mtm.record(portfolio(), row, taxYear, markDate, quantity, fmvLocal, fxRate)
+        val recorded = mtm.record(
+            portfolio(), row, taxYear, markDate,
+            parseMarkQuantity(request.quantity.value),
+            parseMarkFmv(request.fmvLocal.value, row),
+            parseMarkFxRate(request.fxRate.value),
+        )
         return RecordMtmMarkResponse.newBuilder()
             .setMark(recorded.toProto(recorded.id.value))
             .build()
+    }
+
+    override suspend fun updateMtmMark(request: UpdateMtmMarkRequest): UpdateMtmMarkResponse {
+        if (request.markId <= 0) throw invalid("mark id is required")
+        val portfolioId = portfolio()
+        val markId = MtmMarkId(request.markId)
+        val row = securityOfMark(markId)
+        val markDate = try {
+            request.markDate.toLocalDate()
+        } catch (e: DateTimeException) {
+            throw invalid("mark date is not a valid date")
+        }
+        val updated = mtm.update(
+            portfolioId, row, markId, markDate,
+            parseMarkQuantity(request.quantity.value),
+            parseMarkFmv(request.fmvLocal.value, row),
+            parseMarkFxRate(request.fxRate.value),
+        )
+        return UpdateMtmMarkResponse.newBuilder()
+            .setMark(updated.toProto(updated.id.value))
+            .build()
+    }
+
+    private fun securityOfMark(markId: MtmMarkId): SecurityRow {
+        val securityId = mtm.markSecurityId(portfolio(), markId)
+        return findSecurity(securityId.value)
+    }
+
+    private fun parseMarkQuantity(raw: String): Quantity = try {
+        Quantity.of(raw.trim())
+    } catch (e: Exception) {
+        throw invalid("quantity is not a valid share count: \"$raw\"")
+    }
+
+    private fun parseMarkFmv(raw: String, security: SecurityRow): Money = try {
+        Money.of(raw.trim(), security.currency)
+    } catch (e: Exception) {
+        throw invalid("FMV is not a valid amount: \"$raw\"")
+    }
+
+    private fun parseMarkFxRate(raw: String): BigDecimal = try {
+        BigDecimal(raw.trim())
+    } catch (e: Exception) {
+        throw invalid("FX rate is not a valid decimal: \"$raw\"")
     }
 
     override suspend fun deleteMtmMark(request: DeleteMtmMarkRequest): DeleteMtmMarkResponse {
