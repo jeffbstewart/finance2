@@ -10,7 +10,9 @@
 //     remove: { imports: [PieChart] },
 //     add: { imports: [PieChartStub] },
 //   });
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, type Type } from '@angular/core';
+import type { ComponentFixture } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import type { PieSlice } from '../app/shared/charts/pie-chart';
 import type { TimeSeries } from '../app/shared/charts/time-series-chart';
 import type { BarSeries } from '../app/shared/charts/grouped-bar-chart';
@@ -45,4 +47,12 @@ export class GroupedBarChartStub {
   readonly title = input('');
   readonly categories = input<string[]>([]);
   readonly series = input<BarSeries[]>([]);
+}
+
+/** The stub instances of `stub` in the fixture. Use this rather than a
+ *  `query(el => el.componentInstance instanceof Stub)` predicate: that
+ *  also matches the stub's inner nodes (componentInstance is inherited
+ *  down the view), returning every stub twice. */
+export function findStubs<T>(fixture: ComponentFixture<unknown>, stub: Type<T>): T[] {
+  return fixture.debugElement.queryAll(By.directive(stub)).map((el) => el.componentInstance as T);
 }

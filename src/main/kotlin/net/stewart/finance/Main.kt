@@ -107,15 +107,27 @@ fun main() {
     // pull of the rolling 90-day feed keeps fx_rates current and
     // backfills after downtime (build-scope §5; ruling 2026-08-19:
     // simple in-process scheduling, one always-running container).
+    // Test deployments are hermetic (docs/design/ui-testing.md): the
+    // network feeds stay off so seeded FX rates are the only rates —
+    // a live ECB rate dated today would otherwise outrank the seeder's
+    // row and move every FX-derived figure the specs pin.
+    val testSupport = System.getenv("FINANCE2_TEST_SUPPORT")?.toBooleanStrictOrNull() ?: false
+    if (testSupport) {
+        log.warn("FINANCE2_TEST_SUPPORT is enabled — ECB/FRED feed jobs are NOT started (hermetic test server)")
+    }
     val fxFeed = EcbFxFeed(net.stewart.finance.db.FxRepository(db.dataSource))
-    PeriodicJob("ecb-fx-refresh", java.time.Duration.ofDays(1)) { fxFeed.refresh() }.start()
+    if (!testSupport) {
+        PeriodicJob("ecb-fx-refresh", java.time.Duration.ofDays(1)) { fxFeed.refresh() }.start()
+    }
 
     // CPI: seeded from the embedded snapshot so inflation adjustment
     // works offline from first boot (spec S10); FRED publishes monthly,
     // so a weekly background pull is plenty.
     val cpiFeed = CpiFeed(CpiRepository(db.dataSource))
     cpiFeed.seedIfEmpty()
-    PeriodicJob("fred-cpi-refresh", java.time.Duration.ofDays(7)) { cpiFeed.refresh() }.start()
+    if (!testSupport) {
+        PeriodicJob("fred-cpi-refresh", java.time.Duration.ofDays(7)) { cpiFeed.refresh() }.start()
+    }
 
     // Decision 4 market data: Tiingo primary, EODHD fallback; each
     // provider exists only when its key is configured. With none, the
@@ -135,7 +147,6 @@ fun main() {
 
     // Test harnesses need a deterministic first boot: with test
     // support enabled, SETUP_TOKEN overrides the random per-run token.
-    val testSupport = System.getenv("FINANCE2_TEST_SUPPORT")?.toBooleanStrictOrNull() ?: false
     val setupToken = if (users.hasUsers()) null else {
         val override = if (testSupport) {
             System.getenv("SETUP_TOKEN")?.takeIf { it.isNotBlank() }

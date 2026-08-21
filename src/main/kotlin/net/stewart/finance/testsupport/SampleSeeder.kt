@@ -171,6 +171,12 @@ class SampleSeeder(private val dataSource: DataSource) {
         privatePrices.add(eufund, today.minusDays(7), Money.of("104.0000", CurrencyUnit.EUR))
         classifications.replace(eufund, net.stewart.finance.domain.ClassificationKind.ASSET_CLASS, mapOf("Non US Stock" to Fraction.ONE), today.minusDays(30))
 
+        // SOLO: priced, visible, never held — the empty-lot-ledger state
+        // (lot details, hide-security) and the single-close sparkline.
+        val solo = securities.create(portfolioId, "SOLO", CurrencyUnit.USD)
+        securities.updateProfile(solo, "Priced, never held", SecurityType.STOCK, PricingLocus.MANUAL, TaxTreatment.LOTS, null)
+        privatePrices.add(solo, today.minusDays(1), Money.of("42.0000", CurrencyUnit.USD))
+
         val ghost = securities.create(portfolioId, "GHOST", CurrencyUnit.USD)
         securities.updateProfile(ghost, "Hidden test security", SecurityType.STOCK, PricingLocus.MANUAL, TaxTreatment.LOTS, null)
         securities.setHidden(ghost, true)
@@ -179,6 +185,7 @@ class SampleSeeder(private val dataSource: DataSource) {
         ids["security.bondx"] = bondx.value
         ids["security.gold"] = gold.value
         ids["security.eufund"] = eufund.value
+        ids["security.solo"] = solo.value
         ids["security.ghost"] = ghost.value
 
         // Taxable lots and sales. The previous-calendar-year sale is

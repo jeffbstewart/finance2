@@ -43,6 +43,12 @@ export function fraction(value: string, display?: string): FormattedDecimal {
   });
 }
 
+/** A plain decimal such as an FX rate: display is the number itself. */
+export function rate(value: string): FormattedDecimal {
+  const trimmed = value.includes('.') ? value.replace(/0+$/, '').replace(/\.$/, '') : value;
+  return quantity(value, trimmed);
+}
+
 export function quantity(value: string, display?: string): FormattedDecimal {
   return create(FormattedDecimalSchema, {
     exact: decimal(value),
