@@ -33,3 +33,14 @@ composite builds from checkouts beside this one.
   dated FX rate.
 - **Single user.** The first account created is the only account;
   registration closes permanently afterwards.
+
+## Not tax advice
+
+Neither the author nor this software is a tax advisor. The tax
+treatment this software implements — capital gain terms, the PFIC
+§1296 mark-to-market handling, and everything else tax-shaped — is
+the best understanding of the author and their AI agent, based on
+**United States tax rules as of 2026**. Tax law differs by
+jurisdiction and changes over time. Users are on their own to confirm
+with a competent tax advisor that these assumptions hold for their
+situation before relying on any figure this software produces.
