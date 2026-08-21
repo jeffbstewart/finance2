@@ -36,7 +36,10 @@ async function gotoPrices(page: Page, key: string): Promise<void> {
 }
 
 /** Date + price cells of every row, top to bottom (the actions cell
- *  holds only icon buttons). */
+ *  holds only icon buttons). One-shot read: callers assert through
+ *  `expect.poll` so post-mutation reads retry until the page's reload
+ *  has re-rendered (the success snackbar fires before the dialog
+ *  closes and the table refreshes). */
 async function priceRows(page: Page): Promise<string[][]> {
   const table = page.locator('table[mat-table]');
   await expect(table).toBeVisible();
@@ -50,7 +53,7 @@ test('lists the seeded GOLD price history newest first', async ({ page }) => {
   await expect(page.locator('mat-card-title')).toHaveText(
     'Edit Privately Traded Price History for GOLD',
   );
-  expect(await priceRows(page)).toEqual([
+  await expect.poll(() => priceRows(page)).toEqual([
     [iso(daysAgo(5)), '$3,358.50'],
     [iso(daysAgo(90)), '$3,100.00'],
   ]);
@@ -83,7 +86,7 @@ test('adds a price through the FAB, with Submit gated on both fields', async ({ 
 
   await submit.click();
   await expectSnackbar(page, 'Price added');
-  expect(await priceRows(page)).toEqual([
+  await expect.poll(() => priceRows(page)).toEqual([
     [iso(daysAgo(5)), '$3,358.50'],
     [iso(when), '$3,222.25'],
     [iso(daysAgo(90)), '$3,100.00'],
@@ -101,7 +104,7 @@ test('rejects a duplicate date and leaves the dialog open', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Add Price' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  expect(await priceRows(page)).toHaveLength(2);
+  await expect.poll(() => priceRows(page)).toHaveLength(2);
 });
 
 test('edits an existing price, prefilled at the wire scale', async ({ page }) => {
@@ -116,7 +119,7 @@ test('edits an existing price, prefilled at the wire scale', async ({ page }) =>
   await fillField(page, 'Price Per Share', '3400');
   await page.getByRole('button', { name: 'Submit' }).click();
   await expectSnackbar(page, 'Price updated');
-  expect(await priceRows(page)).toEqual([
+  await expect.poll(() => priceRows(page)).toEqual([
     [iso(daysAgo(5)), '$3,400.00'],
     [iso(daysAgo(90)), '$3,100.00'],
   ]);
@@ -125,21 +128,21 @@ test('edits an existing price, prefilled at the wire scale', async ({ page }) =>
 test('deletes a price after the native confirm', async ({ page }) => {
   acceptConfirms(page);
   await gotoPrices(page, 'security.bondx');
-  expect(await priceRows(page)).toEqual([
+  await expect.poll(() => priceRows(page)).toEqual([
     [iso(daysAgo(2)), '$10.50'],
     [iso(daysAgo(120)), '$10.00'],
   ]);
 
   await page.getByRole('button', { name: 'Delete price' }).first().click();
   await expectSnackbar(page, 'Price deleted');
-  expect(await priceRows(page)).toEqual([[iso(daysAgo(120)), '$10.00']]);
+  await expect.poll(() => priceRows(page)).toEqual([[iso(daysAgo(120)), '$10.00']]);
 
   // Emptying the history brings back the empty note.
   await page.getByRole('button', { name: 'Delete price' }).first().click();
   await expect(page.locator('.empty-note')).toHaveText(
     'No prices yet — add the first with the button below.',
   );
-  expect(await priceRows(page)).toHaveLength(0);
+  await expect.poll(() => priceRows(page)).toHaveLength(0);
 });
 
 test('declining the confirm keeps the row', async ({ page }) => {
@@ -147,7 +150,7 @@ test('declining the confirm keeps the row', async ({ page }) => {
   await gotoPrices(page, 'security.gold');
   await page.getByRole('button', { name: 'Delete price' }).first().click();
   await expect(page.locator('mat-snack-bar-container')).toHaveCount(0);
-  expect(await priceRows(page)).toEqual([
+  await expect.poll(() => priceRows(page)).toEqual([
     [iso(daysAgo(5)), '$3,358.50'],
     [iso(daysAgo(90)), '$3,100.00'],
   ]);
@@ -183,5 +186,5 @@ test('a MARKET-locus security opens empty and the server rejects the add', async
   await expectSnackbar(page, 'VTI is market-priced');
   await expect(page.getByRole('heading', { name: 'Add Price' })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  expect(await priceRows(page)).toHaveLength(0);
+  await expect.poll(() => priceRows(page)).toHaveLength(0);
 });
