@@ -259,7 +259,11 @@ test('hiding a position-free security returns to the securities list', async ({ 
   await expect(page.locator('p.empty-note')).toHaveText('No lots for BONDX here.');
 
   await page.getByRole('button', { name: 'Hide this Security' }).click();
-  await expectSnackbar(page, 'BONDX hidden');
+  // "Lot deleted" can still be showing, so match this snackbar by its
+  // text rather than assuming a single container.
+  await expect(
+    page.locator('mat-snack-bar-container').filter({ hasText: 'BONDX hidden' }),
+  ).toBeVisible({ timeout: 9_000 });
   await expect(page).toHaveURL(/\/app\/securities$/);
   await expect(page.locator('table[mat-table]')).not.toContainText('BONDX');
 });
