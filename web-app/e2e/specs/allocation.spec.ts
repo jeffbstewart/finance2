@@ -64,7 +64,7 @@ test('draws the four dashboard charts and the rebalance door', async ({ page }) 
   await expect(page.locator('app-grouped-bar-chart')).toHaveCount(2);
   await expect(page.locator('mat-card-actions a')).toHaveAttribute(
     'href',
-    '/allocation/rebalance',
+    '/app/allocation/rebalance',
   );
 });
 
@@ -112,7 +112,7 @@ test('the Cash class shows the synthetic sweeps contribution', async ({ page }) 
   // still renders a link — to /securities/0, which is a dead end.
   await expect(page.getByRole('link', { name: 'Sweeps' })).toHaveAttribute(
     'href',
-    '/securities/0',
+    '/app/securities/0',
   );
 });
 
@@ -128,7 +128,7 @@ test('an unknown class name renders the empty note, not an error', async ({ page
 test('the target dialog opens prefilled with the stored percents', async ({ page }) => {
   await page.goto('/app/allocation');
   await openTargetDialog(page);
-  await expect(page.locator('mat-dialog-title')).toHaveText('Edit Target Asset Allocation');
+  await expect(page.locator('[mat-dialog-title]')).toHaveText('Edit Target Asset Allocation');
   for (const [className, percent] of Object.entries({
     Cash: '10',
     'US Stock': '40',
