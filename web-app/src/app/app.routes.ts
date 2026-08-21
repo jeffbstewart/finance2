@@ -64,6 +64,10 @@ export const routes: Routes = [
         path: 'tax',
         loadComponent: () => import('./pages/tax/tax-page').then((m) => m.TaxPage),
       },
+      {
+        path: 'imports',
+        loadComponent: () => import('./pages/imports/imports-page').then((m) => m.ImportsPage),
+      },
     ],
   },
   { path: '**', redirectTo: '' },
