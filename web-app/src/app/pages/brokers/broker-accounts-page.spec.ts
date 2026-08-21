@@ -16,9 +16,10 @@ import {
   type AccountSummary,
 } from '../../../proto-gen/accounts_pb';
 import { BrokerService } from '../../../proto-gen/brokers_pb';
+import { ImportService, type ImportWarning } from '../../../proto-gen/imports_pb';
 import { PieChartStub } from '../../../testing/chart-stubs';
 import { installFakeApi } from '../../../testing/fake-api';
-import { sampleAccounts, sampleBrokers } from '../../../testing/sample-data';
+import { sampleAccounts, sampleBrokers, sampleImportWarnings } from '../../../testing/sample-data';
 import { settle } from '../../../testing/settle';
 import { money } from '../../../testing/wire';
 import { Notify } from '../../core/notify';
@@ -49,6 +50,8 @@ describe('BrokerAccountsPage', () => {
   let restoreApi: () => void;
   let listAccountsRequests: bigint[];
   let listBrokersRequests: boolean[];
+  let warnings: ImportWarning[];
+  let warningRequests: { brokerId: bigint; accountId: bigint }[];
   let hideRequests: { brokerId: bigint; hidden: boolean }[];
   let accountsFor: (brokerId: bigint) => AccountSummary[];
   let listAccountsError: ConnectError | null;
@@ -57,6 +60,8 @@ describe('BrokerAccountsPage', () => {
   beforeEach(() => {
     listAccountsRequests = [];
     listBrokersRequests = [];
+    warnings = [];
+    warningRequests = [];
     hideRequests = [];
     listAccountsError = null;
     setHiddenError = null;
@@ -98,6 +103,18 @@ describe('BrokerAccountsPage', () => {
           hideRequests.push({ brokerId: request.brokerId, hidden: request.hidden });
           if (setHiddenError) throw setHiddenError;
           return {};
+        },
+      });
+      service(ImportService, {
+        listImportWarnings: (request) => {
+          warningRequests.push({ brokerId: request.brokerId, accountId: request.accountId });
+          return {
+            warnings: warnings.filter(
+              (w) =>
+                (request.accountId ? w.accountId === request.accountId : true) &&
+                (request.brokerId && !request.accountId ? w.brokerId === request.brokerId : true),
+            ),
+          };
         },
       });
     });
@@ -298,6 +315,40 @@ describe('BrokerAccountsPage', () => {
       (a) => a.getAttribute('href'),
     );
     expect(links).toEqual(['/positions?account=1', '/positions?account=2']);
+  });
+
+  it("lists the broker's import warnings with a badge on each affected account", async () => {
+    warnings = sampleImportWarnings();
+    const fixture = await render('1');
+    expect(warningRequests).toEqual([{ brokerId: 1n, accountId: 0n }]);
+    const text = textOf(fixture);
+    expect(text).toContain('Import reconciliation — 2 item(s) to fix');
+    expect(text).toContain('snapshot as of 2026-08-10');
+    expect(text).toContain('ticker INTLX is not a known security');
+    expect(text).toContain('institution reports 12 shares, lots hold 10');
+    expect(text).toContain('re-process the snapshot');
+    // Each line names its account and links to that account's positions.
+    const panelLinks = Array.from(
+      host(fixture).querySelectorAll<HTMLAnchorElement>('app-import-warnings a'),
+      (a) => [a.textContent!.trim(), a.getAttribute('href')],
+    );
+    expect(panelLinks).toEqual([
+      ['Roth IRA', '/positions?account=2'],
+      ['Brokerage', '/positions?account=1'],
+      ['re-process the snapshot', '/imports'],
+    ]);
+    const badges = Array.from(host(fixture).querySelectorAll('.warning-badge'), (b) =>
+      b.getAttribute('aria-label'),
+    );
+    expect(badges).toEqual(['1 import warnings', '1 import warnings']);
+  });
+
+  it('scopes the warnings to this broker and renders nothing when clean', async () => {
+    warnings = sampleImportWarnings();
+    const fixture = await render('2');
+    expect(warningRequests).toEqual([{ brokerId: 2n, accountId: 0n }]);
+    expect(textOf(fixture)).not.toContain('Import reconciliation');
+    expect(host(fixture).querySelector('.warning-badge')).toBeNull();
   });
 
   it('the add FAB opens AccountDialog for this broker and reloads on save', async () => {

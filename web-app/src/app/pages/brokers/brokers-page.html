@@ -13,6 +13,16 @@
         <td mat-cell *matCellDef="let b">
           <a [routerLink]="['/brokers', b.brokerId]">{{ b.name }}</a>
           @if (b.hidden) { <span class="hidden-tag">(hidden)</span> }
+          @if (warningCount(b); as count) {
+            <a
+              class="warning-badge"
+              [routerLink]="['/brokers', b.brokerId]"
+              [matTooltip]="count + ' import warning(s) to fix'"
+              [attr.aria-label]="count + ' import warnings'"
+            >
+              <mat-icon inline>warning</mat-icon>{{ count }}
+            </a>
+          }
         </td>
         <td mat-footer-cell *matFooterCellDef>Total</td>
       </ng-container>

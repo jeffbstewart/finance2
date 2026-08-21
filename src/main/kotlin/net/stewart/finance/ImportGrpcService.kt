@@ -12,6 +12,7 @@ import net.stewart.finance.db.PortfolioRepository
 import net.stewart.finance.db.SnapshotRecord
 import net.stewart.finance.db.SnapshotRepository
 import net.stewart.finance.domain.AccountId
+import net.stewart.finance.domain.BrokerId
 import net.stewart.finance.domain.PortfolioId
 import net.stewart.finance.domain.SnapshotId
 import net.stewart.finance.domain.SnapshotStatus
@@ -22,8 +23,11 @@ import net.stewart.finance.proto.GetSnapshotAccountsRequest
 import net.stewart.finance.proto.GetSnapshotAccountsResponse
 import net.stewart.finance.proto.ImportReport
 import net.stewart.finance.proto.ImportServiceGrpcKt
+import net.stewart.finance.proto.ImportWarning
 import net.stewart.finance.proto.LinkPlaidAccountRequest
 import net.stewart.finance.proto.LinkPlaidAccountResponse
+import net.stewart.finance.proto.ListImportWarningsRequest
+import net.stewart.finance.proto.ListImportWarningsResponse
 import net.stewart.finance.proto.ListSnapshotsRequest
 import net.stewart.finance.proto.ListSnapshotsResponse
 import net.stewart.finance.proto.PlaidAccountView
@@ -119,6 +123,29 @@ class ImportGrpcService(
             ?: throw StatusException(Status.NOT_FOUND.withDescription("no account ${request.accountId}"))
         links.link(accountRef, account.id)
         return LinkPlaidAccountResponse.getDefaultInstance()
+    }
+
+    override suspend fun listImportWarnings(
+        request: ListImportWarningsRequest,
+    ): ListImportWarningsResponse {
+        val accountFilter = request.accountId.takeIf { it != 0L }?.let(::AccountId)
+        val brokerFilter = request.brokerId.takeIf { it != 0L }?.let(::BrokerId)
+        val builder = ListImportWarningsResponse.newBuilder()
+        for (warning in importer.latestWarnings(portfolio())) {
+            val account = warning.account
+            if (accountFilter != null && account.id != accountFilter) continue
+            if (accountFilter == null && brokerFilter != null && account.brokerId != brokerFilter) continue
+            builder.addWarnings(
+                ImportWarning.newBuilder()
+                    .setSnapshotId(warning.snapshotId.value)
+                    .setAsOf(warning.asOf.toFormattedDate())
+                    .setAccountId(account.id.value)
+                    .setBrokerId(account.brokerId.value)
+                    .setAccountName(account.name)
+                    .setMessage(warning.message)
+            )
+        }
+        return builder.build()
     }
 
     private fun SnapshotRecord.toProto(): SnapshotRow {

@@ -6,11 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
 import type { AccountSummary } from '../../../proto-gen/accounts_pb';
+import type { ImportWarning } from '../../../proto-gen/imports_pb';
 import type { PositionRow } from '../../../proto-gen/positions_pb';
 import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
 import { PieChart, type PieSlice } from '../../shared/charts/pie-chart';
 import { Sparkline } from '../../shared/charts/sparkline';
+import { ImportWarnings } from '../../shared/imports/import-warnings';
 import { AccountDialog } from '../brokers/account-dialog';
 import { BuyDialog } from './buy-dialog';
 import { HoldingDialog } from './holding-dialog';
@@ -20,7 +22,8 @@ import { HoldingDialog } from './holding-dialog';
  * `account` query param it is "Positions at {broker} : {account}";
  * without, the portfolio-wide list (server sorts by current value
  * descending). Tax-deferred accounts enter position-level holdings
- * instead of purchases (build-scope §1).
+ * instead of purchases (build-scope §1). The account scope also shows
+ * the account's unresolved import warnings (pipeline design §E).
  */
 @Component({
   selector: 'app-positions-page',
@@ -30,6 +33,7 @@ import { HoldingDialog } from './holding-dialog';
     MatDialogModule,
     MatIconModule,
     MatTableModule,
+    ImportWarnings,
     PieChart,
     RouterLink,
     Sparkline,
@@ -47,6 +51,7 @@ export class PositionsPage {
 
   readonly positions = signal<PositionRow[]>([]);
   readonly scopedAccount = signal<AccountSummary | undefined>(undefined);
+  readonly warnings = signal<ImportWarning[]>([]);
   readonly totalBasis = signal('');
   readonly totalValue = signal('');
   readonly totalStGain = signal('');
@@ -80,9 +85,10 @@ export class PositionsPage {
   async reload(): Promise<void> {
     try {
       const accountId = this.accountId();
-      const [positions, account] = await Promise.all([
+      const [positions, account, warnings] = await Promise.all([
         api.positions.listPositions({ accountId }),
         accountId ? api.accounts.getAccount({ accountId }) : Promise.resolve(undefined),
+        accountId ? api.imports.listImportWarnings({ accountId }) : Promise.resolve(undefined),
       ]);
       this.positions.set(positions.positions);
       this.totalBasis.set(positions.totalBasis?.display ?? '');
@@ -90,6 +96,7 @@ export class PositionsPage {
       this.totalStGain.set(positions.totalShortTermGain?.display ?? '');
       this.totalLtGain.set(positions.totalLongTermGain?.display ?? '');
       this.scopedAccount.set(account?.account);
+      this.warnings.set(warnings?.warnings ?? []);
     } catch (err) {
       this.notify.error(err);
     }

@@ -315,3 +315,19 @@ Superseding rulings:
   ride along in the archive but are not processed yet.
 - The contract was authored in finance2 first (bootstrap); on cloning
   to bankferry, that copy becomes the primary source per ruling 2.
+
+## Amendment: warnings on the broker and account views (2026-08-21)
+
+The first real bankferry export showed that a report buried on the
+Import screen does not prompt anyone to fix anything. Each `ReportLine`
+now carries the finance2 `account_id` it concerns (0 for lines with
+none — an unlinked Plaid account, a failed run), and
+`ImportService.ListImportWarnings` returns the WARNING lines of the
+**most recently processed** snapshot (by `processed_at`, so re-running
+an older archive after lot fixes makes it current), attributed to
+account and broker and filterable by either. The Brokerages list
+badges each broker with its count, a broker's accounts page lists the
+warnings with per-account badges, and the account-scoped positions
+page shows the account's own — all pointing back to the Import screen
+to re-process once fixed. Lines with no account stay on the Import
+screen only.
