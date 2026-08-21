@@ -179,6 +179,40 @@ class MtmServiceTest {
     }
 
     @Test
+    fun `a restated future mark clamps at the acquisition-cost floor`() {
+        // Floor is USD 9911 (EUR 9010 × 1.10 at purchase).
+        service.record(
+            portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
+            Quantity.of("100"), eur("12000.0000"), BigDecimal("1.00000000"),
+        )
+        // 2025 FMV USD 9000 sits below the floor: basis clamps at
+        // 9911 and only the 2024 inclusions reverse.
+        val second = service.record(
+            portfolioId, security, 2025, LocalDate.of(2025, 12, 31),
+            Quantity.of("100"), eur("9000.0000"), BigDecimal("1.00000000"),
+        )
+        assertEquals(usd("9911.0000"), second.basisAfterUsd)
+        assertEquals(usd("-2089.0000"), second.ordinaryIncomeUsd)
+
+        // Editing 2024 down to FMV 10000 shrinks its inclusions to 89.
+        // The restated 2025 mark would go 2089 below cost if it simply
+        // took basis to FMV; the floor must hold in the chain walk
+        // too, reversing only the remaining 89.
+        val edited = service.update(
+            portfolioId, security, service.listForSecurity(security)[0].id,
+            LocalDate.of(2024, 12, 31),
+            Quantity.of("100"), eur("10000.0000"), BigDecimal("1.00000000"),
+        )
+        assertEquals(usd("89.0000"), edited.ordinaryIncomeUsd)
+        val restated = service.listForSecurity(security)[1]
+        assertEquals(usd("10000.0000"), restated.basisBeforeUsd)
+        assertEquals(usd("9911.0000"), restated.basisAfterUsd)
+        assertEquals(usd("-89.0000"), restated.ordinaryIncomeUsd)
+        // Cumulative income equals final basis − acquisition cost: 0.
+        assertEquals(usd("0.0000"), edited.ordinaryIncomeUsd + restated.ordinaryIncomeUsd)
+    }
+
+    @Test
     fun `an edit cannot move a mark to another tax year`() {
         val mark = service.record(
             portfolioId, security, 2024, LocalDate.of(2024, 12, 31),

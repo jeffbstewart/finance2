@@ -171,6 +171,8 @@ class MtmService(
         if (mark.securityId != security.id) {
             throw StatusException(Status.NOT_FOUND.withDescription("no mark ${markId.value}"))
         }
+        // Tax years are calendar years (README assumption): the mark
+        // date must fall inside Jan 1 – Dec 31 of its tax year.
         if (markDate.year != mark.taxYear) {
             throw invalid(
                 "mark date $markDate is not in tax year ${mark.taxYear} — " +
