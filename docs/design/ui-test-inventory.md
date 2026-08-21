@@ -177,6 +177,11 @@ changed since, the code wins.
   on `busy()`.
 - Seeded fixture: one unprocessed snapshot, ref-roth pre-linked.
 
+### Seeded states added 2026-08-21
+- `SOLO`: a priced MANUAL security with no lots or holdings — reaches
+  the lot-details empty state / hide-security path and the single-close
+  sparkline branch without deleting anything.
+
 ## Cross-cutting date/time dependencies
 
 | Where | Dependency |

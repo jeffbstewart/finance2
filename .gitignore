@@ -12,7 +12,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 
 # Node
-web-app/node_modules/
+web-app/node_modules
 
 # Generated code is never committed — both sides regenerate on build
 web-app/src/proto-gen/

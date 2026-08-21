@@ -29,12 +29,15 @@ entity names and figures agree everywhere.
 |---|---|---|
 | `installFakeApi(routes)` | `src/testing/fake-api.ts` | Swaps the `api` singleton's clients for `createRouterTransport` fakes. Unimplemented RPCs reject loudly (surface as the error snackbar). Returns a restore fn — call it in `afterEach`. |
 | Wire builders | `src/testing/wire.ts` | `money()`, `fraction()`, `quantity()`, `date()`, `civil()`, `decimal()` — coherent exact/display/sortKey triples. |
-| Sample responses | `src/testing/sample-data.ts` | Canned lists mirroring the seeder's names. Extend it rather than inventing new entities. |
+| Sample responses | `src/testing/sample-data.ts` | One builder per wire type, mirroring the seeder: session statuses, brokers, accounts (`sampleAccounts` = the original two; `sampleAllAccounts` = all four), purchase-form choices, listings (`sampleSecurities` / `sampleAllSecurities`), `sampleProfile(ticker)`, private prices, MTM marks, positions, lot details, allocation, tax report, snapshots, `CLASS_NAMES`. Unit dollar figures are illustrative; names/quantities/currencies match the seeder. |
 | Chart stubs | `src/testing/chart-stubs.ts` | Same-selector stand-ins for the ECharts facades. Assert the *data* handed to the facade; drive `sliceClick` via `emitSliceClick`. The sparkline is plain SVG — assert it directly. |
 | `settle(fixture)` | `src/testing/settle.ts` | Zoneless change detection doesn't track the pages' bare `reload()` promises — call `settle` after render/actions instead of `whenStable`. |
-| Server fixtures | `TestSupportService` (`proto/testsupport.proto`) | `ResetPortfolio` + `SeedSamplePortfolio`, registered only under `FINANCE2_TEST_SUPPORT=true`. Seeding runs through production repositories/services. |
+| Server fixtures | `TestSupportService` (`proto/testsupport.proto`) | `ResetPortfolio` + `SeedSamplePortfolio`, registered only under `FINANCE2_TEST_SUPPORT=true`. Seeding runs through production repositories/services. The test server is **hermetic**: the ECB/FRED feed jobs are not started, so the seeder's MANUAL FX rates are the only rates (a live rate dated today would otherwise outrank them and move every FX-derived figure). |
 | E2E session | `e2e/global-setup.ts` | One login, shared `storageState`; `SETUP_TOKEN` env makes first boot deterministic. |
-| E2E helpers | `e2e/support/material.ts` | `seedPortfolio()`, `pickSelect` (by option **text** — several selects use bigint/object values), `fillField`, `setToggle`, `readTable` (header/rows/footer), `expectSnackbar`, `acceptConfirms` (five pages use native `window.confirm`). |
+| E2E helpers | `e2e/support/material.ts` | `seedPortfolio()`, `pickSelect`/`fillField` (by label; pass `{ exact: true }` when one label contains another, `{ index }` for repeats), `setToggle`, `setCheckbox`, `stepperNext`/`stepperBack`, `dialog(page)`, `readTable` (one-shot raw text — guard with `expectRows` or `expect.poll`), `readCells` (clean, element-boundary text), `readTableIn(locator)`, `rowFor`, `expectSnackbar` (text-filtered, overlap-safe), `acceptConfirms`/`dismissConfirms`, `uploadFile`, `NO_SESSION`. |
+| Unit drivers | `src/testing/material.ts` | `typeInto`, `pickOption` (via the trigger's aria-controls), `clickButton`, `clickToggle`, `readRows`, `textOf`, `cleanupOverlays` — the zoneless-safe twins of the e2e helpers. |
+| Fake dialog | `src/testing/fake-dialog.ts` | `fakeDialog()` + `provideFakeDialog(Page, dialog)`: installs the stub on the page's OWN injector (MatDialogModule re-provides MatDialog, so `TestBed.inject` spies never fire). Records `opens`, queues `results` for `afterClosed()`. |
+| `findStubs(fixture, Stub)` | `src/testing/chart-stubs.ts` | The stub instances via `By.directive` — an `instanceof` predicate over all elements returns every stub twice. |
 | Exemplars | `src/app/pages/brokers/brokers-page.spec.ts`, `e2e/specs/brokers.spec.ts` | Copy these shapes. |
 
 ## The canonical sample portfolio (`SampleSeeder.kt`)
@@ -53,7 +56,8 @@ the previous calendar year.
   mutual fund, class Bond — the rebalance candidate), `GOLD` (MANUAL
   private investment, class Other, **stale classification** so the
   refresh chip shows), `EUFUND` (EUR, MANUAL, **MARK_TO_MARKET**,
-  class Non US Stock), hidden `GHOST`.
+  class Non US Stock), `SOLO` (MANUAL, one price, **never held** — the
+  empty-lot-ledger and single-close-sparkline states), hidden `GHOST`.
 - **Lots/sales** (Brokerage): VTI 30 sh @ $150+$5 (lastYear−1) and
   20 sh @ $180+$5 (lastYear); a **lastYear sale** — 10 sh @ $190,
   $9 costs, 6 LT + 4 ST — whose gains are exactly **LT $233.60 / ST
@@ -100,6 +104,23 @@ the previous calendar year.
   `seedPortfolio()` in `test.beforeEach` — it costs ~46 ms.
 - **Don't** widen `SampleSeeder` casually — pages share it; additive
   changes only, and update this document's inventory when you do.
+- **Do** read routes from `app.routes.ts`, not from memory — the
+  planner is `/app/allocation/rebalance`; a wrong URL lands on the
+  wildcard redirect and every assertion fails at once.
+- **Do** expect `/app/` in `href` assertions — routerLink renders
+  under the SPA's base href.
+- **Do** locate dialog titles with `[mat-dialog-title]` — it is an
+  attribute on the `<h2>`, not an element.
+- **Do** expect server ordering: account choices come back by broker
+  name, then account name (EuroBank before Vanguard).
+- **Do** guard every table read on first load and after a mutation
+  (`expectRows`, or `expect.poll(() => readTable(page))`) — the success
+  snackbar fires before the dialog closes and the page reloads.
+- **Do** use `toHaveJSProperty('readOnly', true)` for readonly inputs;
+  Angular renders the binding as `readonly="true"`.
+- **Don't** gate `<mat-error>` on an `@if` in product code — Material
+  only projects the error slot when the control's own validator fails
+  (a product bug two workers found).
 
 ## Cloud worker dispatch (2026-08-21)
 

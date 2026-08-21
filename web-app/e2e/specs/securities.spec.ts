@@ -24,11 +24,12 @@ test('lists the seeded visible securities with their descriptions', async ({ pag
   const table = await readTable(page);
   expect(table.header).toEqual(['Ticker', 'Trend', 'Description', '']);
   // Server orders by ticker; GHOST is hidden.
-  expect(table.rows.map((cells) => cells[0])).toEqual(['BONDX', 'EUFUND', 'GOLD', 'VTI']);
+  expect(table.rows.map((cells) => cells[0])).toEqual(['BONDX', 'EUFUND', 'GOLD', 'SOLO', 'VTI']);
   expect(table.rows.map((cells) => cells[2])).toEqual([
     'Aggregate Bond Fund',
     'European Index Fund',
     'Gold coins in a vault',
+    'Priced, never held',
     'Total Market ETF',
   ]);
   await expect(page.locator('.empty-note')).toHaveCount(0);
@@ -40,8 +41,9 @@ test('lists the seeded visible securities with their descriptions', async ({ pag
 test('draws a sparkline for the security with a price series', async ({ page }) => {
   await page.goto('/app/securities');
   // Every row gets the svg shell; only 2+ closes produce the path.
-  await expect(page.locator('tr[mat-row] app-sparkline svg')).toHaveCount(4);
+  await expect(page.locator('tr[mat-row] app-sparkline svg')).toHaveCount(5);
   await expect(row(page, 'VTI').locator('svg path')).toHaveCount(1);
+  await expect(row(page, 'SOLO').locator('svg path')).toHaveCount(0); // exactly one close
   await setToggle(page, 'Show hidden', true);
   await expect(row(page, 'GHOST').locator('svg path')).toHaveCount(0); // never priced
 });
@@ -71,7 +73,7 @@ test('show-hidden reveals GHOST and the unhide button restores it', async ({ pag
   // Now genuinely visible: it survives turning the toggle back off.
   await setToggle(page, 'Show hidden', false);
   await expect(row(page, 'GHOST')).toBeVisible();
-  await expect(page.locator('tr[mat-row]')).toHaveCount(5);
+  await expect(page.locator('tr[mat-row]')).toHaveCount(6);
 });
 
 test('the add FAB upper-cases the ticker and lands on the new details page', async ({ page }) => {
@@ -120,5 +122,5 @@ test('a duplicate ticker is rejected and the dialog stays open', async ({ page }
   // Cancelling leaves the list exactly as it was.
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('heading', { name: 'Add New Security' })).toHaveCount(0);
-  await expect(page.locator('tr[mat-row]')).toHaveCount(4);
+  await expect(page.locator('tr[mat-row]')).toHaveCount(5);
 });
