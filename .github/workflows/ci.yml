@@ -91,10 +91,19 @@ jobs:
         working-directory: finance2
 
   # The container image builds from the same sources (README.md "Run
-  # with Docker"). Build only — nothing is pushed; the Dockerfile clones
-  # its own toolkit siblings, so the plain checkout is the whole context.
+  # with Docker"); the Dockerfile clones its own toolkit siblings, so
+  # the plain checkout is the whole context. Every run builds and
+  # boot-checks; a push to main then publishes the checked image to
+  # GHCR as ghcr.io/<owner>/finance2:latest (what Portainer tracks) and
+  # :sha-<short> (for pinning). The only credential is GITHUB_TOKEN -
+  # no Actions secrets, per policy.
   image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/finance2
     steps:
       - uses: actions/checkout@v4
       - run: docker build --tag finance2:ci .
@@ -116,3 +125,11 @@ jobs:
           test "$(docker exec finance2 grep CapEff /proc/1/status | awk '{print $2}')" = 0000000000000000
       - run: docker logs finance2
         if: always()
+      - name: Publish to GHCR (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag finance2:ci "$IMAGE:latest"
+          docker tag finance2:ci "$IMAGE:sha-${GITHUB_SHA::7}"
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:sha-${GITHUB_SHA::7}"
