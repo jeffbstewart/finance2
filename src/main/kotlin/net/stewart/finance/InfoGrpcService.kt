@@ -1,5 +1,7 @@
 package net.stewart.finance
 
+import io.micrometer.core.instrument.Gauge
+import io.micrometer.core.instrument.MeterRegistry
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -31,6 +33,28 @@ data class BuildInfo(
             if (commit.isNotEmpty()) parts += commit
             return parts.joinToString(" - ")
         }
+
+    /**
+     * The stamp as Prometheus gauges, so a dashboard can say which PR
+     * each scrape target runs and how old the build is:
+     *
+     *   finance2_build_pull_request{commit="7d470c5"}  82   (0 for a dev build)
+     *   finance2_build_timestamp_seconds{commit="..."} 1.77e9 (commit time; 0 for dev)
+     *
+     * The commit rides as a label on both; its value is constant for
+     * the process's life, so the cardinality is one series per build.
+     */
+    fun bindTo(registry: MeterRegistry) {
+        val commitLabel = commit.ifEmpty { "dev" }
+        Gauge.builder("finance2_build_pull_request", this) { it.pullRequest.toDouble() }
+            .description("The pull request this server was built from; 0 for a build made outside CI")
+            .tag("commit", commitLabel)
+            .register(registry)
+        Gauge.builder("finance2_build_timestamp_seconds", this) { it.builtAt?.toEpochSecond()?.toDouble() ?: 0.0 }
+            .description("Commit time of the build, seconds since the epoch; 0 for a build made outside CI")
+            .tag("commit", commitLabel)
+            .register(registry)
+    }
 
     companion object {
         private val STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
