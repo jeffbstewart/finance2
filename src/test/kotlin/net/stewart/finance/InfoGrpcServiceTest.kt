@@ -51,6 +51,23 @@ class InfoGrpcServiceTest {
     }
 
     @Test
+    fun `the build stamp is read from the environment, dev build without it`() {
+        assertEquals("dev build", BuildInfo.fromEnv { null }.label)
+        val env = mapOf(
+            "FINANCE2_BUILD_PR" to "82",
+            "FINANCE2_BUILD_COMMIT" to "7d470c5",
+            "FINANCE2_BUILD_TIME" to "2026-08-21T22:30:00-04:00",
+        )
+        val build = BuildInfo.fromEnv(env::get)
+        assertEquals(82, build.pullRequest)
+        assertEquals("PR #82 - 2026-08-22 02:30 UTC - 7d470c5", build.label)
+        // A partial stamp (a local build that set only the commit) still labels.
+        assertEquals("abc1234", BuildInfo.fromEnv(mapOf("FINANCE2_BUILD_COMMIT" to "abc1234")::get).label)
+        // Garbage is absent, not fatal.
+        assertEquals("dev build", BuildInfo.fromEnv(mapOf("FINANCE2_BUILD_PR" to "x", "FINANCE2_BUILD_TIME" to "yesterday")::get).label)
+    }
+
+    @Test
     fun `RPCs off the allowlist are rejected while no authenticators are wired`() {
         val stub = startServer(allowlist = emptySet())
         val status = try {

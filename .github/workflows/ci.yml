@@ -110,7 +110,30 @@ jobs:
       IMAGE: ghcr.io/${{ github.repository_owner }}/finance2
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --tag finance2:ci .
+      # The build stamp (README "Which build is this?"): the PR number a
+      # human remembers, the commit's own time, the short commit. On a
+      # push to main the PR is read off the merge commit's subject; on a
+      # pull_request run it is the PR itself and the commit is the PR
+      # head (checkout gives a synthetic merge commit there).
+      - name: Build stamp
+        id: stamp
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pr="${{ github.event.pull_request.number }}"
+            sha="${{ github.event.pull_request.head.sha }}"
+          else
+            pr=$(git log -1 --pretty=%s | sed -nE 's/^Merge pull request #([0-9]+) .*/\1/p')
+            sha="${GITHUB_SHA}"
+          fi
+          echo "pr=${pr}" >> "$GITHUB_OUTPUT"
+          echo "sha=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "time=$(git log -1 --format=%cI)" >> "$GITHUB_OUTPUT"
+          echo "stamp: PR #${pr:-?} ${sha:0:7} $(git log -1 --format=%cI)"
+      - run: |
+          docker build --tag finance2:ci \
+            --build-arg BUILD_PR="${{ steps.stamp.outputs.pr }}" \
+            --build-arg BUILD_COMMIT="${{ steps.stamp.outputs.sha }}" \
+            --build-arg BUILD_TIME="${{ steps.stamp.outputs.time }}" .
       # A built image must boot and pass its own health check with a
       # throwaway database, proving the runtime stage is wired up.
       - run: |
@@ -123,6 +146,8 @@ jobs:
           curl -fsS http://127.0.0.1:9091/healthz
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:9090/app/)" = 200
           docker logs finance2 2>&1 | grep -i 'setup token'
+          # The stamp made it into the running server.
+          test "$(docker exec finance2 printenv FINANCE2_BUILD_COMMIT)" = "${{ steps.stamp.outputs.sha }}"
           # The process runs as the unprivileged image user, never root,
           # with no capabilities (same flags as docker-compose.yml).
           test "$(docker exec finance2 id -u)" = 10001
@@ -137,3 +162,8 @@ jobs:
           docker tag finance2:ci "$IMAGE:sha-${GITHUB_SHA::7}"
           docker push "$IMAGE:latest"
           docker push "$IMAGE:sha-${GITHUB_SHA::7}"
+          # A PR-numbered tag, the handle a human remembers.
+          if [ -n "${{ steps.stamp.outputs.pr }}" ]; then
+            docker tag finance2:ci "$IMAGE:pr-${{ steps.stamp.outputs.pr }}"
+            docker push "$IMAGE:pr-${{ steps.stamp.outputs.pr }}"
+          fi

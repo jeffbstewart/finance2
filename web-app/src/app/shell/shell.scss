@@ -27,6 +27,19 @@
   flex: 1;
 }
 
+.shell-build {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  padding: 0 16px;
+  font-size: 11px;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .shell-nav {
   width: 200px;
 }

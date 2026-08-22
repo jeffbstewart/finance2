@@ -1,17 +1,21 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import type { GetInfoResponse } from '../../proto-gen/info_pb';
+import { api } from '../core/api';
 import { Notify } from '../core/notify';
 import { SessionStore } from '../core/session';
 
 /** The application shell (spec sec. 8.2): top toolbar with the sign-in
- *  widget, a permanently open left nav with the five sections, and
- *  the routed content in a padded center column. */
+ *  widget, a permanently open left nav with the five sections, the
+ *  routed content in a padded center column, and the build stamp at
+ *  the foot of the nav - so "is this the new build?" has an answer. */
 @Component({
   selector: 'app-shell',
   imports: [
@@ -21,6 +25,7 @@ import { SessionStore } from '../core/session';
     MatMenuModule,
     MatSidenavModule,
     MatToolbarModule,
+    MatTooltipModule,
     RouterLink,
     RouterLinkActive,
     RouterOutlet,
@@ -34,6 +39,21 @@ export class Shell {
   private readonly notify = inject(Notify);
 
   readonly user = this.session.user;
+  /** GetInfo is on the unauthenticated allowlist; a failure here is
+   *  reported like any other and leaves the corner blank. */
+  readonly info = signal<GetInfoResponse | undefined>(undefined);
+
+  constructor() {
+    void this.loadInfo();
+  }
+
+  private async loadInfo(): Promise<void> {
+    try {
+      this.info.set(await api.info.getInfo({}));
+    } catch (err) {
+      this.notify.error(err);
+    }
+  }
 
   readonly sections = [
     { path: '/securities', label: 'Securities', icon: 'inventory_2' },

@@ -53,6 +53,17 @@ COPY --from=server --chown=finance2:finance2 /src/finance2/build/install/finance
 COPY --from=spa --chown=finance2:finance2 /src/spa ./spa
 USER finance2
 
+# What this image is, for the UI's corner and `GetInfo`: CI passes the
+# merged (or under-test) pull request number, the short commit, and the
+# commit time as build args. A local `docker compose up --build` leaves
+# them empty and the server reports "dev build".
+ARG BUILD_PR=
+ARG BUILD_COMMIT=
+ARG BUILD_TIME=
+ENV FINANCE2_BUILD_PR=$BUILD_PR \
+    FINANCE2_BUILD_COMMIT=$BUILD_COMMIT \
+    FINANCE2_BUILD_TIME=$BUILD_TIME
+
 # The database lives on a volume; everything else in the container is
 # disposable. DB_PATH is the file path without extension.
 VOLUME /data
