@@ -169,6 +169,11 @@ message GetSecurityDetailsResponse {
   SecurityProfile security = 1;
   repeated PricePoint price_history = 2; // date ascending
   TechnicalIndicators indicators = 3;
+  // The mirrored security's history (see SecurityProfile.mirrors_*),
+  // same date order and the same inflation treatment, so the details
+  // page can chart the dense public fund on a second axis beside this
+  // security's sparse actuals. Empty when nothing is mirrored.
+  repeated PricePoint mirror_price_history = 4;
 }
 
 message UpdateSecurityProfileRequest {

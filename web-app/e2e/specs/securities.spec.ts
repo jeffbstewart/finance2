@@ -26,7 +26,7 @@ test('lists the seeded visible securities with their descriptions', async ({ pag
   // Server orders by ticker; GHOST is hidden. A hand-priced security's
   // symbol cell carries its tag (the gap is CSS margin).
   expect(table.rows.map((cells) => cells[0])).toEqual([
-    'BONDXmanual', 'EUFUNDmanual', 'GOLDmanual', 'SOLOmanual', 'VTI',
+    'BONDXmanual', 'EUFUNDmanual', 'GOLDmanual', 'SOLOmanual', 'VTI', 'VTI-TRtrust',
   ]);
   expect(table.rows.map((cells) => cells[2])).toEqual([
     'Aggregate Bond Fund',
@@ -34,10 +34,11 @@ test('lists the seeded visible securities with their descriptions', async ({ pag
     'Gold coins in a vault',
     'Priced, never held',
     'Total Market ETF',
+    'Inst Tot Stk Mkt Ix Tr',
   ]);
   await expect(page.locator('.empty-note')).toHaveCount(0);
   await expect(page.locator('.hidden-tag')).toHaveCount(0);
-  await expect(page.locator('.symbol-tag')).toHaveText(['manual', 'manual', 'manual', 'manual']);
+  await expect(page.locator('.symbol-tag')).toHaveText(['manual', 'manual', 'manual', 'manual', 'trust']);
   // No unhide affordance while nothing hidden is on screen.
   await expect(page.getByRole('button', { name: 'Unhide' })).toHaveCount(0);
 });
@@ -45,7 +46,7 @@ test('lists the seeded visible securities with their descriptions', async ({ pag
 test('draws a sparkline for the security with a price series', async ({ page }) => {
   await page.goto('/app/securities');
   // Every row gets the svg shell; only 2+ closes produce the path.
-  await expect(page.locator('tr[mat-row] app-sparkline svg')).toHaveCount(5);
+  await expect(page.locator('tr[mat-row] app-sparkline svg')).toHaveCount(6);
   await expect(row(page, 'VTI').locator('svg path')).toHaveCount(1);
   await expect(row(page, 'SOLO').locator('svg path')).toHaveCount(0); // exactly one close
   await setToggle(page, 'Show hidden', true);
@@ -77,7 +78,7 @@ test('show-hidden reveals GHOST and the unhide button restores it', async ({ pag
   // Now genuinely visible: it survives turning the toggle back off.
   await setToggle(page, 'Show hidden', false);
   await expect(row(page, 'GHOST')).toBeVisible();
-  await expect(page.locator('tr[mat-row]')).toHaveCount(6);
+  await expect(page.locator('tr[mat-row]')).toHaveCount(7);
 });
 
 test('the add FAB upper-cases the ticker and lands on the new details page', async ({ page }) => {
@@ -126,5 +127,5 @@ test('a duplicate ticker is rejected and the dialog stays open', async ({ page }
   // Cancelling leaves the list exactly as it was.
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('heading', { name: 'Add New Security' })).toHaveCount(0);
-  await expect(page.locator('tr[mat-row]')).toHaveCount(5);
+  await expect(page.locator('tr[mat-row]')).toHaveCount(6);
 });

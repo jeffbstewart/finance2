@@ -177,6 +177,23 @@ class SampleSeeder(private val dataSource: DataSource) {
         securities.updateProfile(solo, "Priced, never held", SecurityType.STOCK, PricingLocus.MANUAL, TaxTreatment.LOTS, null)
         privatePrices.add(solo, today.minusDays(1), Money.of("42.0000", CurrencyUnit.USD))
 
+        // VTI-TR: the 401(k) trust class of the same index - no ticker,
+        // mirrors VTI, priced by four sparse "statements" at roughly
+        // 0.55x VTI's level, so the two-axis chart has something to align.
+        val vtiTr = securities.create(portfolioId, "VTI-TR", CurrencyUnit.USD)
+        securities.updateProfile(
+            vtiTr, "Inst Tot Stk Mkt Ix Tr", SecurityType.COLLECTIVE_TRUST, PricingLocus.MANUAL,
+            TaxTreatment.LOTS, Fraction.of("0.0001"),
+            marketTicker = null, cusip = "922908769", isin = null, mirrorsSecurityId = vti,
+        )
+        for (daysAgo in listOf(200L, 130L, 60L, 4L)) {
+            // VTI's synthetic close on that day is 180 + 0.10 * (219 - daysAgo).
+            val vtiClose = BigDecimal("180.00").add(BigDecimal("0.10").multiply(BigDecimal(219 - daysAgo)))
+            val trustPrice = vtiClose.multiply(BigDecimal("0.55")).setScale(4, java.math.RoundingMode.HALF_UP)
+            privatePrices.upsert(vtiTr, today.minusDays(daysAgo), Money.of(trustPrice, CurrencyUnit.USD), "plaid")
+        }
+        classifications.replace(vtiTr, net.stewart.finance.domain.ClassificationKind.ASSET_CLASS, mapOf("US Stock" to Fraction.ONE), today.minusDays(30))
+
         val ghost = securities.create(portfolioId, "GHOST", CurrencyUnit.USD)
         securities.updateProfile(ghost, "Hidden test security", SecurityType.STOCK, PricingLocus.MANUAL, TaxTreatment.LOTS, null)
         securities.setHidden(ghost, true)
@@ -186,6 +203,7 @@ class SampleSeeder(private val dataSource: DataSource) {
         ids["security.gold"] = gold.value
         ids["security.eufund"] = eufund.value
         ids["security.solo"] = solo.value
+        ids["security.vtiTr"] = vtiTr.value
         ids["security.ghost"] = ghost.value
 
         // Taxable lots and sales. The previous-calendar-year sale is
