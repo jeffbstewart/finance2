@@ -87,6 +87,9 @@ fun main() {
     JvmGcMetrics().bindTo(registry)
     ProcessorMetrics().bindTo(registry)
     UptimeMetrics().bindTo(registry)
+    // Which build this is, for dashboards (README "Which build is this?").
+    val build = BuildInfo.fromEnv()
+    build.bindTo(registry)
 
     val db = H2Database(
         H2Config(
@@ -205,7 +208,7 @@ fun main() {
                     history = { pricing.history(it) },
                 )
                 listOf(
-                    GrpcServiceSpec(InfoGrpcService(BuildInfo.fromEnv())),
+                    GrpcServiceSpec(InfoGrpcService(build)),
                     GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
                     GrpcServiceSpec(BrokerGrpcService(portfolios, brokers, accounts, reporting)),
                     GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting)),

@@ -52,7 +52,10 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
   the pull request that was merged, the commit's time, the short
   commit. Hover for the version. Images are also tagged `pr-<N>`, so
   `FINANCE2_IMAGE=ghcr.io/jeffbstewart/finance2:pr-82` pins exactly
-  that PR. Anything built outside CI says `dev build`.
+  that PR. Anything built outside CI says `dev build`. The same stamp
+  is on `/metrics` for dashboards: `finance2_build_pull_request` (0
+  for a dev build) and `finance2_build_timestamp_seconds` (the commit
+  time; 0 for dev), both labelled with the short commit.
 - Portainer: deploy the stack from this repository; every update
   pulls `:latest` (`pull_policy: always`), so the **Re-pull image**
   toggle no longer matters. Earlier, the compose file also carried
