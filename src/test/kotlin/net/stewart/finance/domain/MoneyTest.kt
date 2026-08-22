@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 // The property suite is the product of the Phase 2 audit of the legacy
 // Go fixed-point type (MODERNIZATION.md Phase 2): it pins down exactly
-// the behaviors the legacy type got wrong — truncation instead of a
+// the behaviors the legacy type got wrong - truncation instead of a
 // declared rounding mode, float64 leaking into "fixed" math via
 // MulFloat/QuoFloat, sign-flip overflow heuristics that miss, and
 // ad-hoc apportionment that lost pennies.
@@ -31,7 +31,7 @@ private fun arbMoney(currency: CurrencyUnit = USD): Arb<Money> =
     Arb.long(-99_999_999_999_999L..99_999_999_999_999L)
         .map { Money.of(BigDecimal.valueOf(it, 4), currency) }
 
-/** 1–8 non-negative weights, not all zero, at scale 2. */
+/** 1-8 non-negative weights, not all zero, at scale 2. */
 private val arbWeights: Arb<List<BigDecimal>> =
     Arb.list(Arb.long(0L..1_000_000L), 1..8)
         .filter { list -> list.any { it > 0L } }
@@ -130,7 +130,7 @@ class MoneyTest {
         assertTrue(Money.zero(USD).isZero())
     }
 
-    // --- parsing (spec §4.3 forms) ---
+    // --- parsing (spec sec. 4.3 forms) ---
 
     @Test
     fun `parses the spec's accepted forms`() {
@@ -139,7 +139,7 @@ class MoneyTest {
         assertEquals(usd("-1234.56"), Money.parse("(\$1,234.56)"))
         assertEquals(usd("-12.34"), Money.parse("-\$12.34"))
         assertEquals(usd("-12.34"), Money.parse("(12.34)"))
-        assertEquals(Money.of("1234.56", EUR), Money.parse("€1,234.56", EUR))
+        assertEquals(Money.of("1234.56", EUR), Money.parse("\u20ac1,234.56", EUR))
     }
 
     @Test
@@ -161,7 +161,7 @@ class MoneyTest {
         assertEquals("\$0.10", usd("0.1").display())
         assertEquals("\$1,234.567", usd("1234.567").display())
         assertEquals("\$0.00", Money.zero(USD).display())
-        assertEquals("€1,234.56", Money.of("1234.56", EUR).display())
+        assertEquals("\u20ac1,234.56", Money.of("1234.56", EUR).display())
     }
 
     // --- wire ---
@@ -238,7 +238,7 @@ class MoneyTest {
 
     @Test
     fun `allocation apportions sale costs by shares sold`() {
-        // The spec §4.2 case: sale costs split proportionally to shares
+        // The spec sec. 4.2 case: sale costs split proportionally to shares
         // sold from each lot, without inventing or losing a unit.
         val costs = usd("10.00")
         val sharesSold = listOf(BigDecimal("3"), BigDecimal("3"), BigDecimal("3"))

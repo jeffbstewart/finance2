@@ -1,5 +1,5 @@
 // Unit spec for MtmMarkDialog (docs/design/ui-testing.md, inventory
-// "MtmMarks / MtmMarkDialog"): the record/edit flow for a PFIC §1296
+// "MtmMarks / MtmMarkDialog"): the record/edit flow for a PFIC sec. 1296
 // year-end mark. The dialog is rendered directly with a stub
 // MatDialogRef; the clock is pinned so the Dec 31 fallback date is
 // deterministic.
@@ -44,14 +44,14 @@ function eufund(): SecurityProfile {
   });
 }
 
-/** The seeder's lastYear mark: EUR 10,000 × 1.08 = $10,800. */
+/** The seeder's lastYear mark: EUR 10,000 x 1.08 = $10,800. */
 function mark2025(): MtmMark {
   return create(MtmMarkSchema, {
     markId: 22n,
     taxYear: 2025,
     markDate: date('2025-12-31'),
     quantity: quantity('100'),
-    fmvLocal: money('10000.00', { currency: 'EUR', display: '€10,000.00' }),
+    fmvLocal: money('10000.00', { currency: 'EUR', display: '\u20ac10,000.00' }),
     fxRate: quantity('1.08'),
     fmvUsd: money('10800.00', { display: '$10,800.00' }),
     basisBefore: money('9975.00', { display: '$9,975.00' }),
@@ -68,7 +68,7 @@ function suggestion() {
       taxYear: 2026,
       markDate: date('2026-12-31'),
       quantity: quantity('100'),
-      fmvLocal: money('10400.00', { currency: 'EUR', display: '€10,400.00' }),
+      fmvLocal: money('10400.00', { currency: 'EUR', display: '\u20ac10,400.00' }),
       fxRate: quantity('1.16'),
       fmvUsd: money('12064.00', { display: '$12,064.00' }),
       basisBefore: money('10800.00', { display: '$10,800.00' }),
@@ -162,7 +162,7 @@ describe('MtmMarkDialog', () => {
     return input;
   }
 
-  /** Types like a user so the ngModel view-to-model update runs — a
+  /** Types like a user so the ngModel view-to-model update runs - a
    *  bare field assignment never re-renders under zoneless. */
   async function type(fixture: Fixture, label: string, value: string): Promise<void> {
     const input = field(fixture, label);
@@ -189,7 +189,7 @@ describe('MtmMarkDialog', () => {
     expect(String(suggested[0].securityId)).toBe('4');
     expect(suggested[0].taxYear).toBe(2026);
 
-    expect(textOf(fixture)).toContain('Record Year-End Mark — EUFUND');
+    expect(textOf(fixture)).toContain('Record Year-End Mark - EUFUND');
     expect(field(fixture, 'Tax Year').value).toBe('2026');
     expect(field(fixture, 'Mark Date').value).toBe('12/31/2026');
     expect(field(fixture, 'Shares Held').value).toBe('100');
@@ -204,7 +204,7 @@ describe('MtmMarkDialog', () => {
 
   it('survives a failed suggestion with a local Dec 31 date and the error in the notes', async () => {
     suggestFails = new ConnectError(
-      'no purchase lots for EUFUND on or before 2026-12-31 — record the purchase first',
+      'no purchase lots for EUFUND on or before 2026-12-31 - record the purchase first',
       Code.FailedPrecondition,
     );
     const fixture = await render();
@@ -212,7 +212,7 @@ describe('MtmMarkDialog', () => {
     expect(field(fixture, 'Shares Held').value).toBe('');
     expect(field(fixture, 'Fair Market Value (EUR)').value).toBe('');
     expect(notes(fixture)).toEqual([
-      'no purchase lots for EUFUND on or before 2026-12-31 — record the purchase first',
+      'no purchase lots for EUFUND on or before 2026-12-31 - record the purchase first',
     ]);
     expect(textOf(fixture)).not.toContain('Suggested ordinary income');
     expect(submitButton(fixture).disabled).toBe(true);
@@ -232,7 +232,7 @@ describe('MtmMarkDialog', () => {
   it('prefills the edit form from the mark and never asks for a suggestion', async () => {
     const fixture = await render({ taxYear: 2025, mark: mark2025(), hasLaterMarks: false });
     expect(suggested).toEqual([]);
-    expect(textOf(fixture)).toContain('Edit Year-End Mark — EUFUND');
+    expect(textOf(fixture)).toContain('Edit Year-End Mark - EUFUND');
     expect(field(fixture, 'Mark Date').value).toBe('12/31/2025');
     expect(field(fixture, 'Shares Held').value).toBe('100');
     expect(field(fixture, 'Fair Market Value (EUR)').value).toBe('10000.00');
@@ -247,7 +247,7 @@ describe('MtmMarkDialog', () => {
     const year = field(fixture, 'Tax Year');
     expect(year.value).toBe('2025');
     expect(year.disabled).toBe(true);
-    expect(textOf(fixture)).toContain('The tax year is fixed — delete and re-record to move a mark');
+    expect(textOf(fixture)).toContain('The tax year is fixed - delete and re-record to move a mark');
   });
 
   it('warns that later marks restate when editing an earlier mark', async () => {
@@ -307,7 +307,7 @@ describe('MtmMarkDialog', () => {
     expect(request.fmvLocal?.value).toBe('10500.00');
     expect(request.fxRate?.value).toBe('1.2');
     expect(updated).toEqual([]);
-    expect(successSpy).toHaveBeenCalledWith('2026 mark recorded — ordinary income $825.00');
+    expect(successSpy).toHaveBeenCalledWith('2026 mark recorded - ordinary income $825.00');
     expect(closed).toEqual([true]);
   });
 
@@ -324,7 +324,7 @@ describe('MtmMarkDialog', () => {
     expect(updated[0].markDate).toEqual(civil('2025-12-31'));
     expect(updated[0].fmvLocal?.value).toBe('9800');
     expect(updated[0].quantity?.value).toBe('100');
-    expect(successSpy).toHaveBeenCalledWith('2025 mark updated — ordinary income $825.00');
+    expect(successSpy).toHaveBeenCalledWith('2025 mark updated - ordinary income $825.00');
     expect(closed).toEqual([true]);
   });
 
@@ -332,7 +332,7 @@ describe('MtmMarkDialog', () => {
     const fixture = await render();
     const errorSpy = vi.spyOn(TestBed.inject(Notify), 'error');
     submitFails = new ConnectError(
-      'marks must be recorded in tax-year order — the latest is 2025',
+      'marks must be recorded in tax-year order - the latest is 2025',
       Code.FailedPrecondition,
     );
     submitButton(fixture).click();
@@ -341,7 +341,7 @@ describe('MtmMarkDialog', () => {
     expect(recorded).toHaveLength(1);
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect((errorSpy.mock.calls[0][0] as ConnectError).rawMessage).toBe(
-      'marks must be recorded in tax-year order — the latest is 2025',
+      'marks must be recorded in tax-year order - the latest is 2025',
     );
     expect(closed).toEqual([]);
     expect(fixture.componentInstance.busy()).toBe(false);
@@ -353,7 +353,7 @@ describe('MtmMarkDialog', () => {
     await type(fixture, 'Tax Year', '');
     // BUG: valid() checks the mark date and the three decimals but never
     // the tax year, so clearing the field leaves Record enabled and the
-    // RPC goes out with year 0 — which only the server rejects ("tax
+    // RPC goes out with year 0 - which only the server rejects ("tax
     // year 0 is out of range"). The same hole lets an out-of-range year
     // like 189 through, where loadSuggestion already declines to ask.
     // Pinning the current behavior.
@@ -372,7 +372,7 @@ describe('MtmMarkDialog', () => {
     await settle(fixture);
     expect(recorded).toEqual([]);
     expect(updated).toEqual([]);
-    // The bare `mat-dialog-close` attribute closes with "" — falsy, so
+    // The bare `mat-dialog-close` attribute closes with "" - falsy, so
     // MtmMarks treats it as a dismissal and skips the reload.
     expect(closed).toEqual(['']);
   });

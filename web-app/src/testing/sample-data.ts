@@ -5,7 +5,7 @@
 //
 // Holdings figures: the real server values positions from prices, so
 // a unit fixture's dollar figures are whatever the spec needs to
-// exercise sortKey/display plumbing — they are not promises about the
+// exercise sortKey/display plumbing - they are not promises about the
 // e2e lane's numbers. Quantities, names, currencies, and provenance
 // ARE shared with the seeder.
 import { create } from '@bufbuild/protobuf';
@@ -164,9 +164,9 @@ export function sampleAllAccounts(): AccountSummary[] {
       accountNumber: 'X-3',
       currencyCode: 'EUR',
       taxDeferred: false,
-      sweepBalance: money('250.00', { currency: 'EUR', display: '€250.00' }),
+      sweepBalance: money('250.00', { currency: 'EUR', display: '\u20ac250.00' }),
       sweepProvenance: create(ProvenanceSchema, { source: 'manual' }),
-      investmentValue: money('10400.00', { currency: 'EUR', display: '€10,400.00' }),
+      investmentValue: money('10400.00', { currency: 'EUR', display: '\u20ac10,400.00' }),
     }),
     create(AccountSummarySchema, {
       accountId: 4n,
@@ -184,7 +184,7 @@ export function sampleAllAccounts(): AccountSummary[] {
 }
 
 /** The buy/rebalance form's account choices (visible accounts, ordered
- *  by broker name then account name — EuroBank first). */
+ *  by broker name then account name - EuroBank first). */
 export function sampleAccountChoices(): GetPurchaseFormInfoResponse['accounts'] {
   return [
     create(AccountChoiceSchema, {
@@ -193,7 +193,7 @@ export function sampleAccountChoices(): GetPurchaseFormInfoResponse['accounts'] 
       name: 'EUR Brokerage',
       currencyCode: 'EUR',
       taxDeferred: false,
-      sweeps: money('250.00', { currency: 'EUR', display: '€250.00' }),
+      sweeps: money('250.00', { currency: 'EUR', display: '\u20ac250.00' }),
     }),
     create(AccountChoiceSchema, {
       accountId: 1n,
@@ -357,15 +357,15 @@ export function samplePrivatePrices(): PrivatePriceRow[] {
   ];
 }
 
-/** EUFUND's two chained marks (lastYear−1 and lastYear, seeded at
- *  €9,500 × 1.05 and €10,000 × 1.08 over the $9,911 floor). */
+/** EUFUND's two chained marks (lastYear-1 and lastYear, seeded at
+ *  \u20ac9,500 x 1.05 and \u20ac10,000 x 1.08 over the $9,911 floor). */
 export function sampleMtmMarks(lastYear = new Date().getFullYear() - 1): ListMtmMarksResponse {
   return create(ListMtmMarksResponseSchema, {
     acquisitionCostUsd: money('9911.00', { display: '$9,911.00' }),
     marks: [
       create(MtmMarkSchema, {
         markId: 1n, taxYear: lastYear - 1, markDate: date(`${lastYear - 1}-12-31`),
-        quantity: quantity('100'), fmvLocal: money('9500.00', { currency: 'EUR', display: '€9,500.00' }),
+        quantity: quantity('100'), fmvLocal: money('9500.00', { currency: 'EUR', display: '\u20ac9,500.00' }),
         fxRate: rate('1.05000000'), fmvUsd: money('9975.00', { display: '$9,975.00' }),
         basisBefore: money('9911.00', { display: '$9,911.00' }),
         basisAfter: money('9975.00', { display: '$9,975.00' }),
@@ -373,7 +373,7 @@ export function sampleMtmMarks(lastYear = new Date().getFullYear() - 1): ListMtm
       }),
       create(MtmMarkSchema, {
         markId: 2n, taxYear: lastYear, markDate: date(`${lastYear}-12-31`),
-        quantity: quantity('100'), fmvLocal: money('10000.00', { currency: 'EUR', display: '€10,000.00' }),
+        quantity: quantity('100'), fmvLocal: money('10000.00', { currency: 'EUR', display: '\u20ac10,000.00' }),
         fxRate: rate('1.08000000'), fmvUsd: money('10800.00', { display: '$10,800.00' }),
         basisBefore: money('9975.00', { display: '$9,975.00' }),
         basisAfter: money('10800.00', { display: '$10,800.00' }),
@@ -551,7 +551,7 @@ export function sampleImportWarnings(): ImportWarning[] {
       accountId: 2n,
       brokerId: 1n,
       accountName: 'Roth IRA',
-      message: 'Vanguard "Roth IRA" …5678: ticker INTLX is not a known security — add it by hand and re-process',
+      message: 'Vanguard "Roth IRA" ...5678: ticker INTLX is not a known security - add it by hand and re-process',
     }),
     create(ImportWarningSchema, {
       snapshotId: 2n,
@@ -560,7 +560,7 @@ export function sampleImportWarnings(): ImportWarning[] {
       brokerId: 1n,
       accountName: 'Brokerage',
       message:
-        'Vanguard "Brokerage" …1234: VTI — institution reports 12 shares, lots hold 10 (taxable accounts are never changed by imports; reconcile the lots by hand)',
+        'Vanguard "Brokerage" ...1234: VTI - institution reports 12 shares, lots hold 10 (taxable accounts are never changed by imports; reconcile the lots by hand)',
     }),
   ];
 }
@@ -589,11 +589,11 @@ export function sampleSnapshots(): SnapshotRow[] {
         lines: [
           create(ReportLineSchema, {
             severity: ReportSeverity.WARNING,
-            message: 'Vanguard "Roth IRA" …5678: ticker INTLX is not a known security — add it by hand and re-process',
+            message: 'Vanguard "Roth IRA" ...5678: ticker INTLX is not a known security - add it by hand and re-process',
           }),
           create(ReportLineSchema, {
             severity: ReportSeverity.INFO,
-            message: 'Vanguard "Roth IRA" …5678: 1 holding(s) updated',
+            message: 'Vanguard "Roth IRA" ...5678: 1 holding(s) updated',
           }),
         ],
       }),

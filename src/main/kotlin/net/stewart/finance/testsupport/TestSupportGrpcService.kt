@@ -12,7 +12,7 @@ import net.stewart.finance.proto.TestSupportServiceGrpcKt
 
 /**
  * Test-only fixtures (docs/design/ui-testing.md). Main registers this
- * service ONLY when FINANCE2_TEST_SUPPORT=true — it does not exist in
+ * service ONLY when FINANCE2_TEST_SUPPORT=true - it does not exist in
  * a normal deployment, and calls are session-authenticated like every
  * other RPC.
  */

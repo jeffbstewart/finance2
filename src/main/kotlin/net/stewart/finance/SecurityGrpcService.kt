@@ -82,14 +82,14 @@ import net.stewart.finance.proto.UpdatePrivatePriceResponse
 import net.stewart.finance.proto.UpdateSecurityProfileRequest
 import net.stewart.finance.proto.UpdateSecurityProfileResponse
 
-/** Sum-to-one tolerance for classification weights (spec §5.9). */
+/** Sum-to-one tolerance for classification weights (spec sec. 5.9). */
 private val WEIGHT_SUM_TOLERANCE = Fraction.of("0.0001")
 
 private const val SPARKLINE_MONTHS = 6L
 
 /**
- * SecurityService (spec §7 "Securities & prices", §9.10–§9.12,
- * §9.17–§9.18) at the build-scope §4 launch scope. Price history and
+ * SecurityService (spec sec. 7 "Securities & prices", sec. 9.10-sec. 9.12,
+ * sec. 9.17-sec. 9.18) at the build-scope sec. 4 launch scope. Price history and
  * sparklines come from private_prices for MANUAL-locus securities;
  * MARKET-locus history stays empty until the price-source module
  * lands (Phase 4/5). Inflation-adjusted presentation waits on the CPI
@@ -105,7 +105,7 @@ class SecurityGrpcService(
     private val mtm: MtmService,
     /** The persisted CPI series, or null while unseeded (degraded mode). */
     private val cpiSeries: () -> CpiSeries? = { null },
-    /** Days after which a classification set suggests a refresh (build-scope §4). */
+    /** Days after which a classification set suggests a refresh (build-scope sec. 4). */
     private val classificationRefreshDays: Long = 365,
 ) : SecurityServiceGrpcKt.SecurityServiceCoroutineImplBase() {
 
@@ -155,7 +155,7 @@ class SecurityGrpcService(
         // MANUAL locus: hand-entered history (adjusted = raw); MARKET
         // locus: persisted provider bars, refreshed when stale.
         val raw = pricing.history(row)
-        // Constant-dollar presentation (spec §5.7): both series convert
+        // Constant-dollar presentation (spec sec. 5.7): both series convert
         // to today's dollars; the chart and the indicators use the same
         // adjusted series -- one consistent direction.
         val points = if (!request.inflationAdjusted) raw else {
@@ -186,7 +186,7 @@ class SecurityGrpcService(
                     .setAdjustedClose(point.adjustedClose.toProto().amount)
             )
         }
-        // Indicators run over the adjusted-close series (spec §5.8).
+        // Indicators run over the adjusted-close series (spec sec. 5.8).
         val history = points.map { ClosePoint(it.date, it.adjustedClose) }
         val indicators = builder.indicatorsBuilder
         for (p in sma(history)) {
@@ -223,14 +223,14 @@ class SecurityGrpcService(
             else -> throw invalid("unknown security type")
         }
         val treatment = when (request.taxTreatment) {
-            // Absent on the wire keeps the stored default (LOTS) —
-            // pre-§11 clients never sent the field.
+            // Absent on the wire keeps the stored default (LOTS) - 
+            // pre-sec. 11 clients never sent the field.
             TaxTreatmentProto.TAX_TREATMENT_UNSPECIFIED, TaxTreatmentProto.LOTS -> TaxTreatment.LOTS
             TaxTreatmentProto.MARK_TO_MARKET -> TaxTreatment.MARK_TO_MARKET
             else -> throw invalid("unknown tax treatment")
         }
-        // Guard (build-scope §11): the election cannot be reverted
-        // while its marks exist — the ledger would silently lose its
+        // Guard (build-scope sec. 11): the election cannot be reverted
+        // while its marks exist - the ledger would silently lose its
         // meaning.
         if (row.taxTreatment == TaxTreatment.MARK_TO_MARKET &&
             treatment == TaxTreatment.LOTS && mtmMarksExist(row)
@@ -260,7 +260,7 @@ class SecurityGrpcService(
 
     override suspend fun setSecurityHidden(request: SetSecurityHiddenRequest): SetSecurityHiddenResponse {
         val row = findSecurity(request.securityId)
-        // Guard rail (§5.9): hiding requires no open lots — approximated
+        // Guard rail (sec. 5.9): hiding requires no open lots - approximated
         // as no lots/holdings at all until valuation lands (stricter,
         // never looser).
         if (request.hidden && securities.hasPositions(row.id)) {
@@ -276,7 +276,7 @@ class SecurityGrpcService(
         val row = findSecurity(request.securityId)
         val kind = ClassificationKind.entries.firstOrNull { it.name == request.kind.trim().uppercase() }
             ?: throw invalid(
-                "unknown classification kind \"${request.kind}\" — known: " +
+                "unknown classification kind \"${request.kind}\" - known: " +
                     ClassificationKind.entries.joinToString { it.name }
             )
         if (request.weightsMap.isEmpty()) throw invalid("at least one weight is required")
@@ -300,10 +300,10 @@ class SecurityGrpcService(
                 throw invalid("unknown asset class \"$it\"")
             }
         }
-        // Weights must sum to 1 (±0.0001) — spec §5.9.
+        // Weights must sum to 1 (+/-0.0001) - spec sec. 5.9.
         val sum = weights.values.fold(Fraction.ZERO) { acc, w -> acc + w }
         if ((sum - Fraction.ONE).abs() > WEIGHT_SUM_TOLERANCE) {
-            throw invalid("weights sum to $sum; they must sum to 1 (±0.0001)")
+            throw invalid("weights sum to $sum; they must sum to 1 (+/-0.0001)")
         }
         classifications.replace(row.id, kind, weights, asOf)
         return SetClassificationResponse.getDefaultInstance()
@@ -535,8 +535,8 @@ class SecurityGrpcService(
 
     private fun manualSecurity(raw: Long): SecurityRow {
         val row = findSecurity(raw)
-        // Spec §5.6: manual price CRUD is rejected for MARKET-locus
-        // securities — their prices come from the provider.
+        // Spec sec. 5.6: manual price CRUD is rejected for MARKET-locus
+        // securities - their prices come from the provider.
         if (row.pricingLocus != PricingLocus.MANUAL) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(

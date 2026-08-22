@@ -6,7 +6,7 @@ import java.time.YearMonth
 import javax.sql.DataSource
 import org.jdbi.v3.core.Jdbi
 
-/** Monthly CPIAUCSL observations (spec §5.7). */
+/** Monthly CPIAUCSL observations (spec sec. 5.7). */
 class CpiRepository(dataSource: DataSource) {
 
     private val jdbi = Jdbi.create(dataSource)

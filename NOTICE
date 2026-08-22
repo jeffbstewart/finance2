@@ -11,7 +11,7 @@ MIT License, Copyright (c) 2026 Jeffrey B. Stewart
 This product embeds a snapshot of the CPIAUCSL data series (Consumer
 Price Index for All Urban Consumers: All Items, U.S. Bureau of Labor
 Statistics), retrieved from FRED, Federal Reserve Bank of St. Louis
-(https://fred.stlouisfed.org/series/CPIAUCSL) — U.S. government work
+(https://fred.stlouisfed.org/series/CPIAUCSL) - U.S. government work
 product in the public domain (src/main/resources/cpi/CPIAUCSL.csv).
 
 This product bundles the Roboto font and the Material Icons font,

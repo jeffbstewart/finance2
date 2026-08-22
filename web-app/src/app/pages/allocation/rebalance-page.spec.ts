@@ -36,7 +36,7 @@ import { RebalancePage } from './rebalance-page';
 
 // Shared-infrastructure gap: sample-data.ts has no AccountChoice or
 // rebalance-score builders, so the seeded portfolio's three visible
-// accounts (the tax-deferred Roth IRA included — this RPC does not
+// accounts (the tax-deferred Roth IRA included - this RPC does not
 // filter) live here.
 function sampleAccountChoices(): AccountChoice[] {
   return [
@@ -270,7 +270,7 @@ describe('RebalancePage', () => {
 
   /** Opens the Account mat-select and returns its (freshly opened)
    *  overlay panel. The panel is found through the trigger's
-   *  aria-controls — a document-wide mat-option query can pick up a
+   *  aria-controls - a document-wide mat-option query can pick up a
    *  just-closed panel still lingering in the overlay container. */
   async function openAccountSelect(fixture: {
     nativeElement: HTMLElement;
@@ -293,7 +293,7 @@ describe('RebalancePage', () => {
     return Array.from(panel.querySelectorAll('mat-option'), (o) => o.textContent!.trim());
   }
 
-  /** Types into the Add Funds input the way a user does — a bare
+  /** Types into the Add Funds input the way a user does - a bare
    *  signal write never re-renders under zoneless change detection. */
   async function typeFunds(
     fixture: { nativeElement: HTMLElement; detectChanges(): void },
@@ -317,9 +317,9 @@ describe('RebalancePage', () => {
     const fixture = await render();
     const panel = await openAccountSelect(fixture);
     expect(optionTexts(panel)).toEqual([
-      'Vanguard : Brokerage — sweeps $500.00',
-      'Vanguard : Roth IRA — sweeps $55.25',
-      'EuroBank : EUR Brokerage — sweeps $290.00',
+      'Vanguard : Brokerage - sweeps $500.00',
+      'Vanguard : Roth IRA - sweeps $55.25',
+      'EuroBank : EUR Brokerage - sweeps $290.00',
     ]);
   });
 
@@ -482,7 +482,7 @@ describe('RebalancePage', () => {
     accounts = [sampleAccountChoices()[0]];
     const fixture = await render();
     for (const shares of ['10', '10']) {
-      // A fresh object per open — remove() filters by identity.
+      // A fresh object per open - remove() filters by identity.
       dialog.result = { securityId: 2n, ticker: 'BONDX', shares, cost: '105' };
       buttonsByLabel(fixture, 'Propose purchase')[3].click();
       await settle(fixture);

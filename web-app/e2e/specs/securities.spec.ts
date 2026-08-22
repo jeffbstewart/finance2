@@ -1,7 +1,7 @@
 // E2E spec for SecuritiesPage + AddSecurityDialog
 // (docs/design/ui-testing.md, inventory "SecuritiesPage"). The seeder
-// leaves four visible securities — BONDX, EUFUND, GOLD, VTI, ordered
-// by ticker — plus the hidden GHOST. VTI's 220 pinned daily bars are
+// leaves four visible securities - BONDX, EUFUND, GOLD, VTI, ordered
+// by ticker - plus the hidden GHOST. VTI's 220 pinned daily bars are
 // the only price series guaranteed to be inside the six-month
 // sparkline window whatever the calendar says, so it is the one row
 // asserted to draw a path.
@@ -48,11 +48,11 @@ test('draws a sparkline for the security with a price series', async ({ page }) 
   await expect(row(page, 'GHOST').locator('svg path')).toHaveCount(0); // never priced
 });
 
-test('a ticker link opens that security’s details page', async ({ page }) => {
+test("a ticker link opens that security's details page", async ({ page }) => {
   await page.goto('/app/securities');
   await page.getByRole('link', { name: 'VTI', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/securities\/\d+$/);
-  // mat-card-title is not a heading element — locate it by selector.
+  // mat-card-title is not a heading element - locate it by selector.
   await expect(page.locator('mat-card-title')).toHaveText('VTI: Total Market ETF');
 });
 
@@ -86,7 +86,7 @@ test('the add FAB upper-cases the ticker and lands on the new details page', asy
   await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
   await page.getByRole('button', { name: 'Submit' }).click();
 
-  await expectSnackbar(page, 'NEWSEC added — fill in its profile');
+  await expectSnackbar(page, 'NEWSEC added - fill in its profile');
   await expect(page).toHaveURL(/\/app\/securities\/\d+$/);
   await expect(page.locator('mat-card-title')).toHaveText('NEWSEC: (no description yet)');
 

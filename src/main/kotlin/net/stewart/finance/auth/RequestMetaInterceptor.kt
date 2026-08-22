@@ -16,13 +16,13 @@ import net.stewart.armeria.auth.requestAuthority
 // Request/response plumbing SessionGrpcService needs beyond what the
 // toolkit's AuthGrpcInterceptor provides: the trusted client IP for
 // login rate limiting, the raw Cookie/Origin headers (allowlisted RPCs
-// like GetSessionStatus resolve the session themselves — the auth
+// like GetSessionStatus resolve the session themselves - the auth
 // interceptor skips identity resolution for them), and a sink for
 // Set-Cookie response headers.
 
 /**
  * The calling client's IP. Behind HAProxy this comes from
- * X-Forwarded-For (build-scope §10) — [TrustedProxyDecorator] has
+ * X-Forwarded-For (build-scope sec. 10) - [TrustedProxyDecorator] has
  * already rejected requests from any peer other than the proxy and
  * requests missing the header; direct connections (dev, no proxies
  * configured) fall back to the socket peer.
@@ -81,7 +81,7 @@ class RequestMetaInterceptor : ServerInterceptor {
             // The transport (grpc-kotlin over Armeria) calls
             // sendHeaders before the handler body has run, so any
             // cookie the RPC deposits would miss a flush done here.
-            // Hold the headers and flush them at the first message —
+            // Hold the headers and flush them at the first message - 
             // or at close, so error responses still carry them.
             private var pendingHeaders: Metadata? = null
             private var headersSent = false

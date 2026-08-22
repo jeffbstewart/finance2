@@ -6,7 +6,7 @@ import java.util.Locale
  * An ISO 4217 currency code, validated at construction.
  *
  * Currency is a property of the account in finance2 (see
- * docs/design/initial-build-scope.md §5): every security held in an
+ * docs/design/initial-build-scope.md sec. 5): every security held in an
  * account and its sweep balance are denominated in the account's
  * currency. Arithmetic between [Money] values of different currencies
  * throws [CurrencyMismatchException]; conversion is explicit, through a
@@ -15,7 +15,7 @@ import java.util.Locale
 @JvmInline
 value class CurrencyUnit private constructor(val code: String) {
 
-    /** The display symbol for this currency, e.g. `$` or `€`. */
+    /** The display symbol for this currency, e.g. `$` or `\u20ac`. */
     val symbol: String
         get() = java.util.Currency.getInstance(code).getSymbol(Locale.US)
 

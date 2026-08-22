@@ -9,7 +9,7 @@
 //     is $201.90.
 //   * With no added funds the scorer sizes the plan so the most
 //     overweight non-Cash class reaches target. That is Other
-//     (GOLD 5 × $3,358.50 against a 10% target — an order of
+//     (GOLD 5 x $3,358.50 against a 10% target - an order of
 //     magnitude past every other class), so Other's residual is
 //     exactly $0.00 and its buy affordance is disabled.
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -54,14 +54,14 @@ test('offers every visible account, tax-deferred included, and scores nothing fi
   await page.getByRole('combobox', { name: 'Account' }).click();
   const options = page.getByRole('option');
   await expect(options).toHaveCount(3);
-  // getPurchaseFormInfo does not filter tax-deferred accounts here —
+  // getPurchaseFormInfo does not filter tax-deferred accounts here - 
   // a rebalance may buy into the Roth IRA. Hidden accounts are gone.
-  // Ordered by broker name, then account name — EuroBank first; the
+  // Ordered by broker name, then account name - EuroBank first; the
   // EUR account's sweeps are shown in its own currency.
   await expect(options).toHaveText([
-    /EuroBank : EUR Brokerage — sweeps .?250\.00/,
-    'Vanguard : Brokerage — sweeps $500.00',
-    'Vanguard : Roth IRA — sweeps $55.25',
+    /EuroBank : EUR Brokerage - sweeps .?250\.00/,
+    'Vanguard : Brokerage - sweeps $500.00',
+    'Vanguard : Roth IRA - sweeps $55.25',
   ]);
 });
 
@@ -77,7 +77,7 @@ test('scores the seeded plan in buy-only mode', async ({ page }) => {
   // Buy-only mode: the plan is sized so the most overweight class
   // exactly reaches target, so Other's After lands on its 10% target
   // with a zero residual. (Before and After are fractions of
-  // different totals — the current one and the plan's — so they do
+  // different totals - the current one and the plan's - so they do
   // not agree even with an empty cart.)
   const other = table.rows[CLASS_NAMES.indexOf('Other')];
   expect(other[2]).toBe('10%');
@@ -132,7 +132,7 @@ test('builds a cart through the buy dialog and re-scores with it', async ({ page
   await expect(dialog.getByRole('button', { name: 'Add to Plan' })).toBeDisabled();
 
   await dialog.getByRole('combobox', { name: 'Security' }).click();
-  await expect(page.getByRole('option')).toHaveText(['BONDX — 100% in Bond']);
+  await expect(page.getByRole('option')).toHaveText(['BONDX - 100% in Bond']);
   await page.getByRole('option', { name: 'BONDX' }).click();
 
   const price = dialog.getByRole('textbox', { name: 'Price Per Share' });
@@ -200,7 +200,7 @@ test('a whole-share security priced by net cost is rejected by the scorer', asyn
   await dialog.getByRole('button', { name: 'Add to Plan' }).click();
 
   // BUG: the dialog offers a Net Cost field for every candidate, but
-  // only mutual funds are bought in dollar amounts — VTI is an ETF, so
+  // only mutual funds are bought in dollar amounts - VTI is an ETF, so
   // the server rejects the fractional-share trade. The rejected trade
   // stays in the cart alongside a score that never saw it.
   await expectSnackbar(page, 'whole shares');

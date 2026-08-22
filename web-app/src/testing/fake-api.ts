@@ -1,7 +1,7 @@
 // In-memory fake backend for unit specs (docs/design/ui-testing.md).
 //
 // The app's `api` singleton builds its clients at module load, so
-// specs don't swap the transport — they swap the *clients*:
+// specs don't swap the transport - they swap the *clients*:
 //
 //   const restore = installFakeApi(({ service }) => {
 //     service(BrokerService, {
@@ -12,7 +12,7 @@
 //   restore();   // afterEach
 //
 // createRouterTransport runs the real generated clients against these
-// TypeScript implementations — same serialization, no network. Any
+// TypeScript implementations - same serialization, no network. Any
 // RPC a spec doesn't implement rejects with UNIMPLEMENTED, which
 // surfaces as the page's error snackbar: unhandled calls are loud,
 // never silent.

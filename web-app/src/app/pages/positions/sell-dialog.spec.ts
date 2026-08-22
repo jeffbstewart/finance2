@@ -1,6 +1,6 @@
 // Unit spec for SellDialog (docs/design/ui-testing.md, inventory
 // "LotDetailsPage / SellDialog"). The dialog is rendered directly with
-// MAT_DIALOG_DATA and a MatDialogRef stub — the stepper's linear gating
+// MAT_DIALOG_DATA and a MatDialogRef stub - the stepper's linear gating
 // and the exact step-2 validation messages are the point.
 //
 // Shared-infrastructure gap: sample-data.ts has no LotRow builder, so
@@ -137,7 +137,7 @@ describe('SellDialog', () => {
       .filter(Boolean);
   }
 
-  /** Types into an input the way a user does so ngModel sees the change —
+  /** Types into an input the way a user does so ngModel sees the change - 
    *  a bare field assignment never re-renders under zoneless. */
   async function type(
     fixture: { nativeElement: HTMLElement; detectChanges(): void },
@@ -330,8 +330,8 @@ describe('SellDialog', () => {
     const page = fixture.componentInstance;
     expect(page.shares).toBe('');
     // BUG (pinned, not fixed): with no step-1 total, step2Error() short-
-    // circuits to null and step2Valid() reports true. Harmless today —
-    // the linear stepper will not reach step 2 until step 1 completes —
+    // circuits to null and step2Valid() reports true. Harmless today - 
+    // the linear stepper will not reach step 2 until step 1 completes - 
     // but the validator alone does not defend the invariant.
     expect(page.step2Error()).toBe(null);
     expect(page.step2Valid()).toBe(true);
@@ -382,8 +382,8 @@ describe('SellDialog', () => {
       s.textContent!.replace(/\s+/g, ' ').trim(),
     );
     expect(labels).toEqual([
-      'Bought 2024-03-01 — 19 held at $150.00',
-      'Bought 2025-01-20 — 16 held at $180.00',
+      'Bought 2024-03-01 - 19 held at $150.00',
+      'Bought 2025-01-20 - 16 held at $180.00',
     ]);
   });
 });

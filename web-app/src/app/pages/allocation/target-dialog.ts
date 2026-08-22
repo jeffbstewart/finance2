@@ -24,8 +24,8 @@ interface TargetRow {
   percent: string;
 }
 
-/** Edit Target Asset Allocation (spec §9.13): one percent field per
- *  class, each 0–100, must sum to 100 — exact string decimals. */
+/** Edit Target Asset Allocation (spec sec. 9.13): one percent field per
+ *  class, each 0-100, must sum to 100 - exact string decimals. */
 @Component({
   selector: 'app-target-dialog',
   imports: [FormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatInputModule],
@@ -74,7 +74,7 @@ export class TargetDialog {
     this.validationError.set(this.validate());
   }
 
-  /** Mirror of the server rule: each 0–100, sum 100 (±0.01). */
+  /** Mirror of the server rule: each 0-100, sum 100 (+/-0.01). */
   private validate(): string | null {
     let totalTenThousandths = 0;
     for (const row of this.rows()) {

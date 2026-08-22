@@ -239,7 +239,7 @@ class SnapshotImportServiceTest {
     @Test
     fun `taxable accounts compare and never mutate, and re-processing reflects lot fixes`() {
         PlaidAccountLinkRepository(db.dataSource).link("ref-brok", AccountId(2))
-        // Institution says 12; lots hold 10 — mismatch warning.
+        // Institution says 12; lots hold 10 - mismatch warning.
         val record = service.upload(
             portfolioId, "s.pb", snapshot(brokerageAccount(holding("VTI", "12"))).toByteArray()
         )
@@ -270,7 +270,7 @@ class SnapshotImportServiceTest {
             .build()
         val record = service.upload(portfolioId, "s.pb", snapshot(plaid401k).toByteArray())
 
-        // First pass: nothing to link to — a warning, no writes, and
+        // First pass: nothing to link to - a warning, no writes, and
         // the run still completes as PROCESSED.
         val first = service.process(portfolioId, record.id)
         assertEquals(SnapshotStatus.PROCESSED, first.status)
@@ -300,7 +300,7 @@ class SnapshotImportServiceTest {
         val record = service.upload(portfolioId, "s.pb", snapshot(iraAccount()).toByteArray())
         val report = ImportReport.parseFrom(service.process(portfolioId, record.id).report!!)
         assertTrue(lines(report).any { "absent from the snapshot" in it })
-        // Still there — the human decides.
+        // Still there - the human decides.
         assertEquals(1, HoldingRepository(db.dataSource).list(portfolioId).size)
     }
 
@@ -451,7 +451,7 @@ class SnapshotImportServiceTest {
                 .compareTo(AccountRepository(db.dataSource).find(AccountId(1), portfolioId)!!.sweep.amount),
         )
         // Whole-account "cash" with a holding Plaid did not value: no
-        // derivation possible — leave the sweep alone and say so.
+        // derivation possible - leave the sweep alone and say so.
         val unvalued = service.upload(
             portfolioId, "b.pb",
             snapshot(

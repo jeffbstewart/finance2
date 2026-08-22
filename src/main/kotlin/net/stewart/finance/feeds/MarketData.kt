@@ -9,12 +9,12 @@ import net.stewart.finance.db.SecurityRow
 import net.stewart.finance.domain.PricingLocus
 import org.slf4j.LoggerFactory
 
-/** How far back the "recent" fetch depth reaches (spec §6.1: ~1 month,
+/** How far back the "recent" fetch depth reaches (spec sec. 6.1: ~1 month,
  *  with margin for downtime). */
 private const val RECENT_DAYS = 45L
 
 /**
- * The market-data module of spec §6.1, minus the daemon: DB-persisted
+ * The market-data module of spec sec. 6.1, minus the daemon: DB-persisted
  * caching with a multi-hour TTL, per-security request coalescing,
  * gentle per-provider request spacing, and typed-quota failover
  * through the Decision 4 provider chain (Tiingo, then EODHD).
@@ -92,7 +92,7 @@ class MarketData(
     }
 
     /** Minimal provider courtesy: successive requests to one provider
-     *  are spaced by [requestSpacing] (spec §6.1 rate limiting — the
+     *  are spaced by [requestSpacing] (spec sec. 6.1 rate limiting - the
      *  cache keeps volume so low that spacing is all that is needed). */
     private fun space(source: PriceSource) {
         val key = MarketSourceKey(source.id.name)

@@ -18,15 +18,15 @@ data class PrivatePriceRow(
 )
 
 /**
- * Hand-entered price history for MANUAL-locus securities (spec §5.6);
+ * Hand-entered price history for MANUAL-locus securities (spec sec. 5.6);
  * prices are in the security's currency, read from the security row in
- * the same query — never asserted by a caller.
+ * the same query - never asserted by a caller.
  */
 class PrivatePriceRepository(dataSource: DataSource) {
 
     private val jdbi = Jdbi.create(dataSource)
 
-    /** Newest first, for the price-history editor (spec §9.12). */
+    /** Newest first, for the price-history editor (spec sec. 9.12). */
     fun list(securityId: SecurityId): List<PrivatePriceRow> = jdbi.sql { handle ->
         handle.createQuery(
             "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
@@ -43,7 +43,7 @@ class PrivatePriceRepository(dataSource: DataSource) {
 
     /**
      * Date-ascending closes since [since] for every non-hidden
-     * security in the portfolio — one query feeds every sparkline
+     * security in the portfolio - one query feeds every sparkline
      * (the legacy N+1, defect 11, must not return).
      */
     fun recentBySecurity(portfolioId: PortfolioId, since: LocalDate): Map<SecurityId, List<Money>> =
@@ -68,9 +68,9 @@ class PrivatePriceRepository(dataSource: DataSource) {
         }
 
     /**
-     * The newest price per MANUAL-locus security in the portfolio —
+     * The newest price per MANUAL-locus security in the portfolio - 
      * the "latest price" source for valuing manually priced holdings
-     * (spec §5.6). Currency from the security row.
+     * (spec sec. 5.6). Currency from the security row.
      */
     fun latestBySecurity(portfolioId: PortfolioId): Map<SecurityId, Money> = jdbi.sql { handle ->
         val result = linkedMapOf<SecurityId, Money>()
@@ -121,7 +121,7 @@ class PrivatePriceRepository(dataSource: DataSource) {
     }
 
     /**
-     * Records (or replaces) the price for a date from an import —
+     * Records (or replaces) the price for a date from an import - 
      * `source` names the provenance (e.g. "plaid") the way holdings
      * carry theirs; hand-entered rows keep the column's default.
      */

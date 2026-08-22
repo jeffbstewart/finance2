@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
  * 2026-08-19), so background refresh needs nothing fancier than a
  * fixed-rate daemon thread: run shortly after startup, then every
  * [period]; a failing pass logs and never kills the schedule (spec
- * §10 startup resilience — external fetches degrade the feature, not
+ * sec. 10 startup resilience - external fetches degrade the feature, not
  * the process).
  */
 class PeriodicJob(

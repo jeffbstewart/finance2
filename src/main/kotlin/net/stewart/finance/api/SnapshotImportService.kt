@@ -64,12 +64,12 @@ data class SnapshotSecurity(
 const val SUPPORTED_SNAPSHOT_SCHEMA = 1
 
 /**
- * The bankferry snapshot importer (pipeline design §E, amended
+ * The bankferry snapshot importer (pipeline design sec. E, amended
  * 2026-08-20). Upload archives verbatim after validation; processing
- * is separate and freely repeatable — build-scope §1 semantics:
+ * is separate and freely repeatable - build-scope sec. 1 semantics:
  * tax-deferred holdings and sweeps are written with plaid provenance,
  * taxable accounts are compared and reported, never mutated. Unknown
- * tickers are flagged for the human to add by hand (§6.3 — no
+ * tickers are flagged for the human to add by hand (sec. 6.3 - no
  * auto-creation), then re-process. Securities Plaid reports without a
  * ticker (401(k) trust funds) match only through a human-made link;
  * matched MANUAL-locus securities get the institution price recorded
@@ -94,7 +94,7 @@ class SnapshotImportService(
         if (snapshot.schemaVersion != SUPPORTED_SNAPSHOT_SCHEMA) {
             throw invalid(
                 "snapshot schema v${snapshot.schemaVersion}; this server reads " +
-                    "v$SUPPORTED_SNAPSHOT_SCHEMA — update whichever side is behind"
+                    "v$SUPPORTED_SNAPSHOT_SCHEMA - update whichever side is behind"
             )
         }
         val asOf = try {
@@ -114,7 +114,7 @@ class SnapshotImportService(
 
     /**
      * Runs (or re-runs) processing against the archived bytes and
-     * records the outcome — PROCESSED with the report, or FAILED with
+     * records the outcome - PROCESSED with the report, or FAILED with
      * the error.
      */
     fun process(portfolioId: PortfolioId, id: SnapshotId): SnapshotRecord {
@@ -175,7 +175,7 @@ class SnapshotImportService(
 
     /**
      * The warnings the most recent processing run left against real
-     * accounts — what the broker and account views show so the human
+     * accounts - what the broker and account views show so the human
      * is prompted to fix lots, add securities, or delete holdings.
      * Lines with no account (unlinked Plaid accounts, a failed run)
      * belong only on the Imports page. Accounts deleted since the run
@@ -210,18 +210,18 @@ class SnapshotImportService(
         for (item in snapshot.itemsList) {
             for (plaidAccount in item.accountsList) {
                 val label = "${item.institutionEntry} \"${plaidAccount.name}\"" +
-                    (plaidAccount.mask.takeIf { it.isNotEmpty() }?.let { " …$it" } ?: "")
+                    (plaidAccount.mask.takeIf { it.isNotEmpty() }?.let { " ...$it" } ?: "")
                 val linkedId = linkMap[plaidAccount.accountRef]
                 if (linkedId == null) {
                     builder.addLines(
-                        line(ReportSeverity.WARNING, "$label is not linked to an account — link it and re-process")
+                        line(ReportSeverity.WARNING, "$label is not linked to an account - link it and re-process")
                     )
                     continue
                 }
                 val account = accounts.find(linkedId, portfolioId)
                 if (account == null) {
                     builder.addLines(
-                        line(ReportSeverity.WARNING, "$label links to a deleted account — re-link it")
+                        line(ReportSeverity.WARNING, "$label links to a deleted account - re-link it")
                     )
                     continue
                 }
@@ -242,7 +242,7 @@ class SnapshotImportService(
             .build()
     }
 
-    /** Build-scope §1: position-level quantities + sweep, plaid provenance. */
+    /** Build-scope sec. 1: position-level quantities + sweep, plaid provenance. */
     private fun importTaxDeferred(
         report: ImportReport.Builder,
         label: String,
@@ -266,7 +266,7 @@ class SnapshotImportService(
                 continue
             }
             if (security.currency != account.currency) {
-                warn("$label: ${security.ticker} is ${security.currency} but the account is ${account.currency} — skipped")
+                warn("$label: ${security.ticker} is ${security.currency} but the account is ${account.currency} - skipped")
                 continue
             }
             val quantity = try {
@@ -280,12 +280,12 @@ class SnapshotImportService(
             holdingsUpdated++
         }
 
-        // Holdings the institution no longer reports stay put — flag
+        // Holdings the institution no longer reports stay put - flag
         // them so the human decides (delete by hand if truly gone).
         for (existing in holdings.list(portfolioId, account.id)) {
             val security = securities.find(existing.securityId, portfolioId) ?: continue
             if (security.id !in seenSecurities) {
-                warn("$label: ${security.ticker} is held here but absent from the snapshot — delete the holding by hand if it was sold")
+                warn("$label: ${security.ticker} is held here but absent from the snapshot - delete the holding by hand if it was sold")
             }
         }
 
@@ -302,7 +302,7 @@ class SnapshotImportService(
     /**
      * The account's cash, as far as the snapshot can be trusted.
      * bankferry fills cash_balance from Plaid's *available* balance,
-     * which a 401(k) reports as the whole account — so it is believed
+     * which a 401(k) reports as the whole account - so it is believed
      * only when it is less than the account value (or nothing but cash
      * is held). Otherwise: the cash-equivalent holdings, else the
      * account value less every valued holding, else nothing.
@@ -342,7 +342,7 @@ class SnapshotImportService(
             }
             else -> {
                 if (reported != null) {
-                    warn("cash balance ${reported.display()} is the whole account, not cash — sweep left unchanged; set it by hand")
+                    warn("cash balance ${reported.display()} is the whole account, not cash - sweep left unchanged; set it by hand")
                 }
                 null
             }
@@ -352,7 +352,7 @@ class SnapshotImportService(
     /**
      * Records the institution price of every matched MANUAL-locus
      * security as a private price on the institution's price date
-     * (else the snapshot date), with plaid provenance — trust funds
+     * (else the snapshot date), with plaid provenance - trust funds
      * have no market feed, so this is the only price they will get.
      * One line per account, not per holding. Applies to taxable
      * accounts too: prices belong to the security, not the account.
@@ -392,10 +392,10 @@ class SnapshotImportService(
     private fun unmatched(label: String, holding: Holding): String {
         val ref = holding.security
         return if (ref.ticker.isBlank()) {
-            "$label: \"${ref.name}\" has no ticker — link it to a finance2 security on the Import screen " +
+            "$label: \"${ref.name}\" has no ticker - link it to a finance2 security on the Import screen " +
                 "and re-process; held ${holding.quantity.value}"
         } else {
-            "$label: ticker ${ref.ticker.trim().uppercase()} is not a known security — add it by hand " +
+            "$label: ticker ${ref.ticker.trim().uppercase()} is not a known security - add it by hand " +
                 "(or link it on the Import screen) and re-process"
         }
     }
@@ -419,7 +419,7 @@ class SnapshotImportService(
         SecurityIndex(securities.list(portfolioId, includeHidden = true), securityLinks.all())
 
     /** Taxable accounts: compare institution quantities against the
-     *  hand-maintained lots; never mutate (build-scope §1, §11 v1 ruling). */
+     *  hand-maintained lots; never mutate (build-scope sec. 1, sec. 11 v1 ruling). */
     private fun compareTaxable(
         report: ImportReport.Builder,
         label: String,
@@ -462,13 +462,13 @@ class SnapshotImportService(
                 matches++
             } else {
                 warn(
-                    "$label: $ticker — institution reports ${holding.quantity.value} shares, " +
+                    "$label: $ticker - institution reports ${holding.quantity.value} shares, " +
                     "lots hold ${stillHeld.amount.stripTrailingZeros().toPlainString()} " +
                     "(taxable accounts are never changed by imports; reconcile the lots by hand)"
                 )
             }
         }
-        info("$label: taxable — compared only; $matches position(s) match")
+        info("$label: taxable - compared only; $matches position(s) match")
     }
 
     private fun parse(content: ByteArray): InvestmentsSnapshot = try {

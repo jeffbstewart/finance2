@@ -134,7 +134,7 @@ function sampleAllocation(): GetAllocationResponse {
 }
 
 /** The same portfolio before a target is stored: the server zeroes the
- *  target columns and says `targetSet = false` (spec §5.4). */
+ *  target columns and says `targetSet = false` (spec sec. 5.4). */
 function untargetedAllocation(): GetAllocationResponse {
   return create(GetAllocationResponseSchema, {
     classes: sampleClasses().map((c) =>
@@ -333,7 +333,7 @@ describe('AllocationPage', () => {
     expect(percent.title()).toBe('Current vs Target (%)');
     expect(percent.categories()).toEqual(['Cash', 'US Stock', 'Non US Stock', 'Bond', 'Other']);
     expect(percent.series().map((s) => s.name)).toEqual(['Current %', 'Target %']);
-    // sortKey × 100 is float arithmetic — the wire's display strings are
+    // sortKey x 100 is float arithmetic - the wire's display strings are
     // the exact view, so the bar values are compared at 2 decimals.
     expect(round2(percent.series()[0].values)).toEqual([2.1, 23.58, 29.98, 2.61, 41.73]);
     expect(percent.series()[0].displays).toEqual([
@@ -369,7 +369,7 @@ describe('AllocationPage', () => {
     expect(root.textContent).toContain('Portfolio total: $0.00');
     expect(pies(fixture).every((p) => p.slices().length === 0)).toBe(true);
     expect(bars(fixture).every((b) => b.categories().length === 0)).toBe(true);
-    // The page has no empty-state copy of its own — only the prompt.
+    // The page has no empty-state copy of its own - only the prompt.
     expect(root.textContent).toContain('No target allocation is set yet.');
   });
 
@@ -389,7 +389,7 @@ describe('AllocationPage', () => {
 
   describe('edit-target affordances', () => {
     // MatDialog is provided by MatDialogModule, so it resolves in the
-    // component's own injector — TestBed.inject would hand back a
+    // component's own injector - TestBed.inject would hand back a
     // different instance whose spies never fire.
     function stubDialog(fixture: ComponentFixture<AllocationPage>, result: unknown) {
       const dialog = fixture.debugElement.injector.get(MatDialog);
@@ -604,7 +604,7 @@ describe('TargetDialog', () => {
     // BUG: validate() runs only from (ngModelChange), so a dialog opened
     // on a target that does not sum to 100 shows an enabled Submit and
     // no message until the click. submit() re-validates, so nothing
-    // invalid reaches the server — the pinned behavior is the late
+    // invalid reaches the server - the pinned behavior is the late
     // feedback, not a bad write.
     const fixture = await render({
       classes: [
@@ -624,7 +624,7 @@ describe('TargetDialog', () => {
   });
 
   it('keeps the dialog open and surfaces the error when the server rejects', async () => {
-    fail = 'target fractions sum to 0.9900; they must sum to 1 (±0.0001)';
+    fail = 'target fractions sum to 0.9900; they must sum to 1 (+/-0.0001)';
     const fixture = await render();
     const errorSpy = vi.spyOn(TestBed.inject(Notify), 'error');
     buttonNamed(fixture.nativeElement as HTMLElement, 'Submit').click();

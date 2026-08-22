@@ -2,7 +2,7 @@ package net.stewart.finance.domain
 
 // Strong-typed database identifiers (house convention): a raw Long
 // cannot be passed where an id is expected, and one entity's id cannot
-// stand in for another's. Values are positive by construction — ids
+// stand in for another's. Values are positive by construction - ids
 // come from IDENTITY columns starting at 1.
 
 @JvmInline

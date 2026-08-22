@@ -1,6 +1,6 @@
 // BrokerService: the Brokerages page and broker CRUD
-// (FUNCTIONAL_SPEC §7 "Brokers", §9.1–§9.3). Broker logos are dropped
-// by ruling (build-scope §3) — names only.
+// (FUNCTIONAL_SPEC sec. 7 "Brokers", sec. 9.1-sec. 9.3). Broker logos are dropped
+// by ruling (build-scope sec. 3) - names only.
 syntax = "proto3";
 
 package finance;
@@ -14,7 +14,7 @@ message BrokerSummary {
   int64 broker_id = 1;
   string name = 2;
   bool hidden = 3;
-  // Totals are in the reporting currency, USD (build-scope §5).
+  // Totals are in the reporting currency, USD (build-scope sec. 5).
   FormattedMoney total_holdings = 4;
   FormattedMoney sweeps = 5;
 }
@@ -46,14 +46,14 @@ message RenameBrokerRequest {
 
 message RenameBrokerResponse {}
 
-// Guard rail (§5.9): only a broker with no accounts can be deleted.
+// Guard rail (sec. 5.9): only a broker with no accounts can be deleted.
 message DeleteBrokerRequest {
   int64 broker_id = 1;
 }
 
 message DeleteBrokerResponse {}
 
-// Guard rail (§5.9): hiding requires no visible accounts.
+// Guard rail (sec. 5.9): hiding requires no visible accounts.
 message SetBrokerHiddenRequest {
   int64 broker_id = 1;
   bool hidden = 2;

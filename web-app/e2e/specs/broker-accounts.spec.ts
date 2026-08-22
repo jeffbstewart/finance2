@@ -33,7 +33,7 @@ test('lists the seeded Vanguard accounts with USD footer totals', async ({ page 
     'Investment Value',
     '',
   ]);
-  // Investment values stay $0.00 until the Phase 4/5 pricing work —
+  // Investment values stay $0.00 until the Phase 4/5 pricing work - 
   // AccountGrpcService returns Money.zero for every account today.
   expect(table.rows).toEqual([
     ['Brokerage', 'X-1 (USD)', 'No', '$500.00', '$0.00', 'edit'],
@@ -51,10 +51,10 @@ test('shows the EUR account in its own currency under a USD total', async ({ pag
 
   const table = await readTable(page);
   expect(table.rows).toEqual([
-    ['EUR Brokerage', 'X-3 (EUR)', 'No', '€250.00', '€0.00', 'edit'],
+    ['EUR Brokerage', 'X-3 (EUR)', 'No', '\u20ac250.00', '\u20ac0.00', 'edit'],
   ]);
   // The row is account currency; the footer is the reporting currency,
-  // converted through the seeded EUR→USD rate for yesterday (1.16).
+  // converted through the seeded EUR->USD rate for yesterday (1.16).
   expect(table.footer[3]).toBe('$290.00');
 });
 
@@ -91,7 +91,7 @@ test('adds a EUR tax-deferred account through the FAB', async ({ page }) => {
   await expect(page.locator('tr[mat-row]')).toHaveCount(3); // wait out the reload
   const table = await readTable(page);
   // The name is trimmed server-side; currency is fixed at creation.
-  expect(table.rows).toContainEqual(['Joint', 'X-9 (EUR)', 'Yes', '€0.00', '€0.00', 'edit']);
+  expect(table.rows).toContainEqual(['Joint', 'X-9 (EUR)', 'Yes', '\u20ac0.00', '\u20ac0.00', 'edit']);
 });
 
 test('edits an account sweep balance from its row button', async ({ page }) => {

@@ -1,6 +1,6 @@
 // Unit spec for PrivatePricesPage (docs/design/ui-testing.md,
 // inventory "PrivatePricesPage"). SecurityService is faked via
-// installFakeApi; MatDialog is stubbed at the *component* injector —
+// installFakeApi; MatDialog is stubbed at the *component* injector - 
 // the page imports MatDialogModule, which re-provides MatDialog, so a
 // root-level override would never be the instance the page uses.
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -103,7 +103,7 @@ describe('PrivatePricesPage', () => {
       providers: [provideZonelessChangeDetection(), provideRouter([])],
     });
     // The page imports MatDialogModule, so MatDialog is re-provided in
-    // its own injector — the stub has to go on the component.
+    // its own injector - the stub has to go on the component.
     TestBed.overrideComponent(PrivatePricesPage, {
       add: {
         providers: [
@@ -189,7 +189,7 @@ describe('PrivatePricesPage', () => {
     const fixture = await render();
     expect(rows(fixture)).toHaveLength(0);
     expect(host(fixture).querySelector('.empty-note')!.textContent!.trim()).toBe(
-      'No prices yet — add the first with the button below.',
+      'No prices yet - add the first with the button below.',
     );
   });
 

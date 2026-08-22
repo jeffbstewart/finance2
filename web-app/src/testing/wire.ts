@@ -21,7 +21,7 @@ export function decimal(value: string): Decimal {
   return create(DecimalSchema, { value });
 }
 
-/** "1234.5" → display "$1,234.50" style is NOT reproduced — pass the
+/** "1234.5" -> display "$1,234.50" style is NOT reproduced - pass the
  *  display you want asserted; it defaults to a plain "$<value>". */
 export function money(
   value: string,
@@ -57,7 +57,7 @@ export function quantity(value: string, display?: string): FormattedDecimal {
   });
 }
 
-/** iso "2026-08-15" → civil Date message. */
+/** iso "2026-08-15" -> civil Date message. */
 export function civil(iso: string): CivilDateMsg {
   const [year, month, day] = iso.split('-').map(Number);
   return create(DateSchema, { year, month, day });

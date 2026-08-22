@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 /**
  * Live-API validation (MODERNIZATION goal 4): runs only when the
  * provider key is in the environment, so CI stays secret-free.
- * Fetched data is asserted and discarded — never persisted to the
+ * Fetched data is asserted and discarded - never persisted to the
  * repository.
  */
 class LiveProviderTest {

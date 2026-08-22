@@ -1,10 +1,10 @@
 // E2E spec for ImportsPage (docs/design/ui-testing.md, inventory
 // "ImportsPage"). The seeder archives one unprocessed
 // `vanguard-sample.pb` whose ref-roth is already linked to the Roth
-// IRA, so upload → link → process is reachable end to end.
+// IRA, so upload -> link -> process is reachable end to end.
 //
 // The upload tests build their snapshot bytes in memory and hand them
-// to `setInputFiles` — no provider data ever enters git (CLAUDE.md),
+// to `setInputFiles` - no provider data ever enters git (CLAUDE.md),
 // and nothing on disk has to be kept in sync with the contract.
 import { expect, test, type Page } from '@playwright/test';
 import { acceptConfirms, readTable, seedPortfolio } from '../support/material';
@@ -132,7 +132,7 @@ test('lists the seeded snapshot as uploaded and never processed', async ({ page 
   expect(table.rows).toHaveLength(1);
   const [row] = table.rows;
   expect(row[0]).toBe('vanguard-sample.pb');
-  expect(row[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // seeded as today − 3 days
+  expect(row[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // seeded as today - 3 days
   expect(row[2]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   expect(row[3]).toBe('Uploaded');
   expect(row[4]).toBe(''); // never processed
@@ -154,7 +154,7 @@ test('selecting a snapshot lists its Plaid accounts with the seeded link', async
   ]);
   // The mask abuts the name in the DOM (the gap is CSS margin).
   expect(accounts.rows).toEqual([
-    ['Vanguard', 'Roth IRA…5678', 'investment / roth', '1', 'Vanguard : Roth IRA (USD)'],
+    ['Vanguard', 'Roth IRA...5678', 'investment / roth', '1', 'Vanguard : Roth IRA (USD)'],
   ]);
   // The seeded VTI holding matches by ticker, so it gets a chip, not a select.
   const securities = await readTable(page, 2);
@@ -175,7 +175,7 @@ test('processing the linked snapshot imports the Roth position and reports it', 
   await page.goto('/app/imports');
   await selectSnapshot(page, 'vanguard-sample.pb');
   await page.getByRole('button', { name: 'Process snapshot' }).click();
-  await snack(page, 'Processed — 1 holding(s), 1 sweep(s) updated');
+  await snack(page, 'Processed - 1 holding(s), 1 sweep(s) updated');
 
   await expect(page.locator('.status-chip')).toHaveText('Processed');
   await expect(page.locator('.status-chip')).toHaveClass(/processed/);
@@ -209,8 +209,8 @@ test('unlinking a Plaid account makes processing warn instead of importing', asy
   await expect(linkSelect(page, 'Roth IRA')).toHaveText('Not linked');
 
   await page.getByRole('button', { name: 'Process snapshot' }).click();
-  await snack(page, 'Processed — 0 holding(s), 0 sweep(s) updated');
-  await expect(reportLines(page)).toContainText([/is not linked to an account — link it and re-process/]);
+  await snack(page, 'Processed - 0 holding(s), 0 sweep(s) updated');
+  await expect(reportLines(page)).toContainText([/is not linked to an account - link it and re-process/]);
   await expect(page.locator('ul.report li.warning')).toHaveCount(1);
 });
 
@@ -218,15 +218,15 @@ test('linking to a taxable account compares the lots instead of mutating them', 
   await page.goto('/app/imports');
   await selectSnapshot(page, 'vanguard-sample.pb');
   await pickLink(page, 'Roth IRA', 'Vanguard : Brokerage (USD)');
-  await snack(page, 'Account linked — process to import');
+  await snack(page, 'Account linked - process to import');
 
   await page.getByRole('button', { name: 'Process snapshot' }).click();
-  await snack(page, 'Processed — 0 holding(s), 0 sweep(s) updated');
-  // Brokerage still holds 50 − 10 − 5 = 35 VTI shares; the snapshot
+  await snack(page, 'Processed - 0 holding(s), 0 sweep(s) updated');
+  // Brokerage still holds 50 - 10 - 5 = 35 VTI shares; the snapshot
   // reports the Roth's 12, so the mismatch is reported, never applied.
   await expect(reportLines(page)).toContainText([
     /institution reports 12 shares, lots hold 35/,
-    /taxable — compared only; 0 position\(s\) match/,
+    /taxable - compared only; 0 position\(s\) match/,
   ]);
 });
 
@@ -239,7 +239,7 @@ test('uploads a snapshot from the file picker, selects it, then deletes it', asy
     mimeType: 'application/octet-stream',
     buffer: snapshotBytes(asOf),
   });
-  await snack(page, 'e2e-upload.pb archived — link accounts, then process');
+  await snack(page, 'e2e-upload.pb archived - link accounts, then process');
 
   await expect.poll(async () => (await readTable(page, 0)).rows.length).toBe(2);
   const table = await readTable(page, 0);
@@ -251,7 +251,7 @@ test('uploads a snapshot from the file picker, selects it, then deletes it', asy
   await expect(page.getByText('Accounts in e2e-upload.pb')).toBeVisible();
   const accounts = await readTable(page, 1);
   expect(accounts.rows).toEqual([
-    ['E2E Institution', 'E2E Upload…9999', 'investment / brokerage', '1', 'Not linked'],
+    ['E2E Institution', 'E2E Upload...9999', 'investment / brokerage', '1', 'Not linked'],
   ]);
 
   await page

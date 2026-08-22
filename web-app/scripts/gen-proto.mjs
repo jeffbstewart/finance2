@@ -2,7 +2,7 @@
 //
 // Generate TypeScript types AND Connect service stubs from the
 // project's .proto files. Single source of truth: <repo>/proto/*.proto.
-// Adapted from armeria-kotlin-toolkit's codegen template (MIT — see
+// Adapted from armeria-kotlin-toolkit's codegen template (MIT - see
 // NOTICE).
 //
 // Stack: @bufbuild/protoc-gen-es (>= 2.x) emits both messages and
@@ -13,7 +13,7 @@
 // HttpOnly auth cookies ride along.
 //
 // Wired into package.json as `precheck`, so `npm run check` can never
-// compile against stale types. The output directory is gitignored —
+// compile against stale types. The output directory is gitignored - 
 // generated code is never committed, so there is nothing to drift.
 
 import { execFileSync } from 'node:child_process';
@@ -76,6 +76,6 @@ const args = [
   ...PROTO_FILES.map(f => join(protoRoot, f)),
 ];
 
-console.log(`> protoc ${PROTO_FILES.join(' ')} → ${outDir}`);
+console.log(`> protoc ${PROTO_FILES.join(' ')} -> ${outDir}`);
 execFileSync(protocBin, args, { stdio: 'inherit', shell: process.platform === 'win32' });
 console.log('proto codegen complete.');

@@ -1,5 +1,5 @@
-// First service of the finance2 wire contract — proves the
-// proto → Kotlin + TypeScript pipeline end to end. Real domain
+// First service of the finance2 wire contract - proves the
+// proto -> Kotlin + TypeScript pipeline end to end. Real domain
 // services arrive with Phase 3.
 syntax = "proto3";
 

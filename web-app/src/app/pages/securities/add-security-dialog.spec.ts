@@ -1,7 +1,7 @@
 // Unit spec for AddSecurityDialog (docs/design/ui-testing.md,
-// inventory "SecuritiesPage → AddSecurityDialog"). The dialog is
-// rendered directly with a stub MatDialogRef — the overlay adds
-// nothing to what is under test — and Router.navigate is spied on
+// inventory "SecuritiesPage -> AddSecurityDialog"). The dialog is
+// rendered directly with a stub MatDialogRef - the overlay adds
+// nothing to what is under test - and Router.navigate is spied on
 // rather than routed, because the post-add hop targets a details
 // page this spec does not build.
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -79,7 +79,7 @@ describe('AddSecurityDialog', () => {
     return found;
   }
 
-  /** Types into the ticker input so ngModel — not a field poke —
+  /** Types into the ticker input so ngModel - not a field poke - 
    *  carries the value (zoneless never sees a bare assignment). */
   async function typeTicker(
     fixture: ComponentFixture<AddSecurityDialog>,
@@ -145,7 +145,7 @@ describe('AddSecurityDialog', () => {
     button(fixture, 'Submit').click();
     await settle(fixture);
 
-    expect(success).toHaveBeenCalledWith('BONDX added — fill in its profile');
+    expect(success).toHaveBeenCalledWith('BONDX added - fill in its profile');
     expect(close).toHaveBeenCalledWith(true);
     expect(navigate).toHaveBeenCalledWith(['/securities', 7n]);
     // The close precedes the navigation, so the list reload is queued

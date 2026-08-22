@@ -1,7 +1,7 @@
 // Unit spec for authGuard (docs/design/ui-testing.md, inventory
 // "Core seams"): the shell's gate. Everything but /welcome sits behind
 // it, and an unauthenticated hit must bounce to /welcome carrying the
-// attempted URL in `return` — the value Welcome reads back on sign-in.
+// attempted URL in `return` - the value Welcome reads back on sign-in.
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {

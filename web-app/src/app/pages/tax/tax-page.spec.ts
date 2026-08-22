@@ -132,7 +132,7 @@ describe('TaxPage', () => {
     return Array.from(fixture.nativeElement.querySelectorAll('table[mat-table]'));
   }
 
-  /** The Submit button — the datepicker toggles are buttons too. */
+  /** The Submit button - the datepicker toggles are buttons too. */
   function submitButton(fixture: { nativeElement: HTMLElement }): HTMLButtonElement {
     const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find((b) =>
       b.textContent!.includes('Submit'),
@@ -142,7 +142,7 @@ describe('TaxPage', () => {
   }
 
   /** Types into a datepicker input (located by its mat-label) the way
-   *  a user does, so the input event marks the view dirty — a bare
+   *  a user does, so the input event marks the view dirty - a bare
    *  field assignment never re-renders under zoneless. `text` is
    *  M/D/YYYY, which the native adapter parses as local time. */
   async function typeDate(

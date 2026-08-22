@@ -201,11 +201,11 @@ class AllocationServiceTest {
         }
         assertEquals("$1,000.00", plan.currentTotal.display)
         assertEquals("$100.00", plan.spent.display)
-        assertEquals("$300.00", plan.remaining.display) // 400 sweeps − 100
+        assertEquals("$300.00", plan.remaining.display) // 400 sweeps - 100
         val planByName = plan.classesList.associateBy { it.name }
         assertEquals("60%", planByName.getValue("US Stock").afterFraction.display)
         assertTrue(planByName.getValue("US Stock").atOrOverTarget)
-        // Bond needs $200 more; BND at $80 suggests ⌊200/80⌋ = 2 shares.
+        // Bond needs $200 more; BND at $80 suggests floor(200/80) = 2 shares.
         val bondCandidate = planByName.getValue("Bond").candidatesList.single { it.ticker == "BND" }
         assertEquals("2.00000000", bondCandidate.suggestedShares.value)
         assertEquals("$160.00", bondCandidate.cost.display)

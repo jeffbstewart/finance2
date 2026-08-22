@@ -56,7 +56,7 @@ test('scoped view lists the account lots with basis, value and gain', async ({ p
   expect(lots.rows).toHaveLength(2);
 
   // 30 bought at $150 + $5 commission, 11 shares consumed by the two
-  // seeded sales: 19 still held, $5 costs pro-rated 6/5/19 → $3.1667.
+  // seeded sales: 19 still held, $5 costs pro-rated 6/5/19 -> $3.1667.
   const [older, newer] = lots.rows;
   expect(older.slice(0, 9)).toEqual([
     '', `${lastYear - 1}-03-01`, '30', '$150.00', '$201.90', '$5.00', '19',
@@ -65,7 +65,7 @@ test('scoped view lists the account lots with basis, value and gain', async ({ p
   expect(gains(older)).toEqual({ zero: '$0.00', gain: '$982.9333' });
 
   // 20 bought at $180 + $5, 4 sold: 16 held, $4.00 of costs, no rounding
-  // remainder — basis is exactly 16 × $180 + $4.
+  // remainder - basis is exactly 16 x $180 + $4.
   expect(newer.slice(0, 9)).toEqual([
     '', `${lastYear}-01-20`, '20', '$180.00', '$201.90', '$5.00', '16',
     '$2,884.00', '$3,230.40',
@@ -114,13 +114,13 @@ test('the inflation toggle daggers the cost columns and adds the footnote', asyn
   await page.goto(lotUrl(ids['security.vti'], ids['account.brokerage']));
   await expect(page.locator('p.footnote')).toHaveCount(0);
   const before = await readTable(page, 0);
-  expect(before.header.filter((h) => h.includes('†'))).toEqual([]);
+  expect(before.header.filter((h) => h.includes('*'))).toEqual([]);
 
   await setToggle(page, 'Adjust costs for inflation', true);
-  await expect(page.locator('p.footnote')).toHaveText("† restated in today's dollars via CPI");
+  await expect(page.locator('p.footnote')).toHaveText("* restated in today's dollars via CPI");
   const after = await readTable(page, 0);
-  expect(after.header.filter((h) => h.includes('†'))).toEqual([
-    'Buy $/Share †', 'Comm. †', 'Basis †', 'ST Gain †', 'LT Gain †',
+  expect(after.header.filter((h) => h.includes('*'))).toEqual([
+    'Buy $/Share *', 'Comm. *', 'Basis *', 'ST Gain *', 'LT Gain *',
   ]);
   // Current prices are never restated; costs are.
   expect(after.rows[0][4]).toBe('$201.90');
@@ -176,7 +176,7 @@ test('the sell stepper records a sale and the page picks it up', async ({ page }
   await expectSnackbar(page, 'Sale recorded');
   await expect(bodyRows(page, 1)).toHaveCount(3);
   const lots = await readTable(page, 0);
-  expect(lots.rows[0][6]).toBe('15'); // 19 − 4 still held
+  expect(lots.rows[0][6]).toBe('15'); // 19 - 4 still held
   const sales = await readTable(page, 1);
   expect(sales.rows.map((row) => row[2])).toContain('$210.00');
   // The reload clears the selection, so Sell is disabled again.

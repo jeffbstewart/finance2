@@ -60,13 +60,13 @@ function processedSnapshot(): SnapshotRow {
       lines: [
         create(ReportLineSchema, {
           severity: ReportSeverity.INFO,
-          message: 'Vanguard "Roth IRA" …5678: sweep set to $55.25',
+          message: 'Vanguard "Roth IRA" ...5678: sweep set to $55.25',
         }),
         create(ReportLineSchema, {
           severity: ReportSeverity.WARNING,
           message:
-            'Vanguard "Roth IRA" …5678: GOLD is held here but absent from the ' +
-            'snapshot — delete the holding by hand if it was sold',
+            'Vanguard "Roth IRA" ...5678: GOLD is held here but absent from the ' +
+            'snapshot - delete the holding by hand if it was sold',
         }),
       ],
     }),
@@ -344,7 +344,7 @@ describe('ImportsPage', () => {
   }
 
   /** Drives one link select: click its trigger, then pick the option
-   *  out of the panel that trigger owns — a document-wide mat-option
+   *  out of the panel that trigger owns - a document-wide mat-option
    *  query can pick up a panel that is still closing. */
   async function pickLink(fixture: Fixture, index: number, optionText: string): Promise<void> {
     const select = host(fixture).querySelectorAll<HTMLElement>('mat-select')[index];
@@ -416,7 +416,7 @@ describe('ImportsPage', () => {
     expect(calls.accounts).toEqual([]);
   });
 
-  it('loads a snapshot’s accounts only once its filename is clicked', async () => {
+  it("loads a snapshot's accounts only once its filename is clicked", async () => {
     const fixture = await render();
     expect(tables(fixture)).toHaveLength(1);
     expect(calls.accounts).toEqual([]);
@@ -428,7 +428,7 @@ describe('ImportsPage', () => {
     expect(rows).toHaveLength(2);
     // The mask rides straight up against the name in the DOM; the gap
     // is CSS margin, not text.
-    expect(rows[0].slice(0, 4)).toEqual(['Vanguard', 'Roth IRA…5678', 'investment / roth', '1']);
+    expect(rows[0].slice(0, 4)).toEqual(['Vanguard', 'Roth IRA...5678', 'investment / roth', '1']);
     // No mask and no subtype: neither decoration is rendered.
     expect(rows[1].slice(0, 4)).toEqual(['Vanguard', 'Brokerage', 'investment', '2']);
     expect(rowFor(fixture, 'vanguard-sample.pb').classList.contains('selected-row')).toBe(true);
@@ -451,7 +451,7 @@ describe('ImportsPage', () => {
     await selectSnapshot(fixture, 'vanguard-sample.pb');
     await pickLink(fixture, 1, 'Vanguard : Brokerage (USD)');
     expect(calls.links).toEqual([{ accountRef: 'ref-brokerage', accountId: 1n }]);
-    expect(success).toHaveBeenCalledWith('Account linked — process to import');
+    expect(success).toHaveBeenCalledWith('Account linked - process to import');
     expect(calls.accounts).toEqual([10n, 10n]); // panel refetched after linking
     expect(calls.list).toBe(1); // the snapshot list is not re-read
   });
@@ -475,7 +475,7 @@ describe('ImportsPage', () => {
     expect((error.mock.calls[0][0] as ConnectError).rawMessage).toBe('no account 1');
   });
 
-  it('lists the snapshot’s securities: ticker matches as chips, no-ticker ones with a link select', async () => {
+  it("lists the snapshot's securities: ticker matches as chips, no-ticker ones with a link select", async () => {
     const fixture = await render();
     await selectSnapshot(fixture, 'vanguard-sample.pb');
     expect(calls.securities).toEqual([10n]);
@@ -484,7 +484,7 @@ describe('ImportsPage', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toEqual([
       'Vanguard Total Stock Market ETF',
-      'VTI · CUSIP 922908769',
+      'VTI | CUSIP 922908769',
       'etf',
       '2',
       'VTI (by ticker)',
@@ -497,9 +497,9 @@ describe('ImportsPage', () => {
   it('links a no-ticker security to a finance2 security and refetches only that panel', async () => {
     const fixture = await render();
     await selectSnapshot(fixture, 'vanguard-sample.pb');
-    await pickLink(fixture, 2, 'BONDX — Aggregate Bond Fund');
+    await pickLink(fixture, 2, 'BONDX - Aggregate Bond Fund');
     expect(calls.securityLinks).toEqual([{ plaidSecurityId: 'plaid-sec-trust', securityId: 2n }]);
-    expect(success).toHaveBeenCalledWith('Security linked — process to import');
+    expect(success).toHaveBeenCalledWith('Security linked - process to import');
     expect(calls.securities).toEqual([10n, 10n]);
     expect(calls.accounts).toEqual([10n]); // accounts panel untouched
   });
@@ -511,7 +511,7 @@ describe('ImportsPage', () => {
     const fixture = await render();
     await selectSnapshot(fixture, 'vanguard-sample.pb');
     const select = tables(fixture)[2].querySelector<HTMLElement>('mat-select')!;
-    expect(select.textContent!.trim()).toBe('BONDX — Aggregate Bond Fund');
+    expect(select.textContent!.trim()).toBe('BONDX - Aggregate Bond Fund');
     await pickLink(fixture, 2, 'Not linked');
     expect(calls.securityLinks).toEqual([{ plaidSecurityId: 'plaid-sec-trust', securityId: 0n }]);
     expect(success).toHaveBeenCalledWith('Link removed');
@@ -523,7 +523,7 @@ describe('ImportsPage', () => {
     onSecurityLink = () => {
       throw new ConnectError('no security 2', Code.NotFound);
     };
-    await pickLink(fixture, 2, 'BONDX — Aggregate Bond Fund');
+    await pickLink(fixture, 2, 'BONDX - Aggregate Bond Fund');
     expect(success).not.toHaveBeenCalled();
     expect((error.mock.calls[0][0] as ConnectError).rawMessage).toBe('no security 2');
   });
@@ -540,7 +540,7 @@ describe('ImportsPage', () => {
     iconButton(rowFor(fixture, 'vanguard-sample.pb'), 'Process snapshot').click();
     await settle(fixture);
     expect(success).toHaveBeenCalledWith(
-      'Processed — 1 holding(s), 1 sweep(s) updated, 3 price(s) recorded',
+      'Processed - 1 holding(s), 1 sweep(s) updated, 3 price(s) recorded',
     );
     expect(textOf(fixture)).toContain(
       'Last processing report (1 holding(s), 1 sweep(s) updated, 3 price(s) recorded)',
@@ -555,7 +555,7 @@ describe('ImportsPage', () => {
     await settle(fixture);
 
     expect(calls.processed).toEqual([10n]);
-    expect(success).toHaveBeenCalledWith('Processed — 1 holding(s), 1 sweep(s) updated');
+    expect(success).toHaveBeenCalledWith('Processed - 1 holding(s), 1 sweep(s) updated');
     expect(calls.list).toBe(listsBefore + 1);
     const [row] = snapshotRows(fixture);
     expect(row[3]).toBe('Processed');
@@ -616,7 +616,7 @@ describe('ImportsPage', () => {
     expect(iconButton(rowFor(fixture, 'vanguard-sample.pb'), 'Process snapshot').disabled).toBe(false);
   });
 
-  it('uploads the chosen file’s bytes, then selects the new snapshot', async () => {
+  it("uploads the chosen file's bytes, then selects the new snapshot", async () => {
     const fixture = await render();
     const bytes = new Uint8Array([8, 1, 18, 6, 8, 234, 15, 16, 8, 24, 18]);
     await chooseFile(fixture, 'today.pb', bytes);
@@ -624,7 +624,7 @@ describe('ImportsPage', () => {
     expect(calls.uploads).toHaveLength(1);
     expect(calls.uploads[0].filename).toBe('today.pb');
     expect(Array.from(calls.uploads[0].content)).toEqual(Array.from(bytes));
-    expect(success).toHaveBeenCalledWith('today.pb archived — link accounts, then process');
+    expect(success).toHaveBeenCalledWith('today.pb archived - link accounts, then process');
     // Newest first; the response's id becomes the selection.
     expect(snapshotRows(fixture).map((r) => r[0])).toEqual(['today.pb', 'vanguard-sample.pb']);
     expect(calls.accounts).toEqual([11n]);
@@ -701,7 +701,7 @@ describe('ImportsPage', () => {
     await selectSnapshot(fixture, 'vanguard-sample.pb');
     expect((error.mock.calls[0][0] as ConnectError).rawMessage).toBe('no snapshot 10');
     // BUG (pinning current behavior): the snapshot stays selected and the
-    // accounts table renders with no rows and no explanatory text — the
+    // accounts table renders with no rows and no explanatory text - the
     // only signal that the panel is empty by failure rather than by fact
     // is the transient error snackbar.
     expect(textOf(fixture)).toContain('Accounts in vanguard-sample.pb');

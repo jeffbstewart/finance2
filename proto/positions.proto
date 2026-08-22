@@ -1,7 +1,7 @@
 // PositionService: priced positions, lot detail, purchases and sales,
-// tax-deferred holdings entry, and the tax report (FUNCTIONAL_SPEC §7
-// "Positions & trades", §9.5–§9.9, §9.16; lots-by-tax-status per
-// build-scope §1).
+// tax-deferred holdings entry, and the tax report (FUNCTIONAL_SPEC sec. 7
+// "Positions & trades", sec. 9.5-sec. 9.9, sec. 9.16; lots-by-tax-status per
+// build-scope sec. 1).
 syntax = "proto3";
 
 package finance;
@@ -13,7 +13,7 @@ option java_package = "net.stewart.finance.proto";
 option java_multiple_files = true;
 
 // One per-ticker position. Row amounts are in the security's currency;
-// response totals are in the reporting currency, USD (build-scope §5).
+// response totals are in the reporting currency, USD (build-scope sec. 5).
 // Taxable positions aggregate lots; tax-deferred positions come from
 // the holdings table and carry their provenance.
 message PositionRow {
@@ -52,7 +52,7 @@ message LotRow {
   FormattedMoney current_value = 9;
   FormattedMoney short_term_gain = 10;
   FormattedMoney long_term_gain = 11;
-  // For the all-accounts view (FUNCTIONAL_SPEC §9.11).
+  // For the all-accounts view (FUNCTIONAL_SPEC sec. 9.11).
   int64 account_id = 12;
   string account_name = 13;
 }
@@ -71,13 +71,13 @@ message GetLotDetailsRequest {
   int64 security_id = 1;
   int64 account_id = 2; // 0 = all accounts
   // Present cost columns in today's dollars via CPI (FUNCTIONAL_SPEC
-  // §5.7); applied at presentation time in one direction only.
+  // sec. 5.7); applied at presentation time in one direction only.
   bool inflation_adjusted = 3;
 }
 
 message GetLotDetailsResponse {
   repeated LotRow lots = 1;
-  // The account's sale history for the ticker (FUNCTIONAL_SPEC §9.7).
+  // The account's sale history for the ticker (FUNCTIONAL_SPEC sec. 9.7).
   repeated SaleRow sales = 2;
   bool inflation_adjusted = 3;
 }
@@ -95,8 +95,8 @@ message AddPurchaseResponse {
   int64 lot_id = 1;
 }
 
-// A lot cannot be moved to another account or security — that would
-// corrupt its sales (guard rail §5.9; legacy defect 7). Moving is
+// A lot cannot be moved to another account or security - that would
+// corrupt its sales (guard rail sec. 5.9; legacy defect 7). Moving is
 // delete + re-add, which the guard rails police.
 message UpdatePurchaseRequest {
   int64 lot_id = 1;
@@ -119,10 +119,10 @@ message LotSaleAllocation {
   Decimal shares = 2;
 }
 
-// Server-validated (guard rail §5.9, fixing legacy defect 7): per-lot
+// Server-validated (guard rail sec. 5.9, fixing legacy defect 7): per-lot
 // shares must not exceed that lot's still-held shares and must sum to
 // the sale's total shares. Sale costs pro-rate across lots by shares
-// sold at read time — never stored.
+// sold at read time - never stored.
 message RecordSaleRequest {
   int64 account_id = 1;
   int64 security_id = 2;
@@ -144,7 +144,7 @@ message DeleteSaleRequest {
 message DeleteSaleResponse {}
 
 // Position-level quantity entry for tax-deferred accounts only
-// (build-scope §1); taxable accounts reject it — their positions
+// (build-scope sec. 1); taxable accounts reject it - their positions
 // derive from lots.
 message SetHoldingRequest {
   int64 account_id = 1;
@@ -182,8 +182,8 @@ message GetTaxReportRequest {
   Date to = 2;
 }
 
-// One PFIC §1296 year-end mark falling in the report range
-// (build-scope §11): ordinary income, separate from the ST/LT
+// One PFIC sec. 1296 year-end mark falling in the report range
+// (build-scope sec. 11): ordinary income, separate from the ST/LT
 // capital-gain columns.
 message MtmIncomeRow {
   string ticker = 1;
@@ -200,9 +200,9 @@ message GetTaxReportResponse {
   FormattedMoney total_long_term_gain = 3;
   FormattedMoney total_gain = 4;
   // e.g. the note that non-USD sales are excluded until the FX tax
-  // treatment is ruled (build-scope §5 open question).
+  // treatment is ruled (build-scope sec. 5 open question).
   repeated string notes = 5;
-  // PFIC mark-to-market ordinary income (build-scope §11).
+  // PFIC mark-to-market ordinary income (build-scope sec. 11).
   repeated MtmIncomeRow mtm_rows = 6;
   FormattedMoney total_mtm_ordinary_income = 7;
 }
@@ -224,7 +224,7 @@ message SecurityChoice {
   SecurityType security_type = 5;
 }
 
-// Form-support data for the buy dialog (FUNCTIONAL_SPEC §9.8).
+// Form-support data for the buy dialog (FUNCTIONAL_SPEC sec. 9.8).
 message GetPurchaseFormInfoRequest {}
 
 message GetPurchaseFormInfoResponse {

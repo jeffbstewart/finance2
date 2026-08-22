@@ -7,7 +7,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-// Synthetic payloads shaped like the providers' documented responses —
+// Synthetic payloads shaped like the providers' documented responses - 
 // never captured data (Decision 4 persistence boundary).
 
 private const val TIINGO_BODY = """[
@@ -35,7 +35,7 @@ class PriceSourceClientsTest {
         }
         val bars = source.dailyBars("VTI", LocalDate.parse("2026-08-01"))
         assertTrue(requested.contains("tiingo/daily/VTI/prices") && requested.contains("startDate=2026-08-01"))
-        // The token rides the Authorization header, never the URL —
+        // The token rides the Authorization header, never the URL - 
         // $ and % in real tokens must not touch URI parsing.
         assertEquals("Token we\$ird%tok", headers["Authorization"])
         assertTrue(!requested.contains("tok"))

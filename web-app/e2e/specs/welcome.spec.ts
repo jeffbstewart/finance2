@@ -4,9 +4,9 @@
 // real Login RPC really sets the session cookie; the signed-in cases
 // keep it, to pin the auto-enter path.
 //
-// Setup mode is not reachable here — global setup has already created
+// Setup mode is not reachable here - global setup has already created
 // the single user, and the server closes registration for good once a
-// user exists — so the create-first-user card is a unit-lane concern.
+// user exists - so the create-first-user card is a unit-lane concern.
 import { expect, test, type Page } from '@playwright/test';
 import { E2E_USER } from '../support/api';
 import { expectSnackbar, seedPortfolio } from '../support/material';
@@ -15,7 +15,7 @@ import { expectSnackbar, seedPortfolio } from '../support/material';
 const NO_SESSION = { cookies: [], origins: [] };
 
 // Password inputs have no `textbox` role, so the shared `fillField`
-// helper cannot reach them — see "Shared-infrastructure gaps".
+// helper cannot reach them - see "Shared-infrastructure gaps".
 async function signIn(page: Page, username: string, password: string): Promise<void> {
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Password').fill(password);

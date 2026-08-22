@@ -1,5 +1,5 @@
 // SessionService: local authentication via auth-kotlin-toolkit
-// (docs/design/initial-build-scope.md §8) — no OAuth. Login/Logout
+// (docs/design/initial-build-scope.md sec. 8) - no OAuth. Login/Logout
 // ride an HttpOnly session cookie set by the server; GetSessionStatus
 // lets the SPA restore state on reload and route to first-run setup.
 syntax = "proto3";
@@ -18,7 +18,7 @@ message GetSessionStatusRequest {}
 
 message GetSessionStatusResponse {
   // True while the user table is empty: the UI must offer the
-  // create-the-first-account flow (§8 single-user ruling).
+  // create-the-first-account flow (sec. 8 single-user ruling).
   bool setup_required = 1;
   bool signed_in = 2;
   UserInfo user = 3; // set when signed_in
@@ -29,7 +29,7 @@ message CreateFirstUserRequest {
   string password = 2;
   string display_name = 3;
   // The per-run setup token the server prints to its log at startup
-  // when no user exists — proves the caller can read the server's
+  // when no user exists - proves the caller can read the server's
   // console, so a network stranger cannot claim a fresh deployment.
   string setup_token = 4;
 }
@@ -56,8 +56,8 @@ service SessionService {
   rpc GetSessionStatus(GetSessionStatusRequest) returns (GetSessionStatusResponse);
 
   // Creates the single user account and signs it in. Valid only while
-  // no user exists; PERMISSION_DENIED afterwards — registration is
-  // closed once the app has its user (§8).
+  // no user exists; PERMISSION_DENIED afterwards - registration is
+  // closed once the app has its user (sec. 8).
   rpc CreateFirstUser(CreateFirstUserRequest) returns (CreateFirstUserResponse);
 
   // Unauthenticated; rate-limited with lockout by the auth toolkit.

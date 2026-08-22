@@ -2,7 +2,7 @@
 //
 // The footgun every dialog-owning page hit: MatDialogModule
 // re-provides MatDialog, so a standalone page that imports it resolves
-// MatDialog from ITS OWN injector — `TestBed.inject(MatDialog)` hands
+// MatDialog from ITS OWN injector - `TestBed.inject(MatDialog)` hands
 // back a different instance and spies on it never fire. The stub must
 // be installed on the component itself:
 //

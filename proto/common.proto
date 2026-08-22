@@ -1,8 +1,8 @@
 // Shared value types for the finance2 wire contract.
 //
-// Numeric policy (docs/design/initial-build-scope.md §2): every money
+// Numeric policy (docs/design/initial-build-scope.md sec. 2): every money
 // amount, quantity, and fraction crosses the wire as an exact decimal
-// string — never float/double. The only doubles in the contract are
+// string - never float/double. The only doubles in the contract are
 // the presentation-only sort keys inside the Formatted* wrappers; they
 // are never arithmetic inputs.
 syntax = "proto3";
@@ -13,8 +13,8 @@ option java_package = "net.stewart.finance.proto";
 option java_multiple_files = true;
 
 // An exact decimal number, e.g. "1234.5600". Scale conventions:
-// money and fractions 4 decimal places, quantities 8. A string — not a
-// numeric field — so client-side JavaScript can never introduce
+// money and fractions 4 decimal places, quantities 8. A string - not a
+// numeric field - so client-side JavaScript can never introduce
 // floating-point artifacts; both ends parse it with exact-decimal
 // types.
 message Decimal {
@@ -28,26 +28,26 @@ message Money {
 }
 
 // A civil calendar date; purchase/sale/price dates carry no time of
-// day and no timezone (FUNCTIONAL_SPEC §4.3).
+// day and no timezone (FUNCTIONAL_SPEC sec. 4.3).
 message Date {
   int32 year = 1;
   int32 month = 2; // 1-12
   int32 day = 3;   // 1-31
 }
 
-// Server-formatted money (FUNCTIONAL_SPEC §4.3): the UI renders
+// Server-formatted money (FUNCTIONAL_SPEC sec. 4.3): the UI renders
 // `display` verbatim and sorts by `sort_key`; `exact` carries the
 // value where the client edits it.
 message FormattedMoney {
   Money exact = 1;
   string display = 2;  // accounting format, e.g. "($1,234.56)"
-  double sort_key = 3; // presentation sort only — never arithmetic
+  double sort_key = 3; // presentation sort only - never arithmetic
 }
 
 message FormattedDecimal {
   Decimal exact = 1;
   string display = 2;
-  double sort_key = 3; // presentation sort only — never arithmetic
+  double sort_key = 3; // presentation sort only - never arithmetic
 }
 
 message FormattedDate {
@@ -57,7 +57,7 @@ message FormattedDate {
 }
 
 // Where a stored value came from and when it was true
-// (docs/design/initial-build-scope.md §1).
+// (docs/design/initial-build-scope.md sec. 1).
 message Provenance {
   string source = 1; // "manual" | "plaid"
   Date as_of = 2;

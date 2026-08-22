@@ -23,7 +23,7 @@ class MtmTest {
 
     @Test
     fun `loss above cost reverses prior inclusions as negative income`() {
-        // Year 1 marked to 12000; year 2 FMV 10500 — still above the
+        // Year 1 marked to 12000; year 2 FMV 10500 - still above the
         // 10000 cost, so the whole decline is allowed.
         val result = computeMark(
             fmvUsd = usd("10500.0000"),
@@ -37,8 +37,8 @@ class MtmTest {
     @Test
     fun `loss below cost clamps at acquisition cost`() {
         // FMV crashes to 8000: only the unreversed inclusions
-        // (basis 12000 − cost 10000) come back as loss; basis floors
-        // at cost — build-scope §11.
+        // (basis 12000 - cost 10000) come back as loss; basis floors
+        // at cost - build-scope sec. 11.
         val result = computeMark(
             fmvUsd = usd("8000.0000"),
             basisBefore = usd("12000.0000"),
@@ -66,7 +66,7 @@ class MtmTest {
         val year2 = computeMark(usd("7000.0000"), year1.basisAfter, cost)
         val year3 = computeMark(usd("13000.0000"), year2.basisAfter, cost)
         // Cumulative ordinary income across the round trip equals
-        // FMV − cost: +3000, −3000 (clamped), +3000.
+        // FMV - cost: +3000, -3000 (clamped), +3000.
         assertEquals(usd("3000.0000"), year1.ordinaryIncome)
         assertEquals(usd("-3000.0000"), year2.ordinaryIncome)
         assertEquals(usd("3000.0000"), year3.ordinaryIncome)

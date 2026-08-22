@@ -2,12 +2,12 @@
 # Environment bootstrap for cloud/CI workers on a fresh finance2
 # clone (docs/design/ui-testing.md). Idempotent. The Gradle build is
 # a composite that expects the (public) toolkit repos checked out
-# BESIDE this repo — without them, ./gradlew cannot even configure.
+# BESIDE this repo - without them, ./gradlew cannot even configure.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 # settings.gradle.kts includes the siblings as "../<name>" relative to
-# THIS checkout, so they must exist beside it — even for a git
+# THIS checkout, so they must exist beside it - even for a git
 # worktree under .claude/worktrees/. In the worktree case the main
 # checkout's siblings are symlinked in rather than re-cloned.
 parent="$(dirname "$repo_root")"
@@ -38,7 +38,7 @@ done
 echo ">> web-app dependencies"
 (cd "$repo_root/web-app" && npm ci) || fail "npm ci failed"
 
-echo ">> playwright browser (best effort — the e2e lane needs it;"
+echo ">> playwright browser (best effort - the e2e lane needs it;"
 echo ">> without it, validate specs with 'npm run e2e:typecheck')"
 if (cd "$repo_root/web-app" && npx playwright install chromium); then
   echo ">> chromium ready: the full e2e lane (npm run e2e) is available"

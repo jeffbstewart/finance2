@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 /**
  * In-process housekeeping for the auth toolkit's tables (ruling
  * 2026-08-18, orange-team finding 7): without it, expired
- * session_token rows and login_attempt rows (which carry client IPs —
+ * session_token rows and login_attempt rows (which carry client IPs - 
  * a retention concern, not just bloat) grow forever. The toolkit
  * provides the deletions (expired tokens; attempts older than 30
  * days); this schedules them.

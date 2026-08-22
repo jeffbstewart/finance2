@@ -114,7 +114,7 @@ describe('Welcome', () => {
     vi.restoreAllMocks();
   });
 
-  /** Renders without settling — the status probe is still in flight. */
+  /** Renders without settling - the status probe is still in flight. */
   function mount() {
     const fixture = TestBed.createComponent(Welcome);
     fixture.detectChanges();
@@ -325,7 +325,7 @@ describe('Welcome', () => {
     const success = vi.spyOn(TestBed.inject(Notify), 'success');
     createFirstUser = async () => {
       throw new ConnectError(
-        'setup token missing or incorrect — it is printed in the server log at startup',
+        'setup token missing or incorrect - it is printed in the server log at startup',
         Code.PermissionDenied,
       );
     };
@@ -345,7 +345,7 @@ describe('Welcome', () => {
   it('keeps the sign-in card up while the status probe has not settled', async () => {
     // BUG: the constructor's `void this.session.ensureLoaded().then(...)`
     // has no rejection handler, so a failing GetSessionStatus yields an
-    // unhandled promise rejection and never reaches the error snackbar —
+    // unhandled promise rejection and never reaches the error snackbar - 
     // the page silently sits on the sign-in card. Pinned here with a
     // probe that never settles, because a *rejecting* probe fails the
     // vitest run itself on the unhandled rejection.

@@ -35,8 +35,8 @@ import net.stewart.finance.proto.UpdateAccountRequest
 import net.stewart.finance.proto.UpdateAccountResponse
 
 /**
- * AccountService (spec §7 "Accounts", §9.3–§9.5) with the §5.9 guard
- * rails. Account currency is fixed at creation (build-scope §5);
+ * AccountService (spec sec. 7 "Accounts", sec. 9.3-sec. 9.5) with the sec. 5.9 guard
+ * rails. Account currency is fixed at creation (build-scope sec. 5);
  * investment values are zero until priced positions arrive with the
  * Phase 4/5 pricing work.
  */
@@ -100,8 +100,8 @@ class AccountGrpcService(
             ?: throw notFound(request.accountId)
         val name = request.name.trim().ifEmpty { throw invalid("account name is required") }
         val number = request.accountNumber.trim().ifEmpty { throw invalid("account number is required") }
-        // The hand-maintained sweep balance (spec §9.4), in the
-        // account's currency — provenance flips back to manual.
+        // The hand-maintained sweep balance (spec sec. 9.4), in the
+        // account's currency - provenance flips back to manual.
         val sweep = try {
             Money.of(request.sweepBalance.value.ifEmpty { "0" }, row.currency)
         } catch (e: Exception) {
@@ -121,7 +121,7 @@ class AccountGrpcService(
     override suspend fun deleteAccount(request: DeleteAccountRequest): DeleteAccountResponse {
         val row = accounts.find(accountId(request.accountId), portfolio())
             ?: throw notFound(request.accountId)
-        // Guard rail (§5.9): only an empty account (no lots, no holdings).
+        // Guard rail (sec. 5.9): only an empty account (no lots, no holdings).
         if (!accounts.isEmpty(row.id)) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription("the account still has positions")
@@ -134,7 +134,7 @@ class AccountGrpcService(
     override suspend fun setAccountHidden(request: SetAccountHiddenRequest): SetAccountHiddenResponse {
         val row = accounts.find(accountId(request.accountId), portfolio())
             ?: throw notFound(request.accountId)
-        // Guard rail (§5.9): hiding requires zero investment value —
+        // Guard rail (sec. 5.9): hiding requires zero investment value - 
         // until valuation lands, approximated as "no lots, no holdings"
         // (stricter, never looser).
         if (request.hidden && !accounts.isEmpty(row.id)) {

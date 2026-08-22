@@ -3,7 +3,7 @@
 // browser upload through the authenticated session replaces the file
 // drop). Snapshots archive verbatim in the database; processing is a
 // separate, freely repeatable step with an explicit status marker, so
-// a processing bug can be fixed and the same bytes re-run — and the
+// a processing bug can be fixed and the same bytes re-run - and the
 // taxable comparison can be revisited after lot edits.
 syntax = "proto3";
 
@@ -35,7 +35,7 @@ message ReportLine {
   int64 account_id = 3;
 }
 
-// What one processing run did (build-scope §1 semantics: tax-deferred
+// What one processing run did (build-scope sec. 1 semantics: tax-deferred
 // holdings and sweeps are written with plaid provenance; taxable
 // accounts are compared, never mutated).
 message ImportReport {
@@ -126,12 +126,12 @@ enum SecurityMatch {
   SECURITY_MATCH_UNSPECIFIED = 0;
   BY_TICKER = 1; // the ticker names a known security; no link needed
   BY_LINK = 2;   // matched through a human-made link
-  UNMATCHED = 3; // neither — link it (or add the security) and re-process
+  UNMATCHED = 3; // neither - link it (or add the security) and re-process
 }
 
 // One distinct non-cash security an archived snapshot holds, with how
-// it matched. Securities Plaid reports without a ticker — 401(k)
-// collective investment trusts — only ever match by link.
+// it matched. Securities Plaid reports without a ticker - 401(k)
+// collective investment trusts - only ever match by link.
 message PlaidSecurityView {
   string plaid_security_id = 1;
   string name = 2;

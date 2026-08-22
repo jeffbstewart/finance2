@@ -3,7 +3,7 @@
 // redirects into it, the toolbar user menu, and logout.
 //
 // Logout revokes the session server-side, and every other spec shares
-// one storageState cookie — so the sign-out test drives a throwaway
+// one storageState cookie - so the sign-out test drives a throwaway
 // browser context holding its own freshly minted session instead.
 import { expect, test, type Page } from '@playwright/test';
 import { BASE_URL } from '../playwright.config';

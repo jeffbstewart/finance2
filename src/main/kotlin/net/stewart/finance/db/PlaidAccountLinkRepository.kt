@@ -5,7 +5,7 @@ import net.stewart.finance.domain.AccountId
 import org.jdbi.v3.core.Jdbi
 
 /**
- * Plaid account_ref → finance2 account links, chosen by the human in
+ * Plaid account_ref -> finance2 account links, chosen by the human in
  * the import screen and persistent across snapshots (pipeline design,
  * amended 2026-08-20).
  */

@@ -1,8 +1,8 @@
-// Global theme (spec §8.1): Material Design, classic indigo/pink look
-// expressed in Material 3 terms — violet primary, rose tertiary.
+// Global theme (spec sec. 8.1): Material Design, classic indigo/pink look
+// expressed in Material 3 terms - violet primary, rose tertiary.
 @use '@angular/material' as mat;
 
-// Vendored fonts (Apache-2.0; see public/fonts/README.md) — the SPA
+// Vendored fonts (Apache-2.0; see public/fonts/README.md) - the SPA
 // makes no third-party requests and works offline.
 @font-face {
   font-family: 'Roboto';
@@ -58,12 +58,12 @@ body {
 
 // Material's outlined form field floats its label ~7px ABOVE the
 // field's border box. Dialog content and our wide-table card content
-// are scroll containers (overflow: auto / overflow-x: auto — which
+// are scroll containers (overflow: auto / overflow-x: auto - which
 // clips vertically too) with no top padding, so a form field on the
 // first row loses the top half of its label. Reserve the overhang
 // globally. The last selector exists because Material zeroes the top
 // padding whenever content follows a dialog title
-// (.mat-mdc-dialog-container .mat-mdc-dialog-title + …, 0-3-0) — the
+// (.mat-mdc-dialog-container .mat-mdc-dialog-title + ..., 0-3-0) - the
 // extra type selector outranks it (0-3-1) without !important.
 mat-dialog-content.mat-mdc-dialog-content,
 mat-card-content.mat-mdc-card-content,

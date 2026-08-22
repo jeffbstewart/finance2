@@ -1,6 +1,6 @@
 // Unit spec for BuyDialog (docs/design/ui-testing.md, inventory
-// "PositionsPage → BuyDialog"). The dialog is rendered directly with
-// MAT_DIALOG_DATA / MatDialogRef stubs — no overlay involved.
+// "PositionsPage -> BuyDialog"). The dialog is rendered directly with
+// MAT_DIALOG_DATA / MatDialogRef stubs - no overlay involved.
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -68,7 +68,7 @@ function formInfo(): GetPurchaseFormInfoResponse {
   });
 }
 
-/** The seeded lastYear−1 VTI lot, as the lot-details edit hands it over. */
+/** The seeded lastYear-1 VTI lot, as the lot-details edit hands it over. */
 function vtiLot() {
   return create(LotRowSchema, {
     lotId: 11n,
@@ -160,7 +160,7 @@ describe('BuyDialog', () => {
     return fixture.componentInstance.securities().map((s) => `${s.ticker}: ${s.description}`);
   }
 
-  /** The Submit button — the datepicker toggle is a <button> too. */
+  /** The Submit button - the datepicker toggle is a <button> too. */
   function submit(fixture: ComponentFixture<BuyDialog>): HTMLButtonElement {
     const button = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
@@ -309,7 +309,7 @@ describe('BuyDialog', () => {
       const inputs = Array.from(
         (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>('input'),
       );
-      // Date, Shares, Price Per Share, Commission — no selects in this mode.
+      // Date, Shares, Price Per Share, Commission - no selects in this mode.
       const values = ['3/4/2026', '10', '195.25', '0'];
       inputs.forEach((input, i) => {
         input.value = values[i];

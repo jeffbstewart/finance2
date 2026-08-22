@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { SessionStore } from './session';
 
 /** Unauthenticated access redirects to the welcome page, remembering
- *  the attempted URL for after sign-in (spec §8.2). */
+ *  the attempted URL for after sign-in (spec sec. 8.2). */
 export const authGuard: CanActivateFn = async (_route, state) => {
   const session = inject(SessionStore);
   const router = inject(Router);

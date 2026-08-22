@@ -38,7 +38,7 @@ class SecurityRepository(dataSource: DataSource) {
             .list()
     }
 
-    /** Every visible MARKET-locus security, portfolio-independent —
+    /** Every visible MARKET-locus security, portfolio-independent - 
      *  the background price-prefetch job's work list. */
     fun listAllMarket(): List<SecurityRow> = jdbi.sql { handle ->
         handle.createQuery("$SELECT WHERE pricing_locus = 'MARKET' AND NOT hidden ORDER BY ticker")

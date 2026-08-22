@@ -1,5 +1,5 @@
-// AccountService: account CRUD and overviews (FUNCTIONAL_SPEC §7
-// "Accounts", §9.3–§9.5). Positions within an account come from
+// AccountService: account CRUD and overviews (FUNCTIONAL_SPEC sec. 7
+// "Accounts", sec. 9.3-sec. 9.5). Positions within an account come from
 // PositionService.ListPositions with an account filter.
 syntax = "proto3";
 
@@ -16,11 +16,11 @@ message AccountSummary {
   string broker_name = 3;
   string name = 4;
   string account_number = 5;
-  // Account-owned currency (build-scope §5): every security held here
+  // Account-owned currency (build-scope sec. 5): every security held here
   // and the sweep balance are denominated in it.
   string currency_code = 6;
   // Tax-deferred accounts track position-level holdings with no lots
-  // or basis and are excluded from the tax report (build-scope §1).
+  // or basis and are excluded from the tax report (build-scope sec. 1).
   bool tax_deferred = 7;
   FormattedMoney sweep_balance = 8; // account currency
   Provenance sweep_provenance = 9;
@@ -35,7 +35,7 @@ message ListAccountsRequest {
 
 message ListAccountsResponse {
   repeated AccountSummary accounts = 1;
-  // Footer totals in the reporting currency, USD (build-scope §5).
+  // Footer totals in the reporting currency, USD (build-scope sec. 5).
   FormattedMoney total_investment_value = 2;
   FormattedMoney total_sweeps = 3;
 }
@@ -65,14 +65,14 @@ message UpdateAccountRequest {
   string name = 2;
   string account_number = 3;
   bool tax_deferred = 4;
-  // The hand-maintained cash balance (FUNCTIONAL_SPEC §9.4); imports
-  // may also update it, with provenance (build-scope §1).
+  // The hand-maintained cash balance (FUNCTIONAL_SPEC sec. 9.4); imports
+  // may also update it, with provenance (build-scope sec. 1).
   Decimal sweep_balance = 5;
 }
 
 message UpdateAccountResponse {}
 
-// Guard rail (§5.9): only an account with no lots or holdings can be
+// Guard rail (sec. 5.9): only an account with no lots or holdings can be
 // deleted.
 message DeleteAccountRequest {
   int64 account_id = 1;
@@ -80,7 +80,7 @@ message DeleteAccountRequest {
 
 message DeleteAccountResponse {}
 
-// Guard rail (§5.9): hiding requires zero investment value.
+// Guard rail (sec. 5.9): hiding requires zero investment value.
 message SetAccountHiddenRequest {
   int64 account_id = 1;
   bool hidden = 2;

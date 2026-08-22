@@ -54,14 +54,14 @@ import net.stewart.finance.rules.Lot as RulesLot
 import net.stewart.finance.rules.Sale as RulesSale
 import net.stewart.finance.rules.SaleAllocation as RulesSaleAllocation
 
-/** Sum-to-one tolerance for target fractions (spec §5.9). */
+/** Sum-to-one tolerance for target fractions (spec sec. 5.9). */
 private val TARGET_SUM_TOLERANCE = Fraction.of("0.0001")
 
 /**
- * AllocationService (spec §5.4–§5.5, §9.13–§9.15): the allocation
+ * AllocationService (spec sec. 5.4-sec. 5.5, sec. 9.13-sec. 9.15): the allocation
  * dashboard, target editing, and the buy-side rebalance scorer over
  * the rules engines. All dollar figures are in the reporting currency
- * (build-scope §5); ScoreRebalance persists nothing.
+ * (build-scope sec. 5); ScoreRebalance persists nothing.
  */
 class AllocationGrpcService(
     private val portfolios: PortfolioRepository,
@@ -124,7 +124,7 @@ class AllocationGrpcService(
         for (entry in request.entriesList) {
             val name = entry.assetClass.trim()
             if (name !in known) {
-                throw invalid("unknown asset class \"$name\" — known: ${known.joinToString()}")
+                throw invalid("unknown asset class \"$name\" - known: ${known.joinToString()}")
             }
             if (name in entries) throw invalid("duplicate entry for $name")
             val fraction = try {
@@ -135,10 +135,10 @@ class AllocationGrpcService(
             if (fraction.signum() < 0) throw invalid("fractions must not be negative")
             entries[name] = fraction
         }
-        // Guard rail (spec §5.9): the fractions must sum to 1 (±0.0001).
+        // Guard rail (spec sec. 5.9): the fractions must sum to 1 (+/-0.0001).
         val sum = entries.values.fold(Fraction.ZERO) { acc, f -> acc + f }
         if ((sum - Fraction.ONE).abs() > TARGET_SUM_TOLERANCE) {
-            throw invalid("target fractions sum to $sum; they must sum to 1 (±0.0001)")
+            throw invalid("target fractions sum to $sum; they must sum to 1 (+/-0.0001)")
         }
         targets.replace(portfolioId, entries)
         return SetTargetAllocationResponse.getDefaultInstance()
@@ -185,7 +185,7 @@ class AllocationGrpcService(
                 TradeSideProto.BUY -> Unit
                 TradeSideProto.SELL -> throw StatusException(
                     Status.UNIMPLEMENTED.withDescription(
-                        "sell-side planning is reserved but not implemented (build-scope §3)"
+                        "sell-side planning is reserved but not implemented (build-scope sec. 3)"
                     )
                 )
                 else -> throw invalid("trade side is required")
@@ -260,7 +260,7 @@ class AllocationGrpcService(
             val price = prices[securityId] ?: throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(
                     if (security.pricingLocus == PricingLocus.MANUAL) {
-                        "${security.ticker} has no price entries yet — add one to value the position"
+                        "${security.ticker} has no price entries yet - add one to value the position"
                     } else {
                         "${security.ticker} is market-priced; the price source arrives with Phase 4/5"
                     }
@@ -305,7 +305,7 @@ class AllocationGrpcService(
             )
         }
         // The sum of visible accounts' sweeps joins the Cash class as
-        // the synthetic Sweeps position (spec §5.4).
+        // the synthetic Sweeps position (spec sec. 5.4).
         val sweeps = accounts.list(portfolioId, brokerId = null, includeHidden = false)
             .fold(reporting.zero()) { acc, account -> acc + reporting.toReporting(account.sweep, today) }
         return currentAllocation(classNames, positions, sweeps)

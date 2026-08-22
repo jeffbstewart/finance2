@@ -1,6 +1,6 @@
 // E2E spec for TaxPage (docs/design/ui-testing.md, inventory "TaxPage").
 // The seeded lastYear VTI sale yields exactly LT $233.60 / ST $35.40,
-// and the lastYear EUFUND mark lands in the PFIC table — both fall in
+// and the lastYear EUFUND mark lands in the PFIC table - both fall in
 // the page's default previous-calendar-year range.
 import { expect, test } from '@playwright/test';
 import { fillField, readTable, seedPortfolio } from '../support/material';
@@ -58,8 +58,8 @@ test('lists the lastYear PFIC mark-to-market income', async ({ page }) => {
   expect(mtm.rows).toHaveLength(1);
   const [row] = mtm.rows;
   expect(row.slice(0, 3)).toEqual(['EUFUND', String(lastYear), `${lastYear}-12-31`]);
-  // EUR 10,000 × 1.08; basis carried from the lastYear−1 mark
-  // (EUR 9,500 × 1.05 = $9,975, above the $9,911 cost floor).
+  // EUR 10,000 x 1.08; basis carried from the lastYear-1 mark
+  // (EUR 9,500 x 1.05 = $9,975, above the $9,911 cost floor).
   expect(row[3]).toBe('$10,800.00');
   expect(row[4]).toBe('$9,975.00');
   expect(row[5]).toBe('$825.00');

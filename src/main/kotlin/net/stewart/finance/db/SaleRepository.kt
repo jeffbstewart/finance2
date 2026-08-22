@@ -47,7 +47,7 @@ class SaleRepository(dataSource: DataSource) {
         withAllocations(handle, query.map { rs, _ -> rs.toRecord() }.list())
     }
 
-    /** Sales in [from]..[to] from taxable accounts only (spec §5.3). */
+    /** Sales in [from]..[to] from taxable accounts only (spec sec. 5.3). */
     fun listForTaxReport(portfolioId: PortfolioId, from: LocalDate, to: LocalDate): List<SaleRecord> =
         jdbi.sql { handle ->
             val sales = handle.createQuery(

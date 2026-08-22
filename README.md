@@ -46,11 +46,11 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
   tried Docker Hub for `finance2` and failed with "pull access denied".)
 
 - The encrypted database lives in the host directory `FINANCE2_DATA`
-  (required — compose refuses to start without it), bind-mounted at
+  (required - compose refuses to start without it), bind-mounted at
   `/data`; the container itself is disposable. Back the directory up
   like any other file. The server runs unprivileged as
   `FINANCE2_UID:FINANCE2_GID` (10001:10001 by default), so the
-  directory must be writable by that uid — `chown` it or set the
+  directory must be writable by that uid - `chown` it or set the
   variables to its owner. The container drops all capabilities, forbids
   privilege escalation, and runs on a read-only root filesystem; only
   `/data` and a tmpfs `/tmp` are writable.
@@ -61,7 +61,7 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
   LAN-direct and backs the image's `HEALTHCHECK`. `FINANCE2_MEM_LIMIT`
   (512m) and `FINANCE2_PIDS_LIMIT` (256) are the limits a NAS container
   manager can enforce, set at about twice the measured steady state
-  (~115 JVM threads — each a pid — and well under 300 MiB RSS); the JVM
+  (~115 JVM threads - each a pid - and well under 300 MiB RSS); the JVM
   sizes its heap from the memory limit.
 - On the bridge network a proxy on another host keeps its own address
   for `TRUSTED_PROXIES`; a proxy on the same host appears as the
@@ -84,12 +84,12 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
 
 ## Assumptions
 
-- **Tax years are calendar years.** Everything tax-shaped â€” the tax
+- **Tax years are calendar years.** Everything tax-shaped - the tax
   report's default range, and mark-to-market tax years in particular
-  (a mark's date must fall inside its tax year, Jan 1 â€“ Dec 31) â€”
+  (a mark's date must fall inside its tax year, Jan 1 - Dec 31) - 
   assumes the user's tax year and the civil calendar year align. A
   fiscal-year taxpayer would need changes wherever a year number is
-  treated as Janâ€“Dec.
+  treated as Jan-Dec.
 - **The reporting currency is USD.** Multi-currency accounts are
   supported; cross-currency arithmetic only ever happens through a
   dated FX rate.
@@ -99,8 +99,8 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
 ## Not tax advice
 
 Neither the author nor this software is a tax advisor. The tax
-treatment this software implements â€” capital gain terms, the PFIC
-Â§1296 mark-to-market handling, and everything else tax-shaped â€” is
+treatment this software implements - capital gain terms, the PFIC
+sec. 1296 mark-to-market handling, and everything else tax-shaped - is
 the best understanding of the author and their AI agent, based on
 **United States tax rules as of 2026**. Tax law differs by
 jurisdiction and changes over time. Users are on their own to confirm

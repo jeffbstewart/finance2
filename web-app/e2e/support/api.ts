@@ -73,7 +73,7 @@ export async function ensureSession(): Promise<string> {
   const loginCookie = sessionCookieOf(loggedIn);
   if (!loginCookie) {
     throw new Error(
-      `e2e login failed (grpc-status ${grpcStatusOf(loggedIn) ?? 'in body'}) — is the e2e server up with SETUP_TOKEN set?`,
+      `e2e login failed (grpc-status ${grpcStatusOf(loggedIn) ?? 'in body'}) - is the e2e server up with SETUP_TOKEN set?`,
     );
   }
   return loginCookie;

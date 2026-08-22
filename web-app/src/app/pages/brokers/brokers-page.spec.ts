@@ -96,7 +96,7 @@ describe('BrokersPage', () => {
     // The page only needs open()/afterClosed(); the dialog body itself
     // is exercised in the BrokerDialog suite below. The page imports
     // MatDialogModule, so MatDialog resolves from the component's own
-    // standalone injector — a TestBed provider would not shadow it,
+    // standalone injector - a TestBed provider would not shadow it,
     // hence the prototype spy.
     openSpy = vi.spyOn(MatDialog.prototype, 'open').mockImplementation(((
       component: unknown,

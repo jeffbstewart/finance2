@@ -71,7 +71,7 @@ class SnapshotRepository(dataSource: DataSource) {
     }
 
     /**
-     * The snapshot whose processing run is the most recent — the one
+     * The snapshot whose processing run is the most recent - the one
      * whose report describes the current state of the import. A
      * re-run of an older snapshot after lot fixes counts as newest.
      */

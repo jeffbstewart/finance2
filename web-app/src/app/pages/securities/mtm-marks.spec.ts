@@ -1,7 +1,7 @@
 // Unit spec for MtmMarks (docs/design/ui-testing.md, inventory
-// "MtmMarks / MtmMarkDialog"): the PFIC §1296 ledger tab. The fake
+// "MtmMarks / MtmMarkDialog"): the PFIC sec. 1296 ledger tab. The fake
 // SecurityService stands in for the backend; MatDialog is resolved
-// from the component's own injector — the standalone component
+// from the component's own injector - the standalone component
 // imports MatDialogModule, which re-provides MatDialog, so
 // TestBed.inject(MatDialog) is a different instance and a spy on it
 // would never fire.
@@ -29,8 +29,8 @@ import { Notify } from '../../core/notify';
 import { MtmMarkDialog, type MtmMarkDialogData } from './mtm-mark-dialog';
 import { MtmMarks } from './mtm-marks';
 
-/** The seeder's clock: "today" is fixed so `currentYear − 1` is
- *  deterministic (the seeded marks are lastYear−1 and lastYear). */
+/** The seeder's clock: "today" is fixed so `currentYear - 1` is
+ *  deterministic (the seeded marks are lastYear-1 and lastYear). */
 const TODAY = new Date(2026, 7, 20);
 
 /** Shared-infrastructure gap: sample-data.ts has no SecurityProfile or
@@ -47,14 +47,14 @@ function eufund(): SecurityProfile {
   });
 }
 
-/** EUR 9,500 × 1.05 = $9,975 over the $9,911 acquisition-cost floor. */
+/** EUR 9,500 x 1.05 = $9,975 over the $9,911 acquisition-cost floor. */
 function mark2024(): MtmMark {
   return create(MtmMarkSchema, {
     markId: 21n,
     taxYear: 2024,
     markDate: date('2024-12-31'),
     quantity: quantity('100'),
-    fmvLocal: money('9500.00', { currency: 'EUR', display: '€9,500.00' }),
+    fmvLocal: money('9500.00', { currency: 'EUR', display: '\u20ac9,500.00' }),
     fxRate: quantity('1.05'),
     fmvUsd: money('9975.00', { display: '$9,975.00' }),
     basisBefore: money('9911.00', { display: '$9,911.00' }),
@@ -63,14 +63,14 @@ function mark2024(): MtmMark {
   });
 }
 
-/** EUR 10,000 × 1.08 = $10,800 over the carried-forward $9,975 basis. */
+/** EUR 10,000 x 1.08 = $10,800 over the carried-forward $9,975 basis. */
 function mark2025(): MtmMark {
   return create(MtmMarkSchema, {
     markId: 22n,
     taxYear: 2025,
     markDate: date('2025-12-31'),
     quantity: quantity('100'),
-    fmvLocal: money('10000.00', { currency: 'EUR', display: '€10,000.00' }),
+    fmvLocal: money('10000.00', { currency: 'EUR', display: '\u20ac10,000.00' }),
     fxRate: quantity('1.08'),
     fmvUsd: money('10800.00', { display: '$10,800.00' }),
     basisBefore: money('9975.00', { display: '$9,975.00' }),
@@ -185,11 +185,11 @@ describe('MtmMarks', () => {
     const rows = cells(fixture, 'tr[mat-row]');
     expect(rows).toHaveLength(2);
     expect(rows[0].slice(0, 8)).toEqual([
-      '2024', '2024-12-31', '100', '€9,500.00', '1.05',
+      '2024', '2024-12-31', '100', '\u20ac9,500.00', '1.05',
       '$9,975.00', '$9,975.00', '$64.00',
     ]);
     expect(rows[1].slice(0, 8)).toEqual([
-      '2025', '2025-12-31', '100', '€10,000.00', '1.08',
+      '2025', '2025-12-31', '100', '\u20ac10,000.00', '1.08',
       '$10,800.00', '$10,800.00', '$825.00',
     ]);
     expect(textOf(fixture)).not.toContain('No marks recorded yet');
@@ -217,9 +217,9 @@ describe('MtmMarks', () => {
     const fixture = await render();
     expect(host(fixture).querySelectorAll('table')).toHaveLength(0);
     expect(textOf(fixture)).toContain(
-      'No marks recorded yet — record the first year-end mark to start the ledger.',
+      'No marks recorded yet - record the first year-end mark to start the ledger.',
     );
-    expect(textOf(fixture)).toContain('Acquisition cost (basis floor): —');
+    expect(textOf(fixture)).toContain('Acquisition cost (basis floor): - ');
   });
 
   it('routes a list failure to the error snackbar and stays empty', async () => {
@@ -348,7 +348,7 @@ describe('MtmMarks', () => {
     const emitted = changes(fixture);
     const errorSpy = vi.spyOn(TestBed.inject(Notify), 'error');
     deleteFails = new ConnectError(
-      'only the latest mark (2025) may be deleted — the basis chain feeds forward',
+      'only the latest mark (2025) may be deleted - the basis chain feeds forward',
       Code.FailedPrecondition,
     );
     vi.stubGlobal('confirm', () => true);

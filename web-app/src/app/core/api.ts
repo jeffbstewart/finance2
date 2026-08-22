@@ -1,5 +1,5 @@
 // The one place the SPA touches the wire: typed Connect-ES clients
-// generated from proto/ (firm requirement — a hallucinated field or
+// generated from proto/ (firm requirement - a hallucinated field or
 // RPC is a compile error). gRPC-Web straight to ArmeriaAppServer, no
 // proxy; the HttpOnly session cookie rides on credentials: 'include'.
 import { createClient } from '@connectrpc/connect';

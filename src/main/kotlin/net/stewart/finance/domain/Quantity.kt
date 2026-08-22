@@ -3,10 +3,10 @@ package net.stewart.finance.domain
 import java.math.BigDecimal
 
 /**
- * A count of units held — shares, fund units, troy ounces. Unitless and
+ * A count of units held - shares, fund units, troy ounces. Unitless and
  * currency-free; multiplying by a per-unit [Money] price yields value.
  *
- * Fixed scale 8 (docs/design/initial-build-scope.md §2), so provider
+ * Fixed scale 8 (docs/design/initial-build-scope.md sec. 2), so provider
  * fractional-share quantities import without rounding. Values fit a
  * `NUMERIC(20,8)` column by construction.
  */

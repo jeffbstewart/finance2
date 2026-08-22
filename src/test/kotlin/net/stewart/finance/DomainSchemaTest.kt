@@ -12,8 +12,8 @@ import org.junit.jupiter.api.extension.RegisterExtension
 
 /**
  * Proves the V002 domain schema: seed data, exact NUMERIC round-trips,
- * scoped uniqueness (fix of FUNCTIONAL_SPEC §4.3 legacy defect 4), and
- * the referential guard rails behind §5.9.
+ * scoped uniqueness (fix of FUNCTIONAL_SPEC sec. 4.3 legacy defect 4), and
+ * the referential guard rails behind sec. 5.9.
  */
 class DomainSchemaTest {
 

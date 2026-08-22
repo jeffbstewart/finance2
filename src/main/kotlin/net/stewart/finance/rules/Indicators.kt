@@ -6,11 +6,11 @@ import java.math.RoundingMode
 import java.time.LocalDate
 import net.stewart.finance.domain.Money
 
-// Technical indicators (FUNCTIONAL_SPEC §5.8): computed over the
+// Technical indicators (FUNCTIONAL_SPEC sec. 5.8): computed over the
 // date-ascending adjusted-close history with a 20-sample moving
 // window. Pure functions; intermediate math runs in BigDecimal at
 // DECIMAL64 precision and only the emitted points round to money
-// scale — these are chart overlays, not stored values.
+// scale - these are chart overlays, not stored values.
 
 const val INDICATOR_WINDOW = 20
 
@@ -55,7 +55,7 @@ fun sma(history: List<ClosePoint>, window: Int = INDICATOR_WINDOW): List<Indicat
 
 /**
  * Exponential moving average: multiplier 2/(window+1), seeded with the
- * first window's mean (spec §5.8). The seed is the first emitted point.
+ * first window's mean (spec sec. 5.8). The seed is the first emitted point.
  */
 fun ema(history: List<ClosePoint>, window: Int = INDICATOR_WINDOW): List<IndicatorPoint> {
     require(window > 0) { "window must be positive" }
@@ -77,8 +77,8 @@ fun ema(history: List<ClosePoint>, window: Int = INDICATOR_WINDOW): List<Indicat
 }
 
 /**
- * Bollinger bands: window mean ± 2 population standard deviations,
- * plus the mean itself (spec §5.8).
+ * Bollinger bands: window mean +/- 2 population standard deviations,
+ * plus the mean itself (spec sec. 5.8).
  */
 fun bollingerBands(history: List<ClosePoint>, window: Int = INDICATOR_WINDOW): List<BollingerPoint> {
     require(window > 0) { "window must be positive" }

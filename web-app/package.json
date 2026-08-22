@@ -2,7 +2,7 @@
   "name": "finance2-web",
   "version": "0.1.0",
   "private": true,
-  "description": "The finance2 SPA (Decision 6: Angular + Angular Material). All server calls go through the Connect-ES client generated from proto/ — no hand-written DTOs, no any-typed fetches.",
+  "description": "The finance2 SPA (Decision 6: Angular + Angular Material). All server calls go through the Connect-ES client generated from proto/ - no hand-written DTOs, no any-typed fetches.",
   "scripts": {
     "ng": "ng",
     "proto:gen": "node scripts/gen-proto.mjs",

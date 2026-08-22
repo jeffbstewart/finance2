@@ -62,15 +62,15 @@ import org.slf4j.LoggerFactory
 
 /**
  * finance2 server bootstrap: one Armeria port serving gRPC (native +
- * gRPC-Web), a health endpoint, and — once Phase 6 builds it — the SPA.
+ * gRPC-Web), a health endpoint, and - once Phase 6 builds it - the SPA.
  * TLS terminates at HAProxy; this listener stays cleartext. When
  * TRUSTED_PROXIES is set, only those peers may talk to it (except
  * /healthz and /metrics) and every proxied request must carry the
- * forwarded client address (build-scope §10).
+ * forwarded client address (build-scope sec. 10).
  *
  * Auth posture: every RPC not on the explicit unauthenticated
  * allowlist requires a valid session cookie (auth-kotlin-toolkit via
- * the armeria auth bridge, build-scope §8). The allowlisted
+ * the armeria auth bridge, build-scope sec. 8). The allowlisted
  * SessionService RPCs implement first-run setup, login, and logout;
  * first-run setup additionally requires the per-run token printed to
  * this process's log.
@@ -106,15 +106,15 @@ fun main() {
 
     // ECB publishes reference rates once per business day; a daily
     // pull of the rolling 90-day feed keeps fx_rates current and
-    // backfills after downtime (build-scope §5; ruling 2026-08-19:
+    // backfills after downtime (build-scope sec. 5; ruling 2026-08-19:
     // simple in-process scheduling, one always-running container).
     // Test deployments are hermetic (docs/design/ui-testing.md): the
-    // network feeds stay off so seeded FX rates are the only rates —
+    // network feeds stay off so seeded FX rates are the only rates - 
     // a live ECB rate dated today would otherwise outrank the seeder's
     // row and move every FX-derived figure the specs pin.
     val testSupport = System.getenv("FINANCE2_TEST_SUPPORT")?.toBooleanStrictOrNull() ?: false
     if (testSupport) {
-        log.warn("FINANCE2_TEST_SUPPORT is enabled — ECB/FRED feed jobs are NOT started (hermetic test server)")
+        log.warn("FINANCE2_TEST_SUPPORT is enabled - ECB/FRED feed jobs are NOT started (hermetic test server)")
     }
     val fxFeed = EcbFxFeed(net.stewart.finance.db.FxRepository(db.dataSource))
     if (!testSupport) {
@@ -161,7 +161,7 @@ fun main() {
         ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
         .orEmpty()
     if (trustedProxies.isEmpty()) {
-        log.warn("TRUSTED_PROXIES is not set — accepting direct connections (dev mode only)")
+        log.warn("TRUSTED_PROXIES is not set - accepting direct connections (dev mode only)")
     }
 
     // Allowlist derived from generated descriptors: a proto rename is a
@@ -258,7 +258,7 @@ fun main() {
                             net.stewart.finance.testsupport.SampleSeeder(db.dataSource),
                         )
                     ).also {
-                        log.warn("FINANCE2_TEST_SUPPORT is enabled — TestSupportService is registered (test deployments only)")
+                        log.warn("FINANCE2_TEST_SUPPORT is enabled - TestSupportService is registered (test deployments only)")
                     }
                 )
             },
@@ -284,4 +284,4 @@ private fun generateSetupToken(): String {
 
 private fun requireEnv(name: String): String =
     System.getenv(name)?.takeIf { it.isNotBlank() }
-        ?: error("missing required environment variable $name — see example.env")
+        ?: error("missing required environment variable $name - see example.env")

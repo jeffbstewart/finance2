@@ -1,7 +1,7 @@
 // Unit spec for ClassificationEditor (docs/design/ui-testing.md,
-// inventory "SecurityDetailsPage → ClassificationEditor"). The editor
+// inventory "SecurityDetailsPage -> ClassificationEditor"). The editor
 // is a child component driven by a required `security` input, so the
-// specs set the input directly rather than rendering the host page —
+// specs set the input directly rather than rendering the host page - 
 // SecurityDetailsPage is a separate assignment. AllocationService and
 // SecurityService are faked via installFakeApi; the clock is pinned so
 // the save payload's `asOf: todayCivil()` is deterministic.
@@ -206,7 +206,7 @@ describe('ClassificationEditor', () => {
   }
 
   /** Types into a weight field the way a user does, so ngModelChange
-   *  fires the validator — assigning `row.percent` never re-renders
+   *  fires the validator - assigning `row.percent` never re-renders
    *  under zoneless and never revalidates. */
   async function typeWeight(
     fixture: ComponentFixture<ClassificationEditor>,
@@ -283,7 +283,7 @@ describe('ClassificationEditor', () => {
     it('shows the empty note instead of a pie when nothing is classified', async () => {
       const fixture = await render(vtiProfile({ classifications: 'none' }));
       expect(pieStub(fixture)).toBeNull();
-      expect(textOf(fixture)).toContain('No asset class mix yet — enter the weights to the right.');
+      expect(textOf(fixture)).toContain('No asset class mix yet - enter the weights to the right.');
       expect(textOf(fixture)).not.toContain('As of');
     });
 
@@ -428,14 +428,14 @@ describe('ClassificationEditor', () => {
       expect(validationError(fixture)).toBeNull();
     });
 
-    it('tolerates a ±0.01 rounding drift but not ±0.02', async () => {
+    it('tolerates a +/-0.01 rounding drift but not +/-0.02', async () => {
       const fixture = await edit();
       await typeWeight(fixture, 'US Stock', '99.99');
       expect(validationError(fixture)).toBeNull();
       await typeWeight(fixture, 'US Stock', '99.98');
       expect(validationError(fixture)).toBe('Weights must sum to 100 (currently 99.98)');
 
-      // Overshoot has to be spread across rows: the per-class 0–100
+      // Overshoot has to be spread across rows: the per-class 0-100
       // bound runs first, so a single 100.01 row never reaches the sum
       // check (see the dedicated case below).
       await typeWeight(fixture, 'US Stock', '50.01');
@@ -445,7 +445,7 @@ describe('ClassificationEditor', () => {
       expect(validationError(fixture)).toBe('Weights must sum to 100 (currently 100.02)');
     });
 
-    it('applies the 0–100 bound before the sum tolerance, so 100.01 in one row fails', async () => {
+    it('applies the 0-100 bound before the sum tolerance, so 100.01 in one row fails', async () => {
       const fixture = await edit();
       await typeWeight(fixture, 'US Stock', '100.01');
       expect(validationError(fixture)).toBe('US Stock: must be between 0 and 100');
@@ -458,7 +458,7 @@ describe('ClassificationEditor', () => {
       expect(validationError(fixture)).toBe('Cash: enter a number between 0 and 100');
     });
 
-    it('validates only on ngModelChange — a Save click revalidates a never-touched form', async () => {
+    it('validates only on ngModelChange - a Save click revalidates a never-touched form', async () => {
       // The editor seeds `validationError` to null on beginEdit and only
       // recomputes it in revalidate() (ngModelChange), so an unclassified
       // security opens with all-zero rows and an *enabled* Save button.
