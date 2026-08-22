@@ -22,18 +22,28 @@ composite builds from checkouts beside this one.
 
 ## Run with Docker
 
-The image is self-contained (`docker build .` clones the toolkit
-siblings itself) and holds no secrets: every credential arrives at run
-time from the environment — Portainer's stack variables, or a `.env`
-beside the compose file for the CLI (`.dockerignore` keeps it out of
-the build context). The compose file lists every variable it forwards
-and refuses to start without the required ones.
+CI publishes the image to GitHub Container Registry on every merge to
+`main`: `ghcr.io/jeffbstewart/finance2:latest`, plus `:sha-<short>`
+per commit for pinning (`FINANCE2_IMAGE`). The package is public, so
+pulling needs no login. The image is self-contained (`docker build .`
+clones the toolkit siblings itself) and holds no secrets: every
+credential arrives at run time from the environment - Portainer's
+stack variables, or a `.env` beside the compose file for the CLI
+(`.dockerignore` keeps it out of the build context). The compose file
+lists every variable it forwards and refuses to start without the
+required ones.
 
 ```bash
 cp example.env .env               # set FINANCE2_DATA, H2_PASSWORD, H2_FILE_PASSWORD, TRUSTED_PROXIES, API keys
-docker compose up -d --build
+docker compose up -d              # pulls ghcr.io/jeffbstewart/finance2:latest
+docker compose up -d --build      # or build the image from this checkout instead
 docker compose logs -f finance2   # the first boot prints the one-time setup token
 ```
+
+- Portainer: deploy the stack from this repository and update it with
+  **Re-pull image** on - the update pulls `:latest` rather than
+  rebuilding. (Before the image was published, an update with re-pull
+  tried Docker Hub for `finance2` and failed with "pull access denied".)
 
 - The encrypted database lives in the host directory `FINANCE2_DATA`
   (required — compose refuses to start without it), bind-mounted at
