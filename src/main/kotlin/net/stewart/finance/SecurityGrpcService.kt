@@ -70,6 +70,7 @@ import net.stewart.finance.proto.PricingLocus as PricingLocusProto
 import net.stewart.finance.proto.PrivatePriceRow
 import net.stewart.finance.proto.SecurityListing
 import net.stewart.finance.proto.SecurityProfile
+import net.stewart.finance.proto.TechnicalIndicators
 import net.stewart.finance.proto.SecurityServiceGrpcKt
 import net.stewart.finance.proto.SecurityType as SecurityTypeProto
 import net.stewart.finance.proto.TaxTreatment as TaxTreatmentProto
@@ -239,33 +240,19 @@ class SecurityGrpcService(
             builder.addPriceHistory(point.toProto())
         }
         // The mirrored public fund, presented the same way, for the
-        // two-axis chart. A mirror that has since been deleted or is
-        // unreachable just leaves the series empty.
+        // two-axis chart, with the indicators computed over ITS dense
+        // history - the own series is too sparse for a 20-sample
+        // window. A mirror that has since been deleted or is
+        // unreachable just leaves both empty.
         row.mirrorsSecurityId?.let { mirrorId ->
             securities.find(mirrorId, portfolio())?.let { mirror ->
-                for (point in presentHistory(pricing.history(mirror), request.inflationAdjusted)) {
-                    builder.addMirrorPriceHistory(point.toProto())
-                }
+                val mirrorPoints = presentHistory(pricing.history(mirror), request.inflationAdjusted)
+                for (point in mirrorPoints) builder.addMirrorPriceHistory(point.toProto())
+                addIndicators(builder.mirrorIndicatorsBuilder, mirrorPoints.map { ClosePoint(it.date, it.adjustedClose) })
             }
         }
         // Indicators run over the adjusted-close series (spec sec. 5.8).
-        val history = points.map { ClosePoint(it.date, it.adjustedClose) }
-        val indicators = builder.indicatorsBuilder
-        for (p in sma(history)) {
-            indicators.addSma(IndicatorPoint.newBuilder().setDate(p.date.toProto()).setValue(p.value.toProto().amount))
-        }
-        for (p in ema(history)) {
-            indicators.addEma(IndicatorPoint.newBuilder().setDate(p.date.toProto()).setValue(p.value.toProto().amount))
-        }
-        for (p in bollingerBands(history)) {
-            indicators.addBollinger(
-                BollingerPoint.newBuilder()
-                    .setDate(p.date.toProto())
-                    .setMean(p.mean.toProto().amount)
-                    .setUpper(p.upper.toProto().amount)
-                    .setLower(p.lower.toProto().amount)
-            )
-        }
+        addIndicators(builder.indicatorsBuilder, points.map { ClosePoint(it.date, it.adjustedClose) })
         return builder.build()
     }
 
@@ -338,6 +325,25 @@ class SecurityGrpcService(
     }
 
     private fun mtmMarksExist(row: SecurityRow): Boolean = mtm.listForSecurity(row).isNotEmpty()
+
+    /** SMA, EMA, and Bollinger bands over [history] (spec sec. 5.8). */
+    private fun addIndicators(indicators: TechnicalIndicators.Builder, history: List<ClosePoint>) {
+        for (p in sma(history)) {
+            indicators.addSma(IndicatorPoint.newBuilder().setDate(p.date.toProto()).setValue(p.value.toProto().amount))
+        }
+        for (p in ema(history)) {
+            indicators.addEma(IndicatorPoint.newBuilder().setDate(p.date.toProto()).setValue(p.value.toProto().amount))
+        }
+        for (p in bollingerBands(history)) {
+            indicators.addBollinger(
+                BollingerPoint.newBuilder()
+                    .setDate(p.date.toProto())
+                    .setMean(p.mean.toProto().amount)
+                    .setUpper(p.upper.toProto().amount)
+                    .setLower(p.lower.toProto().amount)
+            )
+        }
+    }
 
     /** Nominal, or every close restated in today's dollars via CPI. */
     private fun presentHistory(

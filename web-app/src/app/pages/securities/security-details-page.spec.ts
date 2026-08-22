@@ -294,6 +294,13 @@ describe('SecurityDetailsPage', () => {
           adjustedClose: decimal(String(Number(p.adjustedClose?.value) * 2)),
         }),
       );
+      // The server computes the mirror's indicators over the mirror's
+      // history; here, twice the own SMA stands in for them.
+      details.mirrorIndicators = create(TechnicalIndicatorsSchema, {
+        sma: details.indicators!.sma.map((p) =>
+          create(IndicatorPointSchema, { date: p.date, value: decimal(String(Number(p.value?.value) * 2)) }),
+        ),
+      });
       return details;
     };
     const fixture = await render();
@@ -303,6 +310,18 @@ describe('SecurityDetailsPage', () => {
       ['VTI (right axis)', 'right', false],
     ]);
     expect(series[1].points.map((p) => p.value)).toEqual([360, 380, 400.2, 403.8]);
+    // Indicators are the mirror's and ride the mirror's axis.
+    fixture.componentInstance.indicator.set('sma');
+    await settle(fixture);
+    const withSma = chart(fixture)!.series();
+    expect(withSma.map((s) => [s.name, s.axis ?? 'left'])).toEqual([
+      ['Adjusted Close', 'left'],
+      ['VTI (right axis)', 'right'],
+      ['SMA (20)', 'right'],
+    ]);
+    expect(withSma[2].points.map((p) => p.value)).toEqual([360, 380, 400.2, 403.8]);
+    fixture.componentInstance.indicator.set('none');
+    await settle(fixture);
     // The duration filter applies to both.
     fixture.componentInstance.duration.set('month');
     await settle(fixture);

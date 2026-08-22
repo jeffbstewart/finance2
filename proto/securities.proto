@@ -188,6 +188,12 @@ message GetSecurityDetailsResponse {
   // page can chart the dense public fund on a second axis beside this
   // security's sparse actuals. Empty when nothing is mirrored.
   repeated PricePoint mirror_price_history = 4;
+  // Indicators computed over the mirror's history (same window and
+  // inflation treatment), when mirrored: a trust's own handful of
+  // prices cannot carry a 20-sample window, the dense public fund can.
+  // The UI plots these on the mirror's axis and leaves `indicators`
+  // (over this security's own prices) unused while a mirror is set.
+  TechnicalIndicators mirror_indicators = 5;
 }
 
 message UpdateSecurityProfileRequest {
