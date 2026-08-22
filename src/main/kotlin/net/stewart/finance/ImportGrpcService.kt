@@ -153,6 +153,7 @@ class ImportGrpcService(
                 .setMatch(
                     when (entry.match) {
                         SecurityMatch.BY_TICKER -> SecurityMatchProto.BY_TICKER
+                        SecurityMatch.BY_CUSIP -> SecurityMatchProto.BY_CUSIP
                         SecurityMatch.BY_LINK -> SecurityMatchProto.BY_LINK
                         SecurityMatch.UNMATCHED -> SecurityMatchProto.UNMATCHED
                     }

@@ -16,7 +16,14 @@ enum class SecurityType {
     STOCK,
     ETF,
     MUTUAL_FUND,
-    PRIVATE;
+    PRIVATE,
+    /** A 401(k) collective investment trust: the institutional class of
+     *  a public fund, no ticker, priced by the plan's statements. Bought
+     *  in dollars like the mutual fund it mirrors. */
+    COLLECTIVE_TRUST;
+
+    /** Dollar-denominated purchases (spec sec. 5.5): funds and trusts. */
+    val boughtInDollars: Boolean get() = this == MUTUAL_FUND || this == COLLECTIVE_TRUST
 
     companion object {
         fun parse(dbValue: String): SecurityType =

@@ -249,6 +249,149 @@ class SecurityServiceTest {
     }
 
     @Test
+    fun `a trust fund is added with its institution identifiers and no market ticker`() {
+        val trust = call {
+            service.addSecurity(
+                AddSecurityRequest.newBuilder()
+                    .setTicker("vbtix-tr").setCurrencyCode("USD")
+                    .setDescription("Inst Tot Bd Mkt Ix Tr")
+                    .setSecurityType(SecurityType.COLLECTIVE_TRUST)
+                    .setPricingLocus(PricingLocus.MANUAL)
+                    .setCusip("922908769")
+                    .build()
+            )
+        }.security
+        assertEquals("VBTIX-TR", trust.ticker)
+        assertEquals("", trust.marketTicker)
+        assertEquals("922908769", trust.cusip)
+        assertEquals(SecurityType.COLLECTIVE_TRUST, trust.securityType)
+        assertEquals(PricingLocus.MANUAL, trust.pricingLocus)
+        assertEquals("Inst Tot Bd Mkt Ix Tr", trust.description)
+
+        // Symbols are letters, digits, '.', '-' only; identifiers are checked.
+        assertEquals(Status.Code.INVALID_ARGUMENT, statusOf {
+            service.addSecurity(AddSecurityRequest.newBuilder().setTicker("BAD SYM").setCurrencyCode("USD").build())
+        })
+        assertEquals(Status.Code.INVALID_ARGUMENT, statusOf {
+            service.addSecurity(AddSecurityRequest.newBuilder().setTicker("X1").setCurrencyCode("USD").setCusip("123").build())
+        })
+
+        // A pre-V010 client updating the profile leaves the identifiers alone.
+        call {
+            service.updateSecurityProfile(
+                UpdateSecurityProfileRequest.newBuilder()
+                    .setSecurityId(trust.securityId)
+                    .setDescription("Total Bond Market Index Trust")
+                    .setSecurityType(SecurityType.COLLECTIVE_TRUST)
+                    .setPricingLocus(PricingLocus.MANUAL)
+                    .build()
+            )
+        }
+        val kept = call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(trust.securityId).build())
+        }.security
+        assertEquals("922908769", kept.cusip)
+        assertEquals("Total Bond Market Index Trust", kept.description)
+
+        // Sending the field clears it.
+        call {
+            service.updateSecurityProfile(
+                UpdateSecurityProfileRequest.newBuilder()
+                    .setSecurityId(trust.securityId)
+                    .setDescription("Total Bond Market Index Trust")
+                    .setSecurityType(SecurityType.COLLECTIVE_TRUST)
+                    .setPricingLocus(PricingLocus.MANUAL)
+                    .setCusip("")
+                    .build()
+            )
+        }
+        assertEquals("", call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(trust.securityId).build())
+        }.security.cusip)
+    }
+
+    @Test
+    fun `market locus carries a provider symbol, defaulting to the symbol itself`() {
+        val fund = call {
+            service.addSecurity(AddSecurityRequest.newBuilder().setTicker("VBTIX").setCurrencyCode("USD").build())
+        }.security
+        assertEquals("", fund.marketTicker)
+        // Flipping to MARKET with nothing sent: the symbol is the provider symbol.
+        call {
+            service.updateSecurityProfile(
+                UpdateSecurityProfileRequest.newBuilder()
+                    .setSecurityId(fund.securityId).setSecurityType(SecurityType.MUTUAL_FUND)
+                    .setPricingLocus(PricingLocus.MARKET).build()
+            )
+        }
+        val market = call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(fund.securityId).build())
+        }.security
+        assertEquals("VBTIX", market.marketTicker)
+        // An explicit provider symbol that differs from the local one.
+        call {
+            service.updateSecurityProfile(
+                UpdateSecurityProfileRequest.newBuilder()
+                    .setSecurityId(fund.securityId).setSecurityType(SecurityType.MUTUAL_FUND)
+                    .setPricingLocus(PricingLocus.MARKET).setMarketTicker("vbtix.us").build()
+            )
+        }
+        assertEquals("VBTIX.US", call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(fund.securityId).build())
+        }.security.marketTicker)
+        // Back to MANUAL drops it: nothing would use it.
+        call {
+            service.updateSecurityProfile(
+                UpdateSecurityProfileRequest.newBuilder()
+                    .setSecurityId(fund.securityId).setSecurityType(SecurityType.MUTUAL_FUND)
+                    .setPricingLocus(PricingLocus.MANUAL).build()
+            )
+        }
+        assertEquals("", call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(fund.securityId).build())
+        }.security.marketTicker)
+    }
+
+    @Test
+    fun `a trust mirrors one public fund - same currency, one hop, no self`() {
+        val fund = call {
+            service.addSecurity(AddSecurityRequest.newBuilder().setTicker("MIRFUND").setCurrencyCode("USD").build())
+        }.security
+        val trust = call {
+            service.addSecurity(
+                AddSecurityRequest.newBuilder().setTicker("MIRFUND-TR").setCurrencyCode("USD")
+                    .setSecurityType(SecurityType.COLLECTIVE_TRUST).build()
+            )
+        }.security
+        val euro = call {
+            service.addSecurity(AddSecurityRequest.newBuilder().setTicker("MIRFUND-EU").setCurrencyCode("EUR").build())
+        }.security
+        suspend fun mirror(id: Long, target: Long) = service.updateSecurityProfile(
+            UpdateSecurityProfileRequest.newBuilder()
+                .setSecurityId(id).setSecurityType(SecurityType.COLLECTIVE_TRUST)
+                .setPricingLocus(PricingLocus.MANUAL).setMirrorsSecurityId(target).build()
+        )
+        assertEquals(Status.Code.INVALID_ARGUMENT, statusOf { mirror(trust.securityId, trust.securityId) })
+        assertEquals(Status.Code.INVALID_ARGUMENT, statusOf { mirror(trust.securityId, euro.securityId) })
+        assertEquals(Status.Code.NOT_FOUND, statusOf { mirror(trust.securityId, 999_999) })
+        call { mirror(trust.securityId, fund.securityId) }
+        val profile = call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(trust.securityId).build())
+        }.security
+        assertEquals(fund.securityId, profile.mirrorsSecurityId)
+        assertEquals("MIRFUND", profile.mirrorsTicker)
+        // No chains: the fund cannot mirror something while it is mirrored,
+        // and nothing can mirror the trust.
+        assertEquals(Status.Code.INVALID_ARGUMENT, statusOf { mirror(fund.securityId, euro.securityId) })
+        assertEquals(Status.Code.INVALID_ARGUMENT, statusOf { mirror(euro.securityId, trust.securityId) })
+        // 0 clears.
+        call { mirror(trust.securityId, 0) }
+        assertEquals(0L, call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(trust.securityId).build())
+        }.security.mirrorsSecurityId)
+    }
+
+    @Test
     fun `stale classifications suggest a refresh`() {
         val id = call {
             service.addSecurity(

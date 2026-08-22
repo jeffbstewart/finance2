@@ -124,6 +124,9 @@ class SecurityGrpcService(
                         Sparkline.newBuilder().addAllAdjustedCloses(closes.map { it.toProto().amount })
                     )
                     .setHidden(row.hidden)
+                    .setMarketTicker(row.marketTicker ?: "")
+                    .setSecurityType(row.securityType.toProto())
+                    .setPricingLocus(row.pricingLocus.toProto())
             )
         }
         return builder.build()
@@ -131,14 +134,22 @@ class SecurityGrpcService(
 
     override suspend fun addSecurity(request: AddSecurityRequest): AddSecurityResponse {
         val portfolioId = portfolio()
-        val ticker = request.ticker.trim()
-        if (ticker.isEmpty()) throw invalid("ticker is required")
-        if (ticker.length > 32) throw invalid("ticker exceeds 32 characters")
+        val ticker = symbolOf(request.ticker)
         val currency = try {
             CurrencyUnit.parse(request.currencyCode)
         } catch (e: IllegalArgumentException) {
             throw invalid("unknown currency code \"${request.currencyCode}\"")
         }
+        // Validate the optional profile before anything is written.
+        val locus = when (request.pricingLocus) {
+            PricingLocusProto.PRICING_LOCUS_UNSPECIFIED, PricingLocusProto.MANUAL -> PricingLocus.MANUAL
+            PricingLocusProto.MARKET -> PricingLocus.MARKET
+            else -> throw invalid("pricing locus must be MARKET or MANUAL")
+        }
+        val type = securityTypeOf(request.securityType)
+        val marketTicker = marketTickerOf(request.marketTicker, locus, ticker)
+        val cusip = cusipOf(request.cusip)
+        val isin = isinOf(request.isin)
         val id = try {
             securities.create(portfolioId, ticker, currency)
         } catch (e: SQLException) {
@@ -146,8 +157,72 @@ class SecurityGrpcService(
                 Status.ALREADY_EXISTS.withDescription("a security with ticker \"$ticker\" already exists")
             )
         }
+        securities.updateProfile(
+            id, request.description.trim(), type, locus, TaxTreatment.LOTS, null,
+            marketTicker, cusip, isin, null,
+        )
         val row = checkNotNull(securities.find(id, portfolioId))
         return AddSecurityResponse.newBuilder().setSecurity(row.toProfile()).build()
+    }
+
+    /** The symbol: upper-cased, 1-32 of A-Z, 0-9, '.', '-'. A trust's
+     *  made-up symbol and a real ticker obey the same rule. */
+    private fun symbolOf(raw: String): String {
+        val ticker = raw.trim().uppercase()
+        if (ticker.isEmpty()) throw invalid("ticker is required")
+        if (ticker.length > 32) throw invalid("ticker exceeds 32 characters")
+        if (!SYMBOL.matches(ticker)) throw invalid("ticker \"$ticker\" may use only letters, digits, '.', and '-'")
+        return ticker
+    }
+
+    private fun securityTypeOf(type: SecurityTypeProto): SecurityType = when (type) {
+        SecurityTypeProto.SECURITY_TYPE_UNSPECIFIED -> SecurityType.UNKNOWN
+        SecurityTypeProto.STOCK -> SecurityType.STOCK
+        SecurityTypeProto.ETF -> SecurityType.ETF
+        SecurityTypeProto.MUTUAL_FUND -> SecurityType.MUTUAL_FUND
+        SecurityTypeProto.PRIVATE_INVESTMENT -> SecurityType.PRIVATE
+        SecurityTypeProto.COLLECTIVE_TRUST -> SecurityType.COLLECTIVE_TRUST
+        else -> throw invalid("unknown security type")
+    }
+
+    /** MARKET locus needs a provider symbol; blank means the symbol
+     *  itself. MANUAL locus never carries one (nothing would use it). */
+    private fun marketTickerOf(raw: String, locus: PricingLocus, symbol: String): String? {
+        if (locus != PricingLocus.MARKET) return null
+        val ticker = raw.trim().uppercase().ifEmpty { symbol }
+        if (ticker.length > 32) throw invalid("market ticker exceeds 32 characters")
+        if (!SYMBOL.matches(ticker)) throw invalid("market ticker \"$ticker\" may use only letters, digits, '.', and '-'")
+        return ticker
+    }
+
+    private fun cusipOf(raw: String): String? {
+        val cusip = raw.trim().uppercase()
+        if (cusip.isEmpty()) return null
+        if (!CUSIP.matches(cusip)) throw invalid("CUSIP \"$cusip\" must be 9 letters or digits")
+        return cusip
+    }
+
+    private fun isinOf(raw: String): String? {
+        val isin = raw.trim().uppercase()
+        if (isin.isEmpty()) return null
+        if (!ISIN.matches(isin)) throw invalid("ISIN \"$isin\" must be 2 letters, 9 letters or digits, and a check digit")
+        return isin
+    }
+
+    /** A mirror must be another security of this portfolio, in the same
+     *  currency, and not itself a mirror (one hop, no chains). */
+    private fun mirrorOf(raw: Long, row: SecurityRow): SecurityId? {
+        if (raw == 0L) return null
+        val target = securities.find(SecurityId(raw), portfolio())
+            ?: throw StatusException(Status.NOT_FOUND.withDescription("no security $raw to mirror"))
+        if (target.id == row.id) throw invalid("${row.ticker} cannot mirror itself")
+        if (target.mirrorsSecurityId != null) {
+            throw invalid("${target.ticker} is itself a mirror of another security; mirror that one instead")
+        }
+        if (target.currency != row.currency) {
+            throw invalid("${target.ticker} is ${target.currency} but ${row.ticker} is ${row.currency}")
+        }
+        return target.id
     }
 
     override suspend fun getSecurityDetails(request: GetSecurityDetailsRequest): GetSecurityDetailsResponse {
@@ -214,14 +289,7 @@ class SecurityGrpcService(
             PricingLocusProto.MANUAL -> PricingLocus.MANUAL
             else -> throw invalid("pricing locus must be MARKET or MANUAL")
         }
-        val type = when (request.securityType) {
-            SecurityTypeProto.SECURITY_TYPE_UNSPECIFIED -> SecurityType.UNKNOWN
-            SecurityTypeProto.STOCK -> SecurityType.STOCK
-            SecurityTypeProto.ETF -> SecurityType.ETF
-            SecurityTypeProto.MUTUAL_FUND -> SecurityType.MUTUAL_FUND
-            SecurityTypeProto.PRIVATE_INVESTMENT -> SecurityType.PRIVATE
-            else -> throw invalid("unknown security type")
-        }
+        val type = securityTypeOf(request.securityType)
         val treatment = when (request.taxTreatment) {
             // Absent on the wire keeps the stored default (LOTS) - 
             // pre-sec. 11 clients never sent the field.
@@ -252,7 +320,21 @@ class SecurityGrpcService(
                 throw invalid("expense ratio is not a valid fraction: \"$raw\"")
             }
         }
-        securities.updateProfile(row.id, request.description.trim(), type, locus, treatment, ratio)
+        // Presence-tracked fields: absent keeps the stored value.
+        val marketTicker = marketTickerOf(
+            if (request.hasMarketTicker()) request.marketTicker else (row.marketTicker ?: ""),
+            locus, row.ticker,
+        )
+        val cusip = if (request.hasCusip()) cusipOf(request.cusip) else row.cusip
+        val isin = if (request.hasIsin()) isinOf(request.isin) else row.isin
+        val mirrors = if (request.hasMirrorsSecurityId()) mirrorOf(request.mirrorsSecurityId, row) else row.mirrorsSecurityId
+        if (mirrors != null && securities.isMirrored(row.id)) {
+            throw invalid("${row.ticker} is mirrored by another security and cannot mirror one itself")
+        }
+        securities.updateProfile(
+            row.id, request.description.trim(), type, locus, treatment, ratio,
+            marketTicker, cusip, isin, mirrors,
+        )
         return UpdateSecurityProfileResponse.getDefaultInstance()
     }
 
@@ -514,6 +596,13 @@ class SecurityGrpcService(
             .setTaxTreatment(taxTreatment.toProto())
             .setHidden(hidden)
         netExpenseRatio?.let { builder.setNetExpenseRatio(it.toFormattedPercent()) }
+        marketTicker?.let { builder.setMarketTicker(it) }
+        cusip?.let { builder.setCusip(it) }
+        isin?.let { builder.setIsin(it) }
+        mirrorsSecurityId?.let { mirror ->
+            builder.setMirrorsSecurityId(mirror.value)
+            securities.find(mirror, portfolio())?.let { builder.setMirrorsTicker(it.ticker) }
+        }
         for (set in classifications.setsFor(id)) {
             val setBuilder = ClassificationSet.newBuilder()
                 .setKind(set.kind.name)
@@ -525,6 +614,12 @@ class SecurityGrpcService(
             builder.addClassifications(setBuilder)
         }
         return builder.build()
+    }
+
+    private companion object {
+        val SYMBOL = Regex("[A-Z0-9.-]{1,32}")
+        val CUSIP = Regex("[A-Z0-9]{9}")
+        val ISIN = Regex("[A-Z]{2}[A-Z0-9]{9}[0-9]")
     }
 
     private fun findSecurity(raw: Long): SecurityRow {

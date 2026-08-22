@@ -11,6 +11,13 @@ import net.stewart.finance.domain.SecurityType
 import net.stewart.finance.domain.TaxTreatment
 import org.jdbi.v3.core.Jdbi
 
+/**
+ * One security. [ticker] is the portfolio-unique symbol the human
+ * chose - for a 401(k) trust a made-up one ("VBTIX-TR"); [marketTicker]
+ * is what the price feeds are keyed on and is null for anything not
+ * market-priced. [mirrorsSecurityId] names the public fund a trust is
+ * the institutional class of (V010).
+ */
 data class SecurityRow(
     val id: SecurityId,
     val ticker: String,
@@ -21,7 +28,15 @@ data class SecurityRow(
     val taxTreatment: TaxTreatment,
     val netExpenseRatio: Fraction?,
     val hidden: Boolean,
-)
+    val marketTicker: String? = null,
+    val cusip: String? = null,
+    val isin: String? = null,
+    val mirrorsSecurityId: SecurityId? = null,
+) {
+    /** The symbol a provider is asked for: the market ticker, else the
+     *  symbol itself (pre-V010 rows and the default for MARKET locus). */
+    val feedTicker: String get() = marketTicker ?: ticker
+}
 
 /** Securities, always portfolio-scoped. */
 class SecurityRepository(dataSource: DataSource) {
@@ -38,7 +53,7 @@ class SecurityRepository(dataSource: DataSource) {
             .list()
     }
 
-    /** Every visible MARKET-locus security, portfolio-independent - 
+    /** Every visible MARKET-locus security, portfolio-independent -
      *  the background price-prefetch job's work list. */
     fun listAllMarket(): List<SecurityRow> = jdbi.sql { handle ->
         handle.createQuery("$SELECT WHERE pricing_locus = 'MARKET' AND NOT hidden ORDER BY ticker")
@@ -79,17 +94,26 @@ class SecurityRepository(dataSource: DataSource) {
         pricingLocus: PricingLocus,
         taxTreatment: TaxTreatment,
         netExpenseRatio: Fraction?,
+        marketTicker: String? = null,
+        cusip: String? = null,
+        isin: String? = null,
+        mirrorsSecurityId: SecurityId? = null,
     ): Boolean = jdbi.sql { handle ->
         handle.createUpdate(
             "UPDATE securities SET description = :description, security_type = :securityType, " +
                 "pricing_locus = :pricingLocus, tax_treatment = :taxTreatment, " +
-                "net_expense_ratio = :netExpenseRatio WHERE id = :id"
+                "net_expense_ratio = :netExpenseRatio, market_ticker = :marketTicker, " +
+                "cusip = :cusip, isin = :isin, mirrors_security_id = :mirrors WHERE id = :id"
         )
             .bind("description", description)
             .bind("securityType", securityType.name)
             .bind("pricingLocus", pricingLocus.name)
             .bind("taxTreatment", taxTreatment.name)
             .bind("netExpenseRatio", netExpenseRatio?.value)
+            .bind("marketTicker", marketTicker)
+            .bind("cusip", cusip)
+            .bind("isin", isin)
+            .bind("mirrors", mirrorsSecurityId?.value)
             .bind("id", id.value)
             .execute() > 0
     }
@@ -113,6 +137,15 @@ class SecurityRepository(dataSource: DataSource) {
             .isPresent
     }
 
+    /** True when another security names this one as its mirror. */
+    fun isMirrored(id: SecurityId): Boolean = jdbi.sql { handle ->
+        handle.createQuery("SELECT 1 FROM securities WHERE mirrors_security_id = :id LIMIT 1")
+            .bind("id", id.value)
+            .mapTo(Int::class.java)
+            .findFirst()
+            .isPresent
+    }
+
     private fun ResultSet.toRow() = SecurityRow(
         id = SecurityId(getLong("id")),
         ticker = getString("ticker"),
@@ -123,11 +156,17 @@ class SecurityRepository(dataSource: DataSource) {
         taxTreatment = TaxTreatment.parse(getString("tax_treatment")),
         netExpenseRatio = getBigDecimal("net_expense_ratio")?.let { Fraction.of(it) },
         hidden = getBoolean("hidden"),
+        marketTicker = getString("market_ticker"),
+        cusip = getString("cusip"),
+        isin = getString("isin"),
+        mirrorsSecurityId = getObject("mirrors_security_id", java.lang.Long::class.java)
+            ?.let { SecurityId(it.toLong()) },
     )
 
     private companion object {
         const val SELECT =
             "SELECT id, ticker, description, currency, security_type, pricing_locus, " +
-                "tax_treatment, net_expense_ratio, hidden FROM securities"
+                "tax_treatment, net_expense_ratio, hidden, market_ticker, cusip, isin, " +
+                "mirrors_security_id FROM securities"
     }
 }

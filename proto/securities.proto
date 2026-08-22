@@ -22,6 +22,9 @@ enum SecurityType {
   ETF = 2;
   MUTUAL_FUND = 3;
   PRIVATE_INVESTMENT = 4;
+  // A 401(k) collective investment trust: the institutional class of
+  // a public fund, no ticker, bought in dollars like a mutual fund.
+  COLLECTIVE_TRUST = 5;
 }
 
 // Who prices the security (build-scope sec. 4): MARKET = the external
@@ -58,6 +61,10 @@ message ClassificationSet {
   map<string, FormattedDecimal> weights = 4;
 }
 
+// `ticker` is the portfolio-unique SYMBOL the human chose - for a
+// trust fund a made-up one ("VBTIX-TR"); `market_ticker` is the
+// provider symbol the price feeds use, required for MARKET locus and
+// empty for hand-priced securities.
 message SecurityProfile {
   int64 security_id = 1;
   string ticker = 2;
@@ -69,6 +76,14 @@ message SecurityProfile {
   bool hidden = 8;
   repeated ClassificationSet classifications = 9;
   TaxTreatment tax_treatment = 10;
+  string market_ticker = 11; // empty unless market-priced
+  string cusip = 12;         // as the institution reports it, when known
+  string isin = 13;
+  // The public fund this security is the institutional class of
+  // (0 = none): its dense price history is charted beside this one's
+  // sparse actuals, and its classification mix is the natural default.
+  int64 mirrors_security_id = 14;
+  string mirrors_ticker = 15;
 }
 
 // Six-month adjusted-close trend, oldest first, embedded in list
@@ -83,6 +98,9 @@ message SecurityListing {
   string description = 3;
   Sparkline sparkline = 4;
   bool hidden = 5;
+  string market_ticker = 6; // empty: hand-priced, no provider symbol
+  SecurityType security_type = 7;
+  PricingLocus pricing_locus = 8;
 }
 
 message ListSecuritiesRequest {
@@ -95,11 +113,20 @@ message ListSecuritiesResponse {
   repeated SecurityListing securities = 1;
 }
 
-// Adding takes just a ticker (FUNCTIONAL_SPEC sec. 9.18); every profile
-// field is then edited manually - there is no auto-population (sec. 6.3).
+// Adding takes a symbol and a currency (FUNCTIONAL_SPEC sec. 9.18);
+// the profile fields are optional here so the Import screen can hand
+// over what the institution reported about a trust fund - still
+// human-created, still no auto-population (sec. 6.3). Left unset they
+// keep their defaults (UNKNOWN type, MANUAL locus).
 message AddSecurityRequest {
   string ticker = 1;
   string currency_code = 2;
+  string description = 3;
+  SecurityType security_type = 4;
+  PricingLocus pricing_locus = 5;
+  string market_ticker = 6; // MARKET locus: empty means "same as ticker"
+  string cusip = 7;
+  string isin = 8;
 }
 
 message AddSecurityResponse {
@@ -152,6 +179,13 @@ message UpdateSecurityProfileRequest {
   Decimal net_expense_ratio = 5;
   // Reverting MARK_TO_MARKET to LOTS is rejected while marks exist.
   TaxTreatment tax_treatment = 6;
+  // Presence-tracked so a client that does not know a field leaves the
+  // stored value alone; sending an empty string clears it. MARKET
+  // locus with no market ticker stored or sent uses the symbol.
+  optional string market_ticker = 7;
+  optional string cusip = 8;
+  optional string isin = 9;
+  optional int64 mirrors_security_id = 10; // 0 clears
 }
 
 message UpdateSecurityProfileResponse {}
