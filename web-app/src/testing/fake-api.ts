@@ -24,6 +24,7 @@ import { SecurityService } from '../proto-gen/securities_pb';
 import { PositionService } from '../proto-gen/positions_pb';
 import { AllocationService } from '../proto-gen/allocation_pb';
 import { ImportService } from '../proto-gen/imports_pb';
+import { InfoService } from '../proto-gen/info_pb';
 import { api } from '../app/core/api';
 
 type Routes = Parameters<typeof createRouterTransport>[0];
@@ -40,6 +41,7 @@ export function installFakeApi(routes: Routes): () => void {
     positions: createClient(PositionService, transport),
     allocation: createClient(AllocationService, transport),
     imports: createClient(ImportService, transport),
+    info: createClient(InfoService, transport),
   });
   return () => {
     Object.assign(api, previous);

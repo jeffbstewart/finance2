@@ -9,6 +9,7 @@ import type { ComponentFixture } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { InfoService } from '../../proto-gen/info_pb';
 import { SessionService } from '../../proto-gen/session_pb';
 import { installFakeApi } from '../../testing/fake-api';
 import { settle } from '../../testing/settle';
@@ -34,6 +35,15 @@ describe('Shell', () => {
     logoutCalls = 0;
     logoutError = undefined;
     restoreApi = installFakeApi(({ service }) => {
+      service(InfoService, {
+        getInfo: () => ({
+          version: '0.1.0',
+          build: 'PR #82 - 2026-08-22 02:30 UTC - 7d470c5',
+          pullRequest: 82,
+          commit: '7d470c5',
+          builtAt: '2026-08-22T02:30:00Z',
+        }),
+      });
       service(SessionService, {
         getSessionStatus: () => ({ setupRequired: false, signedIn: user !== undefined, user }),
         logout: () => {
@@ -172,6 +182,13 @@ describe('Shell', () => {
     await TestBed.inject(Router).navigateByUrl('/imports');
     await settle(fixture);
     expect(active()).toEqual(['/imports']);
+  });
+
+  it('shows the build stamp at the foot of the nav', async () => {
+    const fixture = await render();
+    const stamp = host(fixture).querySelector<HTMLElement>('.shell-build');
+    expect(stamp?.textContent?.trim()).toBe('PR #82 - 2026-08-22 02:30 UTC - 7d470c5');
+    expect(host(fixture).querySelector('mat-sidenav .shell-build')).toBe(stamp);
   });
 
   it('shows no user menu until the session store has a user', async () => {

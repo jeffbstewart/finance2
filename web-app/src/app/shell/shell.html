@@ -29,6 +29,14 @@
         </a>
       }
     </mat-nav-list>
+    @if (info(); as i) {
+      <div
+        class="shell-build"
+        [matTooltip]="'finance2 ' + i.version + (i.commit ? ' at ' + i.commit : '') + (i.builtAt ? ', committed ' + i.builtAt : '')"
+      >
+        {{ i.build }}
+      </div>
+    }
   </mat-sidenav>
   <mat-sidenav-content class="shell-content">
     <router-outlet />

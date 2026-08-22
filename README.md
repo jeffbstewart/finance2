@@ -40,6 +40,12 @@ docker compose up -d --build      # or build the image from this checkout instea
 docker compose logs -f finance2   # the first boot prints the one-time setup token
 ```
 
+- Which build is this? The foot of the left nav shows the build stamp
+  CI baked into the image - `PR #82 - 2026-08-22 02:30 UTC - 7d470c5`:
+  the pull request that was merged, the commit's time, the short
+  commit. Hover for the version. Images are also tagged `pr-<N>`, so
+  `FINANCE2_IMAGE=ghcr.io/jeffbstewart/finance2:pr-82` pins exactly
+  that PR. Anything built outside CI says `dev build`.
 - Portainer: deploy the stack from this repository and update it with
   **Re-pull image** on - the update pulls `:latest` rather than
   rebuilding. (Before the image was published, an update with re-pull

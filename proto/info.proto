@@ -13,6 +13,13 @@ message GetInfoRequest {}
 message GetInfoResponse {
   // Application version, from the server build.
   string version = 1;
+  // What is running, baked into the image by CI: one line for the UI
+  // corner ("PR #82 - 2026-08-22 02:30 UTC - 7d470c5"), "dev build"
+  // for anything built outside CI, plus the parts.
+  string build = 2;
+  int32 pull_request = 3; // the merged PR on main, or the PR under test; 0 unknown
+  string commit = 4;      // short commit, empty when unknown
+  string built_at = 5;    // the commit's time, ISO-8601; empty when unknown
 }
 
 service InfoService {

@@ -205,7 +205,7 @@ fun main() {
                     history = { pricing.history(it) },
                 )
                 listOf(
-                    GrpcServiceSpec(InfoGrpcService()),
+                    GrpcServiceSpec(InfoGrpcService(BuildInfo.fromEnv())),
                     GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
                     GrpcServiceSpec(BrokerGrpcService(portfolios, brokers, accounts, reporting)),
                     GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting)),
