@@ -68,6 +68,7 @@ fun SecurityType.toProto(): net.stewart.finance.proto.SecurityType = when (this)
     SecurityType.ETF -> net.stewart.finance.proto.SecurityType.ETF
     SecurityType.MUTUAL_FUND -> net.stewart.finance.proto.SecurityType.MUTUAL_FUND
     SecurityType.PRIVATE -> net.stewart.finance.proto.SecurityType.PRIVATE_INVESTMENT
+    SecurityType.COLLECTIVE_TRUST -> net.stewart.finance.proto.SecurityType.COLLECTIVE_TRUST
     SecurityType.UNKNOWN -> net.stewart.finance.proto.SecurityType.SECURITY_TYPE_UNSPECIFIED
 }
 

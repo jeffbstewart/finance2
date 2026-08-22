@@ -63,9 +63,20 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
   manager can enforce, set at about twice the measured steady state
   (~115 JVM threads - each a pid - and well under 300 MiB RSS); the JVM
   sizes its heap from the memory limit.
-- On the bridge network a proxy on another host keeps its own address
-  for `TRUSTED_PROXIES`; a proxy on the same host appears as the
-  bridge gateway (typically `172.17.0.1`), not `127.0.0.1`.
+- `TRUSTED_PROXIES`: a proxy on another host keeps its own address; a
+  proxy on the same host appears as the gateway of the stack's network,
+  which the compose file pins to `FINANCE2_SUBNET` (`172.28.0.0/24`, so
+  the gateway is `172.28.0.1`) precisely so that re-creating the stack
+  does not move it. Entries may be CIDR ranges (`172.28.0.0/24`) when
+  you would rather trust the whole subnet than one gateway address.
+- Deploying through Portainer behind HAProxy: the stack create/update
+  is one synchronous HTTP request that includes pulling the 170 MB
+  image, and HAProxy's default `timeout server` (50s) will cut it off
+  with its own `504 Gateway Time-out` page while Portainer carries on
+  in the background - leaving a half-created stack. Either raise the
+  timeout on the Portainer backend (`timeout server 10m` is plenty) or
+  pull the image first (`docker pull ghcr.io/jeffbstewart/finance2:latest`,
+  or Portainer's Images > Pull) so the deploy itself is quick.
 - A minimal HAProxy backend:
 
   ```

@@ -50,7 +50,7 @@ data class AttributedWarning(
 const val PLAID_PRICE_SOURCE = "plaid"
 
 /** How a snapshot security resolved to a finance2 security. */
-enum class SecurityMatch { BY_TICKER, BY_LINK, UNMATCHED }
+enum class SecurityMatch { BY_TICKER, BY_CUSIP, BY_LINK, UNMATCHED }
 
 /** One distinct non-cash security a snapshot holds, with its match. */
 data class SnapshotSecurity(
@@ -400,14 +400,23 @@ class SnapshotImportService(
         }
     }
 
-    /** Ticker first; else the human's link. */
+    /** Ticker first (the symbol, then the market ticker - a security whose
+     *  symbol differs from its provider symbol still matches); then the
+     *  CUSIP the institution reports; else the human's link. */
     private inner class SecurityIndex(rows: List<SecurityRow>, private val links: Map<String, SecurityId>) {
         private val byTicker = rows.filter { it.ticker.isNotBlank() }.associateBy { it.ticker.uppercase() }
+        private val byMarketTicker = rows.filter { !it.marketTicker.isNullOrBlank() }
+            .associateBy { it.marketTicker!!.uppercase() }
+        private val byCusip = rows.filter { !it.cusip.isNullOrBlank() }.associateBy { it.cusip!!.uppercase() }
         private val byId = rows.associateBy { it.id }
 
         fun resolve(ref: SecurityRef): Pair<SecurityMatch, SecurityRow?> {
             val ticker = ref.ticker.trim().uppercase()
-            if (ticker.isNotEmpty()) byTicker[ticker]?.let { return SecurityMatch.BY_TICKER to it }
+            if (ticker.isNotEmpty()) {
+                (byTicker[ticker] ?: byMarketTicker[ticker])?.let { return SecurityMatch.BY_TICKER to it }
+            }
+            val cusip = ref.cusip.trim().uppercase()
+            if (cusip.isNotEmpty()) byCusip[cusip]?.let { return SecurityMatch.BY_CUSIP to it }
             if (ref.plaidSecurityId.isNotEmpty()) {
                 links[ref.plaidSecurityId]?.let { id -> byId[id]?.let { return SecurityMatch.BY_LINK to it } }
             }

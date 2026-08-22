@@ -358,3 +358,28 @@ The first export showed two things the v1 processor could not handle.
   holding, else left unchanged with a warning. (bankferry could stop
   exporting `available` as cash; archived snapshots need this logic
   regardless.)
+
+## Amendment: symbols, market tickers, and mirrors (2026-08-22)
+
+Trust-class securities made the ticker's three jobs separate. Layered
+in three PRs (schema/backend, UI, mirrored chart):
+
+- `securities.ticker` is the portfolio-unique **symbol** the human
+  chooses - for a trust a made-up one, by convention the public
+  class's ticker plus `-TR` (`VBTIX-TR`). Symbols are `[A-Z0-9.-]`,
+  upper-cased on entry.
+- `market_ticker` (V010) is what the price feeds are keyed on: required
+  for MARKET locus (blank means "the symbol"), NULL for hand-priced
+  securities, so a made-up symbol can never reach a provider.
+- `cusip` / `isin` are stored as the institution reports them; the
+  importer matches ticker (symbol or market ticker), then CUSIP, then
+  the human-made Plaid link.
+- `COLLECTIVE_TRUST` joins the security types; it is bought in dollars
+  like the mutual fund it mirrors.
+- `mirrors_security_id` names the public fund a trust is the
+  institutional class of: same currency, one hop, no self. Its dense
+  history is charted on a second axis beside the trust's sparse
+  actuals (layer 3); its classification mix is the natural default.
+- `AddSecurity` accepts the optional profile so the Import screen can
+  prefill a trust from the Plaid row; `UpdateSecurityProfile`'s new
+  fields are presence-tracked so older clients leave them alone.

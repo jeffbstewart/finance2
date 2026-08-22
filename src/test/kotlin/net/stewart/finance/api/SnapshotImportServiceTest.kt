@@ -469,6 +469,23 @@ class SnapshotImportServiceTest {
     }
 
     @Test
+    fun `a reported CUSIP matches a security that carries it, without a link`() {
+        db.dataSource.connection.use { conn ->
+            conn.createStatement().use { s -> s.executeUpdate("UPDATE securities SET cusip = '922908769' WHERE id = 2") }
+        }
+        PlaidAccountLinkRepository(db.dataSource).link("ref-401k", AccountId(1))
+        val withCusip = trustHolding("10", "10.00", "100.00").toBuilder().apply {
+            securityBuilder.setCusip("922908769")
+        }.build()
+        val record = service.upload(portfolioId, "s.pb", snapshot(account401k(withCusip, total = "100.00")).toByteArray())
+        val rows = service.snapshotSecurities(portfolioId, record.id)
+        assertEquals(SecurityMatch.BY_CUSIP, rows.single().match)
+        assertEquals("VBTIX-TR", rows.single().security?.ticker)
+        val report = ImportReport.parseFrom(service.process(portfolioId, record.id).report!!)
+        assertEquals(1, report.holdingsUpdated)
+    }
+
+    @Test
     fun `snapshot securities list each distinct non-cash security with its match`() {
         PlaidSecurityLinkRepository(db.dataSource).link("plaid-sec-trust", SecurityId(2))
         val record = service.upload(
