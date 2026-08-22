@@ -134,12 +134,17 @@ export class SecurityDetailsPage {
           .map((p) => ({ date: isoDate(p.date!), value: Number(p.adjustedClose?.value) })),
       });
     }
-    const indicators = details.indicators;
+    // With a mirror, the indicators are the mirror's (its dense history
+    // carries the 20-sample window; the own prices cannot) and plot on
+    // the mirror's axis.
+    const indicators = mirrored ? details.mirrorIndicators : details.indicators;
+    const indicatorAxis: TimeSeries['axis'] = mirrored ? 'right' : 'left';
     const indicator = this.indicator();
     if (indicator === 'sma' && indicators) {
       series.push({
         name: 'SMA (20)',
         dashed: true,
+        axis: indicatorAxis,
         points: indicators.sma
           .filter((p) => inRange(p.date))
           .map((p) => ({ date: isoDate(p.date!), value: Number(p.value?.value) })),
@@ -149,6 +154,7 @@ export class SecurityDetailsPage {
       series.push({
         name: 'EMA (20)',
         dashed: true,
+        axis: indicatorAxis,
         points: indicators.ema
           .filter((p) => inRange(p.date))
           .map((p) => ({ date: isoDate(p.date!), value: Number(p.value?.value) })),
@@ -160,16 +166,19 @@ export class SecurityDetailsPage {
         {
           name: 'Bollinger Mean',
           dashed: true,
+          axis: indicatorAxis,
           points: band.map((p) => ({ date: isoDate(p.date!), value: Number(p.mean?.value) })),
         },
         {
           name: 'Bollinger Upper',
           dashed: true,
+          axis: indicatorAxis,
           points: band.map((p) => ({ date: isoDate(p.date!), value: Number(p.upper?.value) })),
         },
         {
           name: 'Bollinger Lower',
           dashed: true,
+          axis: indicatorAxis,
           points: band.map((p) => ({ date: isoDate(p.date!), value: Number(p.lower?.value) })),
         },
       );
