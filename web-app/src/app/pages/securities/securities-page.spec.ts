@@ -18,6 +18,8 @@ import {
   SparklineSchema,
   type SecurityListing,
   type SetSecurityHiddenRequest,
+  PricingLocus,
+  SecurityType,
 } from '../../../proto-gen/securities_pb';
 import { installFakeApi } from '../../../testing/fake-api';
 import { sampleSecurities } from '../../../testing/sample-data';
@@ -116,6 +118,34 @@ describe('SecuritiesPage', () => {
     input.click();
     await settle(fixture);
   }
+
+  it('tags trusts, hand-priced securities, and a differing provider symbol', async () => {
+    listing = () => [
+      create(SecurityListingSchema, {
+        securityId: 11n, ticker: 'VBTIX-TR', description: 'Total Bond Market Index Trust',
+        securityType: SecurityType.COLLECTIVE_TRUST, pricingLocus: PricingLocus.MANUAL,
+      }),
+      create(SecurityListingSchema, {
+        securityId: 12n, ticker: 'GOLD', description: 'Gold coins', pricingLocus: PricingLocus.MANUAL,
+      }),
+      create(SecurityListingSchema, {
+        securityId: 13n, ticker: 'VBTIX', description: 'Total Bond Market Index Fund',
+        pricingLocus: PricingLocus.MARKET, marketTicker: 'VBTIX.US',
+      }),
+      create(SecurityListingSchema, {
+        securityId: 14n, ticker: 'VTI', description: 'Total Market ETF',
+        pricingLocus: PricingLocus.MARKET, marketTicker: 'VTI',
+      }),
+    ];
+    const fixture = await render();
+    // The tag abuts the symbol in the DOM (the gap is CSS margin).
+    expect(rows(fixture).map((row) => row[0])).toEqual([
+      'VBTIX-TRtrust',
+      'GOLDmanual',
+      'VBTIXVBTIX.US',
+      'VTI',
+    ]);
+  });
 
   it('lists only visible securities and asks the server for exactly that', async () => {
     const fixture = await render();

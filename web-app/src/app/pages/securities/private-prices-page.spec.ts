@@ -33,6 +33,7 @@ function samplePrices(): PrivatePriceRow[] {
       priceId: 21n,
       date: date('2026-08-16'),
       price: money('3358.5000', { display: '$3,358.50' }),
+      source: 'plaid',
     }),
     create(PrivatePriceRowSchema, {
       priceId: 20n,
@@ -169,10 +170,10 @@ describe('PrivatePricesPage', () => {
     expect(host(fixture).textContent).toContain(
       'Edit Privately Traded Price History for GOLD',
     );
-    // Two data columns plus the actions cell (which holds the buttons).
-    expect(rows(fixture).map((row) => row.slice(0, 2))).toEqual([
-      ['2026-08-16', '$3,358.50'],
-      ['2026-05-23', '$3,100.00'],
+    // Date, price, and where the row came from; then the actions cell.
+    expect(rows(fixture).map((row) => row.slice(0, 3))).toEqual([
+      ['2026-08-16', '$3,358.50', 'plaid'],
+      ['2026-05-23', '$3,100.00', 'manual'],
     ]);
     expect(host(fixture).querySelector('.empty-note')).toBeNull();
   });

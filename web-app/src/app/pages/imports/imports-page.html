@@ -131,6 +131,8 @@
           <td mat-cell *matCellDef="let x">
             @if (x.match === SecurityMatch.BY_TICKER) {
               <span class="match-chip">{{ x.securityTicker }} (by ticker)</span>
+            } @else if (x.match === SecurityMatch.BY_CUSIP) {
+              <span class="match-chip">{{ x.securityTicker }} (by CUSIP)</span>
             } @else {
               <mat-select
                 class="link-select"
@@ -143,6 +145,12 @@
                   <mat-option [value]="local.securityId">{{ securityLabel(local) }}</mat-option>
                 }
               </mat-select>
+              @if (!x.securityId) {
+                <button matButton (click)="addSecurityFor(x)" [attr.aria-label]="'Add ' + x.name + ' as a new security'">
+                  <mat-icon>add</mat-icon>
+                  Add as new security
+                </button>
+              }
             }
           </td>
         </ng-container>

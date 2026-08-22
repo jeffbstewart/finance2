@@ -37,7 +37,7 @@ export class PrivatePricesPage {
 
   readonly prices = signal<PrivatePriceRow[]>([]);
   readonly ticker = signal('');
-  readonly columns = ['date', 'price', 'actions'];
+  readonly columns = ['date', 'price', 'source', 'actions'];
 
   private get securityId(): bigint {
     return BigInt(this.id());

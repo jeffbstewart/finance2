@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
@@ -13,9 +14,10 @@ import {
   type PlaidSecurityView,
   type SnapshotRow,
 } from '../../../proto-gen/imports_pb';
-import type { SecurityListing } from '../../../proto-gen/securities_pb';
+import { SecurityType, type SecurityListing } from '../../../proto-gen/securities_pb';
 import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
+import { AddSecurityDialog, type AddSecurityDialogData } from '../securities/add-security-dialog';
 
 /**
  * bankferry snapshot imports (pipeline design, amended 2026-08-20):
@@ -27,12 +29,13 @@ import { Notify } from '../../core/notify';
  */
 @Component({
   selector: 'app-imports-page',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, MatSelectModule, MatTableModule],
+  imports: [MatButtonModule, MatCardModule, MatDialogModule, MatIconModule, MatSelectModule, MatTableModule],
   templateUrl: './imports-page.html',
   styleUrl: './imports-page.scss',
 })
 export class ImportsPage {
   private readonly notify = inject(Notify);
+  private readonly dialog = inject(MatDialog);
 
   readonly snapshots = signal<SnapshotRow[]>([]);
   readonly selected = signal<SnapshotRow | undefined>(undefined);
@@ -190,6 +193,28 @@ export class ImportsPage {
     } catch (err) {
       this.notify.error(err);
     }
+  }
+
+  /** Opens the add dialog prefilled from the Plaid row (sec. 6.3: still
+   *  human-created); on save the dialog links the new security to the
+   *  row, so only the securities panel needs re-reading. */
+  addSecurityFor(plaidSecurity: PlaidSecurityView): void {
+    const data: AddSecurityDialogData = {
+      ticker: plaidSecurity.ticker ? plaidSecurity.ticker : '',
+      description: plaidSecurity.name,
+      currencyCode: plaidSecurity.currencyCode || 'USD',
+      cusip: plaidSecurity.cusip,
+      hasPublicTicker: !!plaidSecurity.ticker,
+      securityType: plaidSecurity.ticker ? SecurityType.SECURITY_TYPE_UNSPECIFIED : SecurityType.COLLECTIVE_TRUST,
+      plaidSecurityId: plaidSecurity.plaidSecurityId,
+    };
+    this.dialog
+      .open(AddSecurityDialog, { data })
+      .afterClosed()
+      .subscribe((created) => {
+        if (!created) return;
+        void this.reload(this.selected()?.snapshotId);
+      });
   }
 
   /** Ticker / CUSIP as Plaid reported them; "no ticker" is the whole

@@ -15,6 +15,8 @@ data class PrivatePriceRow(
     val securityId: SecurityId,
     val date: LocalDate,
     val price: Money,
+    /** "manual" for hand-entered rows, "plaid" when an import wrote it. */
+    val source: String = "manual",
 )
 
 /**
@@ -29,7 +31,7 @@ class PrivatePriceRepository(dataSource: DataSource) {
     /** Newest first, for the price-history editor (spec sec. 9.12). */
     fun list(securityId: SecurityId): List<PrivatePriceRow> = jdbi.sql { handle ->
         handle.createQuery(
-            "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
+            "SELECT p.id, p.security_id, p.price_date, p.price, p.source, s.currency FROM private_prices p " +
                 "JOIN securities s ON s.id = p.security_id " +
                 "WHERE p.security_id = :securityId ORDER BY p.price_date DESC"
         )
@@ -93,7 +95,7 @@ class PrivatePriceRepository(dataSource: DataSource) {
 
     fun find(id: PriceId, portfolioId: PortfolioId): PrivatePriceRow? = jdbi.sql { handle ->
         handle.createQuery(
-            "SELECT p.id, p.security_id, p.price_date, p.price, s.currency FROM private_prices p " +
+            "SELECT p.id, p.security_id, p.price_date, p.price, p.source, s.currency FROM private_prices p " +
                 "JOIN securities s ON s.id = p.security_id " +
                 "WHERE p.id = :id AND s.portfolio_id = :portfolioId"
         )
@@ -161,5 +163,6 @@ class PrivatePriceRepository(dataSource: DataSource) {
         securityId = SecurityId(getLong("security_id")),
         date = getObject("price_date", LocalDate::class.java),
         price = Money.of(getBigDecimal("price"), CurrencyUnit.parse(getString("currency").trim())),
+        source = getString("source"),
     )
 }

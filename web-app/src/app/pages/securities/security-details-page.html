@@ -5,6 +5,12 @@
       <mat-card-subtitle>
         {{ tradedLabel() }} | {{ typeLabel() }} | {{ s.currencyCode }}
         | Net Expense Ratio: {{ s.netExpenseRatio?.display || '-' }}
+        @if (s.marketTicker && s.marketTicker !== s.ticker) { | Provider symbol: {{ s.marketTicker }} }
+        @if (s.cusip) { | CUSIP {{ s.cusip }} }
+        @if (s.isin) { | ISIN {{ s.isin }} }
+        @if (s.mirrorsSecurityId) {
+          | Mirrors <a [routerLink]="['/securities', s.mirrorsSecurityId]">{{ s.mirrorsTicker }}</a>
+        }
         @if (s.hidden) { <span class="hidden-tag">(hidden)</span> }
       </mat-card-subtitle>
       <span class="header-spacer"></span>

@@ -23,8 +23,11 @@ test('lists the seeded visible securities with their descriptions', async ({ pag
   await page.goto('/app/securities');
   const table = await readTable(page);
   expect(table.header).toEqual(['Ticker', 'Trend', 'Description', '']);
-  // Server orders by ticker; GHOST is hidden.
-  expect(table.rows.map((cells) => cells[0])).toEqual(['BONDX', 'EUFUND', 'GOLD', 'SOLO', 'VTI']);
+  // Server orders by ticker; GHOST is hidden. A hand-priced security's
+  // symbol cell carries its tag (the gap is CSS margin).
+  expect(table.rows.map((cells) => cells[0])).toEqual([
+    'BONDXmanual', 'EUFUNDmanual', 'GOLDmanual', 'SOLOmanual', 'VTI',
+  ]);
   expect(table.rows.map((cells) => cells[2])).toEqual([
     'Aggregate Bond Fund',
     'European Index Fund',
@@ -34,6 +37,7 @@ test('lists the seeded visible securities with their descriptions', async ({ pag
   ]);
   await expect(page.locator('.empty-note')).toHaveCount(0);
   await expect(page.locator('.hidden-tag')).toHaveCount(0);
+  await expect(page.locator('.symbol-tag')).toHaveText(['manual', 'manual', 'manual', 'manual']);
   // No unhide affordance while nothing hidden is on screen.
   await expect(page.getByRole('button', { name: 'Unhide' })).toHaveCount(0);
 });

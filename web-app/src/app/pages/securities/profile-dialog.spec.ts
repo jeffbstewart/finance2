@@ -19,6 +19,7 @@ import {
 } from '../../../proto-gen/securities_pb';
 import { installFakeApi } from '../../../testing/fake-api';
 import { settle } from '../../../testing/settle';
+import { sampleAllSecurities } from '../../../testing/sample-data';
 import { fraction } from '../../../testing/wire';
 import { Notify } from '../../core/notify';
 import { ProfileDialog } from './profile-dialog';
@@ -61,20 +62,40 @@ function updateOf(request: UpdateSecurityProfileRequest): Update {
   };
 }
 
+/** The identifier / mirror fields, presence included (proto3 optional). */
+type Identifiers = {
+  marketTicker?: string;
+  cusip?: string;
+  isin?: string;
+  mirrorsSecurityId?: bigint;
+};
+
+function identifiersOf(request: UpdateSecurityProfileRequest): Identifiers {
+  return {
+    marketTicker: request.marketTicker,
+    cusip: request.cusip,
+    isin: request.isin,
+    mirrorsSecurityId: request.mirrorsSecurityId,
+  };
+}
+
 describe('ProfileDialog', () => {
   let restoreApi: () => void;
   let updates: Update[];
+  let identifiers: Identifiers[];
   let respond: () => unknown;
   let closed: unknown[];
 
   beforeEach(() => {
     updates = [];
+    identifiers = [];
     closed = [];
     respond = () => ({});
     restoreApi = installFakeApi(({ service }) => {
       service(SecurityService, {
         updateSecurityProfile: (request) => {
           updates.push(updateOf(request));
+          identifiers.push(identifiersOf(request));
           return respond() as never;
         },
       });
@@ -225,6 +246,7 @@ describe('ProfileDialog', () => {
       'Stock',
       'ETF',
       'Mutual Fund',
+      'Collective Trust',
       'Private Investment',
     ]);
     expect(await texts('Pricing')).toEqual([
@@ -234,6 +256,49 @@ describe('ProfileDialog', () => {
     expect(await texts('Tax Treatment')).toEqual([
       'Purchase lots (capital gains)',
       'Mark-to-market (PFIC sec. 1296, ordinary income)',
+    ]);
+  });
+
+  it('sends the identifiers, and the mirror only when candidates were offered', async () => {
+    // Without candidates (an older caller) the mirror field is absent
+    // from the form and from the request, so the server keeps it.
+    const plain = await render();
+    await type(plain, 'CUSIP', ' 922908769 ');
+    submitButton(plain).click();
+    await settle(plain);
+    expect(identifiers).toEqual([
+      { marketTicker: '', cusip: '922908769', isin: '', mirrorsSecurityId: undefined },
+    ]);
+    expect(host(plain).textContent).not.toContain('Mirrors');
+  });
+
+  it('offers every other security as the mirror and sends the chosen one', async () => {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        security: profile({ securityId: 4n, ticker: 'EUFUND-TR' }),
+        mirrorCandidates: sampleAllSecurities(),
+      },
+    });
+    const fixture = TestBed.createComponent(ProfileDialog);
+    fixture.detectChanges();
+    await settle(fixture);
+    const options = (await openSelect(fixture, 'Mirrors')).map((o) => o.textContent!.trim());
+    // Every seeded listing but EUFUND itself (id 4), hidden GHOST included.
+    expect(options).toEqual([
+      'None',
+      'BONDX - Aggregate Bond Fund',
+      'GHOST - Hidden test security',
+      'GOLD - Gold coins in a vault',
+      'SOLO - Priced, never held',
+      'VTI - Total Market ETF',
+    ]);
+    await pickOption(fixture, 'Mirrors', 'VTI - Total Market ETF');
+    await pickOption(fixture, 'Pricing', 'Market');
+    await type(fixture, 'Provider symbol', 'vti.us');
+    submitButton(fixture).click();
+    await settle(fixture);
+    expect(identifiers).toEqual([
+      { marketTicker: 'vti.us', cusip: '', isin: '', mirrorsSecurityId: 1n },
     ]);
   });
 

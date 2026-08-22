@@ -193,11 +193,19 @@ export class SecurityDetailsPage {
     void this.router.navigate([], { queryParams: { tab: index }, replaceUrl: true });
   }
 
-  editProfile(): void {
+  async editProfile(): Promise<void> {
     const security = this.security();
     if (!security) return;
+    // The mirror field offers every other security, hidden ones too.
+    let mirrorCandidates;
+    try {
+      mirrorCandidates = (await api.securities.listSecurities({ includeHidden: true })).securities;
+    } catch (err) {
+      this.notify.error(err);
+      return;
+    }
     this.dialog
-      .open(ProfileDialog, { data: { security } })
+      .open(ProfileDialog, { data: { security, mirrorCandidates } })
       .afterClosed()
       .subscribe((changed) => changed && void this.reload());
   }
