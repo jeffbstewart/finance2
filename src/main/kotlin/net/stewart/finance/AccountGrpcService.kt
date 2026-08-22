@@ -5,6 +5,7 @@ import io.grpc.StatusException
 import java.sql.SQLException
 import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
+import net.stewart.finance.api.AccountValuation
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.api.provenanceOf
 import net.stewart.finance.api.toFormatted
@@ -45,6 +46,7 @@ class AccountGrpcService(
     private val brokers: BrokerRepository,
     private val accounts: AccountRepository,
     private val reporting: ReportingCurrency,
+    private val valuation: AccountValuation,
 ) : AccountServiceGrpcKt.AccountServiceCoroutineImplBase() {
 
     override suspend fun listAccounts(request: ListAccountsRequest): ListAccountsResponse {
@@ -52,12 +54,17 @@ class AccountGrpcService(
         val today = LocalDate.now()
         val brokerFilter = if (request.brokerId > 0) BrokerId(request.brokerId) else null
         val rows = accounts.list(portfolioId, brokerFilter, request.includeHidden)
+        val values = valuation.byAccount(portfolioId, rows, today)
         var totalSweeps = reporting.zero()
-        val totalInvestment = reporting.zero()
+        var totalInvestment = reporting.zero()
         val builder = ListAccountsResponse.newBuilder()
         for (row in rows) {
-            if (!row.hidden) totalSweeps += reporting.toReporting(row.sweep, today)
-            builder.addAccounts(row.toSummary())
+            val value = values[row.id] ?: Money.zero(row.currency)
+            if (!row.hidden) {
+                totalSweeps += reporting.toReporting(row.sweep, today)
+                totalInvestment += reporting.toReporting(value, today)
+            }
+            builder.addAccounts(row.toSummary(value))
         }
         return builder
             .setTotalInvestmentValue(totalInvestment.toFormatted())
@@ -66,9 +73,12 @@ class AccountGrpcService(
     }
 
     override suspend fun getAccount(request: GetAccountRequest): GetAccountResponse {
-        val row = accounts.find(accountId(request.accountId), portfolio())
+        val portfolioId = portfolio()
+        val row = accounts.find(accountId(request.accountId), portfolioId)
             ?: throw notFound(request.accountId)
-        return GetAccountResponse.newBuilder().setAccount(row.toSummary()).build()
+        val value = valuation.byAccount(portfolioId, listOf(row), LocalDate.now())[row.id]
+            ?: Money.zero(row.currency)
+        return GetAccountResponse.newBuilder().setAccount(row.toSummary(value)).build()
     }
 
     override suspend fun createAccount(request: CreateAccountRequest): CreateAccountResponse {
@@ -146,7 +156,7 @@ class AccountGrpcService(
         return SetAccountHiddenResponse.getDefaultInstance()
     }
 
-    private fun AccountRow.toSummary(): AccountSummary = AccountSummary.newBuilder()
+    private fun AccountRow.toSummary(investmentValue: Money): AccountSummary = AccountSummary.newBuilder()
         .setAccountId(id.value)
         .setBrokerId(brokerId.value)
         .setBrokerName(brokerName)
@@ -156,7 +166,7 @@ class AccountGrpcService(
         .setTaxDeferred(taxDeferred)
         .setSweepBalance(sweep.toFormatted())
         .setSweepProvenance(provenanceOf(sweepSource, sweepAsOf))
-        .setInvestmentValue(Money.zero(currency).toFormatted())
+        .setInvestmentValue(investmentValue.toFormatted())
         .setHidden(hidden)
         .build()
 

@@ -33,16 +33,26 @@ test('lists the seeded Vanguard accounts with USD footer totals', async ({ page 
     'Investment Value',
     '',
   ]);
-  // Investment values stay $0.00 until the Phase 4/5 pricing work - 
-  // AccountGrpcService returns Money.zero for every account today.
-  expect(table.rows).toEqual([
-    ['Brokerage', 'X-1 (USD)', 'No', '$500.00', '$0.00', 'edit'],
-    ['Roth IRA', 'X-2 (USD)', 'Yes', '$55.25', '$0.00', 'edit'],
+  // Investment values are the priced positions (the Positions page's
+  // numbers, summed per account). VTI's synthetic close moves daily,
+  // so assert shape and consistency rather than a figure.
+  const money = /^\$[\d,]+\.\d\d$/;
+  expect(table.rows.map((row) => row.slice(0, 4).concat(row[5]))).toEqual([
+    ['Brokerage', 'X-1 (USD)', 'No', '$500.00', 'edit'],
+    ['Roth IRA', 'X-2 (USD)', 'Yes', '$55.25', 'edit'],
   ]);
+  const dollars = (s: string) => Number(s.replace(/[$,]/g, ''));
+  for (const row of table.rows) expect(row[4]).toMatch(money);
+  expect(dollars(table.rows[0][4])).toBeGreaterThan(0); // lots: VTI, BONDX
+  expect(dollars(table.rows[1][4])).toBeGreaterThan(0); // holdings: VTI, GOLD
   // The hidden Closed Account never appears: the page never asks for
   // hidden accounts, and offers no way to unhide one.
   expect(table.rows.map((row) => row[0])).not.toContain('Closed Account');
-  expect(table.footer).toEqual(['Total', '', '', '$555.25', '$0.00', '']);
+  expect(table.footer.slice(0, 4)).toEqual(['Total', '', '', '$555.25']);
+  expect(dollars(table.footer[4])).toBeCloseTo(
+    dollars(table.rows[0][4]) + dollars(table.rows[1][4]),
+    2,
+  );
 });
 
 test('shows the EUR account in its own currency under a USD total', async ({ page }) => {
@@ -50,12 +60,15 @@ test('shows the EUR account in its own currency under a USD total', async ({ pag
   await expect(page.locator('mat-card-title')).toHaveText('Accounts at EuroBank');
 
   const table = await readTable(page);
+  // 100 EUFUND at its latest hand-entered price (EUR 104.00): a fixed
+  // figure, unlike the synthetic VTI close.
   expect(table.rows).toEqual([
-    ['EUR Brokerage', 'X-3 (EUR)', 'No', '\u20ac250.00', '\u20ac0.00', 'edit'],
+    ['EUR Brokerage', 'X-3 (EUR)', 'No', '\u20ac250.00', '\u20ac10,400.00', 'edit'],
   ]);
   // The row is account currency; the footer is the reporting currency,
   // converted through the seeded EUR->USD rate for yesterday (1.16).
   expect(table.footer[3]).toBe('$290.00');
+  expect(table.footer[4]).toBe('$12,064.00');
 });
 
 test('an empty broker resolves its title and offers to hide itself', async ({ page }) => {
@@ -114,7 +127,7 @@ test('edits an account sweep balance from its row button', async ({ page }) => {
   await expectSnackbar(page, 'Account updated');
   await expect(page.locator('tr[mat-row]').first()).toContainText('$612.50'); // reload landed
   const table = await readTable(page);
-  expect(table.rows[0]).toEqual(['Brokerage', 'X-1 (USD)', 'No', '$612.50', '$0.00', 'edit']);
+  expect(table.rows[0].slice(0, 4)).toEqual(['Brokerage', 'X-1 (USD)', 'No', '$612.50']);
   expect(table.footer[3]).toBe('$667.75');
 });
 

@@ -5,6 +5,7 @@ import io.grpc.StatusException
 import java.sql.SQLException
 import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
+import net.stewart.finance.api.AccountValuation
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.api.toFormatted
 import net.stewart.finance.db.AccountRepository
@@ -37,13 +38,16 @@ class BrokerGrpcService(
     private val brokers: BrokerRepository,
     private val accounts: AccountRepository,
     private val reporting: ReportingCurrency,
+    private val valuation: AccountValuation,
 ) : BrokerServiceGrpcKt.BrokerServiceCoroutineImplBase() {
 
     override suspend fun listBrokers(request: ListBrokersRequest): ListBrokersResponse {
         val portfolioId = portfolio()
         val today = LocalDate.now()
-        val sweepsByBroker = accounts.list(portfolioId, brokerId = null, includeHidden = false)
-            .groupBy({ it.brokerId }, { it.sweep })
+        val visibleAccounts = accounts.list(portfolioId, brokerId = null, includeHidden = false)
+        val sweepsByBroker = visibleAccounts.groupBy({ it.brokerId }, { it.sweep })
+        val values = valuation.byAccount(portfolioId, visibleAccounts, today)
+        val holdingsByBroker = visibleAccounts.groupBy({ it.brokerId }, { values[it.id] }).mapValues { (_, v) -> v.filterNotNull() }
 
         var totalSweeps = reporting.zero()
         var totalHoldings = reporting.zero()
@@ -51,9 +55,8 @@ class BrokerGrpcService(
         for (broker in brokers.list(portfolioId, request.includeHidden)) {
             val sweeps = (sweepsByBroker[broker.id] ?: emptyList())
                 .fold(reporting.zero()) { acc, sweep -> acc + reporting.toReporting(sweep, today) }
-            // Positions do not exist yet; investment value becomes real
-            // with the pricing work (Phase 4/5).
-            val holdings = reporting.zero()
+            val holdings = (holdingsByBroker[broker.id] ?: emptyList())
+                .fold(reporting.zero()) { acc, value -> acc + reporting.toReporting(value, today) }
             totalSweeps += sweeps
             totalHoldings += holdings
             builder.addBrokers(

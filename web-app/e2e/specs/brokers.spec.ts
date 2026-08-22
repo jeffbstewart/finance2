@@ -39,8 +39,14 @@ test('sweeps are summed per broker in the reporting currency', async ({ page }) 
   expect(table.footer[2]).toBe('$845.25');
   // Holdings are still zero server-side (BrokerGrpcService: positions
   // pricing lands in Phase 4/5) - pinning today's behavior.
-  expect(vanguard[1]).toBe('$0.00');
-  expect(table.footer[1]).toBe('$0.00');
+  // Holdings are the priced positions of each broker's visible
+  // accounts, in USD; VTI's synthetic close moves daily, so shape and
+  // consistency: Vanguard and EuroBank both hold, the footer is the sum.
+  const dollars = (s: string) => Number(s.replace(/[$,]/g, ''));
+  expect(vanguard[1]).toMatch(/^\$[\d,]+\.\d\d$/);
+  expect(dollars(vanguard[1])).toBeGreaterThan(0);
+  expect(dollars(euroBank[1])).toBeGreaterThan(0);
+  expect(dollars(table.footer[1])).toBeCloseTo(dollars(vanguard[1]) + dollars(euroBank[1]), 2);
 });
 
 test('renders the holdings pie for the visible brokers', async ({ page }) => {
