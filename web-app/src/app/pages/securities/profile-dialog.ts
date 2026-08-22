@@ -9,6 +9,7 @@ import {
   PricingLocus,
   SecurityType,
   TaxTreatment,
+  type SecurityListing,
   type SecurityProfile,
 } from '../../../proto-gen/securities_pb';
 import { api } from '../../core/api';
@@ -17,13 +18,18 @@ import { Notify } from '../../core/notify';
 
 export interface ProfileDialogData {
   security: SecurityProfile;
+  /** Other securities of the portfolio, offered as the mirror target.
+   *  Absent (older callers) hides the mirror field. */
+  mirrorCandidates?: SecurityListing[];
 }
 
 /**
  * Edit the security profile (spec sec. 9.10 header affordances; sec. 6.3 - all
- * fields hand-maintained, no auto-population). The MUTUAL_FUND type
- * drives dollar-vs-share purchases in the rebalance planner, and the
- * pricing locus decides market vs private pricing, so both live here.
+ * fields hand-maintained, no auto-population). The type drives
+ * dollar-vs-share purchases in the rebalance planner, and the pricing
+ * locus decides market vs private pricing, so both live here. Under
+ * MARKET pricing the provider symbol can differ from the local one;
+ * a trust fund can name the public fund it mirrors.
  */
 @Component({
   selector: 'app-profile-dialog',
@@ -48,6 +54,7 @@ export interface ProfileDialogData {
           <mat-option [value]="SecurityType.STOCK">Stock</mat-option>
           <mat-option [value]="SecurityType.ETF">ETF</mat-option>
           <mat-option [value]="SecurityType.MUTUAL_FUND">Mutual Fund</mat-option>
+          <mat-option [value]="SecurityType.COLLECTIVE_TRUST">Collective Trust</mat-option>
           <mat-option [value]="SecurityType.PRIVATE_INVESTMENT">Private Investment</mat-option>
         </mat-select>
       </mat-form-field>
@@ -58,6 +65,12 @@ export interface ProfileDialogData {
           <mat-option [value]="PricingLocus.MANUAL">Manual (private price history)</mat-option>
         </mat-select>
       </mat-form-field>
+      @if (pricingLocus === PricingLocus.MARKET) {
+        <mat-form-field appearance="outline">
+          <mat-label>Provider symbol (blank: same as {{ data.security.ticker }})</mat-label>
+          <input matInput [(ngModel)]="marketTicker">
+        </mat-form-field>
+      }
       <mat-form-field appearance="outline">
         <mat-label>Tax Treatment</mat-label>
         <mat-select [(ngModel)]="taxTreatment">
@@ -74,6 +87,26 @@ export interface ProfileDialogData {
           <mat-error>Enter a plain decimal like 0.0004</mat-error>
         }
       </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>CUSIP</mat-label>
+        <input matInput [(ngModel)]="cusip">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>ISIN</mat-label>
+        <input matInput [(ngModel)]="isin">
+      </mat-form-field>
+      @if (data.mirrorCandidates) {
+        <mat-form-field appearance="outline">
+          <mat-label>Mirrors</mat-label>
+          <mat-select [(ngModel)]="mirrorsSecurityId">
+            <mat-option [value]="NONE">None</mat-option>
+            @for (c of candidates(); track c.securityId) {
+              <mat-option [value]="c.securityId">{{ c.ticker }}{{ c.description ? ' - ' + c.description : '' }}</mat-option>
+            }
+          </mat-select>
+          <mat-hint>Charted beside this security's own prices on the details page</mat-hint>
+        </mat-form-field>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button matButton mat-dialog-close>Cancel</button>
@@ -92,6 +125,8 @@ export class ProfileDialog {
   readonly SecurityType = SecurityType;
   readonly PricingLocus = PricingLocus;
   readonly TaxTreatment = TaxTreatment;
+  /** Template-safe bigint zero - Angular templates can't write 0n. */
+  readonly NONE = BigInt(0);
 
   description = this.data.security.description;
   securityType =
@@ -107,7 +142,18 @@ export class ProfileDialog {
       ? TaxTreatment.LOTS
       : this.data.security.taxTreatment;
   netExpenseRatio = this.data.security.netExpenseRatio?.exact?.value ?? '0';
+  marketTicker = this.data.security.marketTicker;
+  cusip = this.data.security.cusip;
+  isin = this.data.security.isin;
+  mirrorsSecurityId = this.data.security.mirrorsSecurityId;
   readonly busy = signal(false);
+
+  /** Every candidate but this security itself. */
+  candidates(): SecurityListing[] {
+    return (this.data.mirrorCandidates ?? []).filter(
+      (c) => c.securityId !== this.data.security.securityId,
+    );
+  }
 
   ratioValid(): boolean {
     return isDecimalString(this.netExpenseRatio);
@@ -123,6 +169,10 @@ export class ProfileDialog {
         pricingLocus: this.pricingLocus,
         taxTreatment: this.taxTreatment,
         netExpenseRatio: { value: this.netExpenseRatio.trim() },
+        marketTicker: this.marketTicker.trim(),
+        cusip: this.cusip.trim(),
+        isin: this.isin.trim(),
+        ...(this.data.mirrorCandidates ? { mirrorsSecurityId: this.mirrorsSecurityId } : {}),
       });
       this.notify.success('Profile updated');
       this.ref.close(true);

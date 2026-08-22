@@ -31,6 +31,7 @@ import {
 } from '../../../proto-gen/securities_pb';
 import { installFakeApi } from '../../../testing/fake-api';
 import { settle } from '../../../testing/settle';
+import { sampleAllSecurities } from '../../../testing/sample-data';
 import { PieChartStub, TimeSeriesChartStub } from '../../../testing/chart-stubs';
 import { civil, decimal, fraction, money } from '../../../testing/wire';
 import { Notify } from '../../core/notify';
@@ -122,6 +123,7 @@ describe('SecurityDetailsPage', () => {
     respond = () => detailsFor(vtiProfile());
     restoreApi = installFakeApi(({ service }) => {
       service(SecurityService, {
+        listSecurities: () => ({ securities: sampleAllSecurities() }),
         getSecurityDetails: (request) => {
           requests.push({
             securityId: request.securityId,

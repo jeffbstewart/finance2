@@ -5,8 +5,10 @@
 // component fields.
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
+import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { AccountService } from '../../../proto-gen/accounts_pb';
 import {
@@ -23,7 +25,8 @@ import {
   type PlaidSecurityView,
   type SnapshotRow,
 } from '../../../proto-gen/imports_pb';
-import { SecurityService } from '../../../proto-gen/securities_pb';
+import { SecurityService, SecurityType } from '../../../proto-gen/securities_pb';
+import { AddSecurityDialog } from '../securities/add-security-dialog';
 import { installFakeApi } from '../../../testing/fake-api';
 import { sampleAccounts, sampleAllSecurities } from '../../../testing/sample-data';
 import { settle } from '../../../testing/settle';
@@ -490,8 +493,52 @@ describe('ImportsPage', () => {
       'VTI (by ticker)',
     ]);
     expect(rows[1].slice(0, 4)).toEqual(['Inst Tot Bd Mkt Ix Tr', 'no ticker', 'mutual fund', '1']);
-    expect(rows[1][4]).toBe('Not linked');
+    expect(rows[1][4]).toContain('Not linked');
+    expect(rows[1][4]).toContain('Add as new security');
     expect(tables(fixture)[2].querySelectorAll('mat-select')).toHaveLength(1);
+  });
+
+  it('shows a CUSIP match as a chip with no select', async () => {
+    securityViews = [
+      { ...plaidSecurities()[1], cusip: '922908769', match: SecurityMatch.BY_CUSIP, securityId: 2n, securityTicker: 'BONDX' },
+    ];
+    const fixture = await render();
+    await selectSnapshot(fixture, 'vanguard-sample.pb');
+    const rows = cells(tables(fixture)[2], 'tr[mat-row]');
+    expect(rows[0][1]).toBe('CUSIP 922908769');
+    expect(rows[0][4]).toBe('BONDX (by CUSIP)');
+    expect(tables(fixture)[2].querySelectorAll('mat-select, button')).toHaveLength(0);
+  });
+
+  it('Add as new security opens the add dialog prefilled from the Plaid row and reloads the panel', async () => {
+    const fixture = await render();
+    await selectSnapshot(fixture, 'vanguard-sample.pb');
+    const dialog = fixture.debugElement.injector.get(MatDialog) as MatDialog;
+    const open = vi.spyOn(dialog, 'open').mockReturnValue({ afterClosed: () => of(9n) } as never);
+    host(fixture)
+      .querySelector<HTMLButtonElement>('button[aria-label="Add Inst Tot Bd Mkt Ix Tr as a new security"]')!
+      .click();
+    await settle(fixture);
+    const [component, config] = open.mock.calls[0] as [unknown, { data: unknown }];
+    expect(component).toBe(AddSecurityDialog);
+    expect(config.data).toEqual({
+      ticker: '',
+      description: 'Inst Tot Bd Mkt Ix Tr',
+      currencyCode: 'USD',
+      cusip: '',
+      hasPublicTicker: false,
+      securityType: SecurityType.COLLECTIVE_TRUST,
+      plaidSecurityId: 'plaid-sec-trust',
+    });
+    // The dialog linked on save, so the page re-reads (list, accounts, securities).
+    expect(calls.securities).toEqual([10n, 10n]);
+    // A dismissed dialog reloads nothing.
+    open.mockReturnValue({ afterClosed: () => of(undefined) } as never);
+    host(fixture)
+      .querySelector<HTMLButtonElement>('button[aria-label="Add Inst Tot Bd Mkt Ix Tr as a new security"]')!
+      .click();
+    await settle(fixture);
+    expect(calls.securities).toEqual([10n, 10n]);
   });
 
   it('links a no-ticker security to a finance2 security and refetches only that panel', async () => {

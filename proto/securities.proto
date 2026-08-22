@@ -217,6 +217,7 @@ message PrivatePriceRow {
   int64 price_id = 1;
   FormattedDate date = 2;
   FormattedMoney price = 3;
+  string source = 4; // "manual" (hand-entered) or "plaid" (import)
 }
 
 message ListPrivatePricesRequest {

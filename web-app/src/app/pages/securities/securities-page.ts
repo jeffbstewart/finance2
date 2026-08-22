@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
-import type { SecurityListing } from '../../../proto-gen/securities_pb';
+import { PricingLocus, SecurityType, type SecurityListing } from '../../../proto-gen/securities_pb';
 import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
 import { Sparkline } from '../../shared/charts/sparkline';
@@ -36,6 +36,15 @@ export class SecuritiesPage {
   readonly showHidden = signal(false);
   readonly securities = signal<SecurityListing[]>([]);
   readonly columns = ['ticker', 'sparkline', 'description', 'actions'];
+
+  /** What a symbol is when it is not a plain market ticker: a trust's
+   *  made-up code, or a hand-priced security; a MARKET security whose
+   *  provider symbol differs shows that symbol. */
+  tag(s: SecurityListing): string {
+    if (s.securityType === SecurityType.COLLECTIVE_TRUST) return 'trust';
+    if (s.pricingLocus === PricingLocus.MANUAL) return 'manual';
+    return s.marketTicker && s.marketTicker !== s.ticker ? s.marketTicker : '';
+  }
 
   constructor() {
     void this.reload();

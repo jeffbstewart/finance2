@@ -12,6 +12,7 @@
         <th mat-header-cell *matHeaderCellDef>Ticker</th>
         <td mat-cell *matCellDef="let s">
           <a [routerLink]="['/securities', s.securityId]">{{ s.ticker }}</a>
+          @if (tag(s); as t) { <span class="hidden-tag">{{ t }}</span> }
           @if (s.hidden) { <span class="hidden-tag">(hidden)</span> }
         </td>
       </ng-container>

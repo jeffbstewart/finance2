@@ -405,6 +405,7 @@ class SecurityGrpcService(
                             .setSortKey((price.date.year * 10000 + price.date.monthValue * 100 + price.date.dayOfMonth).toDouble())
                     )
                     .setPrice(price.price.toFormatted())
+                    .setSource(price.source)
             )
         }
         return builder.build()
