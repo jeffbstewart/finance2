@@ -96,9 +96,12 @@ per-class value and fraction, per-account value and sweep - plus:
   the same security within 30 days in any account is flagged. Not in
   the first cut.
 
-The app never proposes a step, never ranks candidates, and never
-says a plan is good. Targets and deltas are shown because the human
-set the target; nothing else is opinion.
+The app never proposes a step and never says a plan is good. Within
+a sale or purchase the human has decided on, it may lay out and order
+the computed consequences of each candidate (the amendment below);
+it never chooses the decision, the amount, or the class. Targets and
+deltas are shown because the human set the target; nothing else is
+opinion.
 
 ### Persistence
 
@@ -144,8 +147,10 @@ message Projection {
 ```
 
 `ScoreRebalance` and the `TradeSide` enum are retired once the new
-page ships; the candidate-fund suggestion logic is deleted rather than
-carried over (it is the app proposing trades).
+page ships. Its candidate-fund logic - "buy this much of this fund to
+reach target" - is not carried over: it proposes the decision and the
+amount. The pickers in the amendment below replace it with ordering
+of consequences inside a decision the human already made.
 
 ## UI
 
