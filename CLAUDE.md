@@ -65,8 +65,14 @@ cd web-app && npm ci && npm run check         # regenerate TS client + typecheck
   quotes, or currency symbols in source, docs, or comments: write
   `-`, `sec.`, `->`, `"`, and `\u20ac`-style escapes where a string
   needs the real character. Enforced by `scripts/check-ascii.sh`,
-  which CI runs first; the vendored Gradle wrapper, fonts, and favicon
-  are the only exemptions.
+  which CI runs first; the vendored Gradle wrapper, fonts, favicon,
+  and the already-applied migrations `V001`-`V009` are the only
+  exemptions.
+- **An applied Flyway migration is immutable, byte for byte.** Flyway
+  checksums the whole file, comments included, and a database that
+  applied the original refuses to start against an edited one. Never
+  reformat, re-comment, or otherwise touch `V{NNN}` once it has run
+  anywhere; fix forward with a new migration.
 
 ## Security
 
