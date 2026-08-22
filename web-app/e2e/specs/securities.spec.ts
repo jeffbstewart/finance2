@@ -49,6 +49,11 @@ test('draws a sparkline for the security with a price series', async ({ page }) 
   await expect(page.locator('tr[mat-row] app-sparkline svg')).toHaveCount(6);
   await expect(row(page, 'VTI').locator('svg path')).toHaveCount(1);
   await expect(row(page, 'SOLO').locator('svg path')).toHaveCount(0); // exactly one close
+  // VTI-TR has four statement prices; its trend is VTI's, dashed and
+  // captioned, with its own prices as dots on the line.
+  await expect(row(page, 'VTI-TR').locator('svg path')).toHaveAttribute('stroke-dasharray', '4 3');
+  await expect(row(page, 'VTI-TR').locator('.via')).toHaveText('via VTI');
+  await expect(row(page, 'VTI-TR').locator('svg circle')).toHaveCount(3);
   await setToggle(page, 'Show hidden', true);
   await expect(row(page, 'GHOST').locator('svg path')).toHaveCount(0); // never priced
 });

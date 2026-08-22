@@ -11,7 +11,7 @@ import type { PositionRow } from '../../../proto-gen/positions_pb';
 import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
 import { PieChart, type PieSlice } from '../../shared/charts/pie-chart';
-import { Sparkline } from '../../shared/charts/sparkline';
+import { Sparkline, type SparklineDot } from '../../shared/charts/sparkline';
 import { ImportWarnings } from '../../shared/imports/import-warnings';
 import { AccountDialog } from '../brokers/account-dialog';
 import { BuyDialog } from './buy-dialog';
@@ -100,6 +100,11 @@ export class PositionsPage {
     } catch (err) {
       this.notify.error(err);
     }
+  }
+
+  /** The security's own observations on a borrowed line (see Sparkline). */
+  dots(position: PositionRow): SparklineDot[] {
+    return (position.sparkline?.actuals ?? []).map((d) => ({ index: d.index, value: Number(d.value?.value) }));
   }
 
   /** Six-month adjusted closes as chart geometry (presentation only). */

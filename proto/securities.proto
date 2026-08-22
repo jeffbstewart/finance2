@@ -88,8 +88,22 @@ message SecurityProfile {
 
 // Six-month adjusted-close trend, oldest first, embedded in list
 // responses (fixes the legacy sparkline N+1, defect 11).
+// One of a security's own observations placed on a borrowed line.
+message SparklineDot {
+  int32 index = 1;   // into adjusted_closes: the borrowed close on or before its date
+  Decimal value = 2; // rescaled into the borrowed line's price level
+}
+
+// Six-month trend. When a security mirrors a public fund whose window
+// has more closes than its own (a 401(k) trust with a few statement
+// prices), adjusted_closes are the MIRROR's, proxy_ticker names it,
+// and the security's own prices ride along as dots - the UI draws the
+// line dashed, captions "via TICKER", and plots the dots on it.
 message Sparkline {
   repeated Decimal adjusted_closes = 1;
+  string proxy_ticker = 2;          // empty: the security's own closes
+  int32 own_points = 3;             // how many of its own the window had
+  repeated SparklineDot actuals = 4;
 }
 
 message SecurityListing {

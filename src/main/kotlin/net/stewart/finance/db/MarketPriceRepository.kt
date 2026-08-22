@@ -119,6 +119,28 @@ class MarketPriceRepository(dataSource: DataSource) {
             result
         }
 
+    /** [recentAdjustedBySecurity] with dates, for sparklines that place dots. */
+    fun recentDatedAdjustedBySecurity(portfolioId: PortfolioId, since: LocalDate): Map<SecurityId, List<Pair<LocalDate, Money>>> =
+        jdbi.withHandle<Map<SecurityId, List<Pair<LocalDate, Money>>>, Exception> { handle ->
+            val result = linkedMapOf<SecurityId, MutableList<Pair<LocalDate, Money>>>()
+            handle.createQuery(
+                "SELECT m.security_id, s.currency, m.price_date, m.adjusted_close FROM market_prices m " +
+                    "JOIN securities s ON s.id = m.security_id " +
+                    "WHERE s.portfolio_id = :portfolioId AND m.price_date >= :since " +
+                    "ORDER BY m.security_id, m.price_date"
+            )
+                .bind("portfolioId", portfolioId.value)
+                .bind("since", since)
+                .map { rs, _ ->
+                    SecurityId(rs.getLong("security_id")) to (
+                        rs.getObject("price_date", LocalDate::class.java) to
+                            Money.of(rs.getBigDecimal("adjusted_close"), rs.currency())
+                    )
+                }
+                .forEach { (id, point) -> result.getOrPut(id) { mutableListOf() }.add(point) }
+            result
+        }
+
     fun lastFetchedAt(securityId: SecurityId): Instant? =
         jdbi.withHandle<Instant?, Exception> { handle ->
             handle.createQuery(

@@ -69,6 +69,30 @@ class PrivatePriceRepository(dataSource: DataSource) {
             result
         }
 
+    /** [recentBySecurity] with dates, for sparklines that place dots. */
+    fun recentDatedBySecurity(portfolioId: PortfolioId, since: LocalDate): Map<SecurityId, List<Pair<LocalDate, Money>>> =
+        jdbi.sql { handle ->
+            val result = linkedMapOf<SecurityId, MutableList<Pair<LocalDate, Money>>>()
+            handle.createQuery(
+                "SELECT p.security_id, s.currency, p.price_date, p.price FROM private_prices p " +
+                    "JOIN securities s ON s.id = p.security_id " +
+                    "WHERE s.portfolio_id = :portfolioId AND p.price_date >= :since " +
+                    "ORDER BY p.security_id, p.price_date"
+            )
+                .bind("portfolioId", portfolioId.value)
+                .bind("since", since)
+                .map { rs, _ ->
+                    SecurityId(rs.getLong("security_id")) to (
+                        rs.getObject("price_date", LocalDate::class.java) to Money.of(
+                            rs.getBigDecimal("price"),
+                            CurrencyUnit.parse(rs.getString("currency").trim()),
+                        )
+                    )
+                }
+                .forEach { (id, point) -> result.getOrPut(id) { mutableListOf() }.add(point) }
+            result
+        }
+
     /**
      * The newest price per MANUAL-locus security in the portfolio - 
      * the "latest price" source for valuing manually priced holdings
