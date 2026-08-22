@@ -118,6 +118,14 @@ class SecurityRepository(dataSource: DataSource) {
             .execute() > 0
     }
 
+    /** Throws SQLException on a duplicate ticker within the portfolio. */
+    fun rename(id: SecurityId, ticker: String): Boolean = jdbi.sql { handle ->
+        handle.createUpdate("UPDATE securities SET ticker = :ticker WHERE id = :id")
+            .bind("ticker", ticker)
+            .bind("id", id.value)
+            .execute() > 0
+    }
+
     fun setHidden(id: SecurityId, hidden: Boolean): Boolean = jdbi.sql { handle ->
         handle.createUpdate("UPDATE securities SET hidden = :hidden WHERE id = :id")
             .bind("hidden", hidden)

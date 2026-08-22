@@ -328,6 +328,18 @@ class SecurityGrpcService(
         val cusip = if (request.hasCusip()) cusipOf(request.cusip) else row.cusip
         val isin = if (request.hasIsin()) isinOf(request.isin) else row.isin
         val mirrors = if (request.hasMirrorsSecurityId()) mirrorOf(request.mirrorsSecurityId, row) else row.mirrorsSecurityId
+        // A fat-fingered symbol is fixed here; validated like a new one,
+        // and a clash with another security is refused before any write.
+        val newTicker = if (request.hasTicker()) symbolOf(request.ticker) else row.ticker
+        if (newTicker != row.ticker) {
+            try {
+                securities.rename(row.id, newTicker)
+            } catch (e: SQLException) {
+                throw StatusException(
+                    Status.ALREADY_EXISTS.withDescription("a security with ticker \"$newTicker\" already exists")
+                )
+            }
+        }
         if (mirrors != null && securities.isMirrored(row.id)) {
             throw invalid("${row.ticker} is mirrored by another security and cannot mirror one itself")
         }

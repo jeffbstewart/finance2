@@ -79,6 +79,8 @@ function identifiersOf(request: UpdateSecurityProfileRequest): Identifiers {
   };
 }
 
+let tickers: (string | undefined)[] = [];
+
 describe('ProfileDialog', () => {
   let restoreApi: () => void;
   let updates: Update[];
@@ -96,6 +98,7 @@ describe('ProfileDialog', () => {
         updateSecurityProfile: (request) => {
           updates.push(updateOf(request));
           identifiers.push(identifiersOf(request));
+          tickers.push(request.ticker);
           return respond() as never;
         },
       });
@@ -257,6 +260,19 @@ describe('ProfileDialog', () => {
       'Purchase lots (capital gains)',
       'Mark-to-market (PFIC sec. 1296, ordinary income)',
     ]);
+  });
+
+  it('prefills the symbol, sends it upper-cased and trimmed, and refuses a blank one', async () => {
+    tickers = [];
+    const fixture = await render();
+    expect(inputFor(fixture, 'Symbol').value).toBe('VTI');
+    await type(fixture, 'Symbol', '   ');
+    expect(submitButton(fixture).disabled).toBe(true);
+    await type(fixture, 'Symbol', ' vbtix-tr ');
+    expect(submitButton(fixture).disabled).toBe(false);
+    submitButton(fixture).click();
+    await settle(fixture);
+    expect(tickers).toEqual(['VBTIX-TR']);
   });
 
   it('sends the identifiers, and the mirror only when candidates were offered', async () => {
