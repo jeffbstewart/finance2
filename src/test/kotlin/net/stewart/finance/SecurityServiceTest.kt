@@ -392,6 +392,43 @@ class SecurityServiceTest {
     }
 
     @Test
+    fun `a fat-fingered symbol can be renamed - clashes and bad symbols are refused`() {
+        val typo = call {
+            service.addSecurity(AddSecurityRequest.newBuilder().setTicker("VBTXI-TR").setCurrencyCode("USD").build())
+        }.security
+        val other = call {
+            service.addSecurity(AddSecurityRequest.newBuilder().setTicker("RENAME-OTHER").setCurrencyCode("USD").build())
+        }.security
+        suspend fun rename(to: String) = service.updateSecurityProfile(
+            UpdateSecurityProfileRequest.newBuilder()
+                .setSecurityId(typo.securityId).setSecurityType(SecurityType.COLLECTIVE_TRUST)
+                .setPricingLocus(PricingLocus.MANUAL).setTicker(to).build()
+        )
+        assertEquals(Status.Code.ALREADY_EXISTS, statusOf { rename("rename-other") })
+        assertEquals(Status.Code.INVALID_ARGUMENT, statusOf { rename("bad symbol") })
+        call { rename("rename-fixed") }
+        val fixed = call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(typo.securityId).build())
+        }.security
+        assertEquals("RENAME-FIXED", fixed.ticker)
+        assertEquals(typo.securityId, fixed.securityId)
+        // An older client that does not send the field leaves it alone.
+        call {
+            service.updateSecurityProfile(
+                UpdateSecurityProfileRequest.newBuilder()
+                    .setSecurityId(typo.securityId).setSecurityType(SecurityType.COLLECTIVE_TRUST)
+                    .setPricingLocus(PricingLocus.MANUAL).build()
+            )
+        }
+        assertEquals("RENAME-FIXED", call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(typo.securityId).build())
+        }.security.ticker)
+        assertEquals("RENAME-OTHER", call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(other.securityId).build())
+        }.security.ticker)
+    }
+
+    @Test
     fun `stale classifications suggest a refresh`() {
         val id = call {
             service.addSecurity(

@@ -186,6 +186,11 @@ message UpdateSecurityProfileRequest {
   optional string cusip = 8;
   optional string isin = 9;
   optional int64 mirrors_security_id = 10; // 0 clears
+  // Rename the symbol (same rules as AddSecurity; ALREADY_EXISTS on a
+  // clash). Everything references the security by id, so lots,
+  // holdings, prices, and Plaid links follow; the provider symbol is
+  // a separate fact and does not change.
+  optional string ticker = 11;
 }
 
 message UpdateSecurityProfileResponse {}

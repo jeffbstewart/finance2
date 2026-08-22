@@ -45,6 +45,11 @@ export interface ProfileDialogData {
     <h2 mat-dialog-title>Edit {{ data.security.ticker }}</h2>
     <mat-dialog-content class="profile-form">
       <mat-form-field appearance="outline">
+        <mat-label>Symbol</mat-label>
+        <input matInput [(ngModel)]="ticker" required>
+        <mat-hint>Renaming is safe: lots, holdings, prices, and links follow the security, not the symbol</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
         <mat-label>Description</mat-label>
         <input matInput [(ngModel)]="description" cdkFocusInitial>
       </mat-form-field>
@@ -110,7 +115,7 @@ export interface ProfileDialogData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button matButton mat-dialog-close>Cancel</button>
-      <button matButton="filled" [disabled]="busy() || !ratioValid()" (click)="submit()">
+      <button matButton="filled" [disabled]="busy() || !ratioValid() || !ticker.trim()" (click)="submit()">
         Submit
       </button>
     </mat-dialog-actions>
@@ -128,6 +133,7 @@ export class ProfileDialog {
   /** Template-safe bigint zero - Angular templates can't write 0n. */
   readonly NONE = BigInt(0);
 
+  ticker = this.data.security.ticker;
   description = this.data.security.description;
   securityType =
     this.data.security.securityType === SecurityType.SECURITY_TYPE_UNSPECIFIED
@@ -164,6 +170,7 @@ export class ProfileDialog {
     try {
       await api.securities.updateSecurityProfile({
         securityId: this.data.security.securityId,
+        ticker: this.ticker.trim().toUpperCase(),
         description: this.description.trim(),
         securityType: this.securityType,
         pricingLocus: this.pricingLocus,
