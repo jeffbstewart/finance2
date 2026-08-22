@@ -30,11 +30,18 @@
 #   FINANCE2_PIDS_LIMIT     process/thread ceiling (256)
 #   FINANCE2_UID / _GID     unprivileged uid:gid the server runs as
 #                           (10001:10001); give FINANCE2_DATA to it
+#   FINANCE2_SUBNET         the stack's own network (172.28.0.0/24); its
+#                           gateway (.1) is the peer address a same-host
+#                           proxy arrives from - see TRUSTED_PROXIES
 #
-# Peer addresses on the bridge network: a proxy on another host keeps
-# its own address (set TRUSTED_PROXIES to it); a proxy on this same
-# host appears as the bridge gateway (docker network inspect bridge,
-# typically 172.17.0.1), not 127.0.0.1.
+# Peer addresses: a proxy on another host keeps its own address (set
+# TRUSTED_PROXIES to it); a proxy on this same host appears as the
+# gateway of this stack's network. That network is pinned to
+# FINANCE2_SUBNET below so the gateway stays put when the stack is
+# re-created - otherwise Docker hands out a fresh subnet each time and
+# the proxy's address drifts (172.18.0.1, 172.19.0.1, ...) out of the
+# trusted set. TRUSTED_PROXIES also accepts the whole range
+# (172.28.0.0/24) if you would rather not care which gateway it is.
 services:
   finance2:
     build: .
@@ -76,3 +83,11 @@ services:
     mem_limit: ${FINANCE2_MEM_LIMIT:-512m}
     memswap_limit: ${FINANCE2_MEM_LIMIT:-512m}
     pids_limit: ${FINANCE2_PIDS_LIMIT:-256}
+
+# The stack's network on a fixed subnet, so the gateway a same-host
+# proxy arrives from is stable across re-creations (see the header).
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${FINANCE2_SUBNET:-172.28.0.0/24}
