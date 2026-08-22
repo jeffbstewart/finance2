@@ -46,7 +46,7 @@ application {
     mainClass.set("net.stewart.finance.MainKt")
 }
 
-// The wire contract lives in proto/ at the repo root — the single
+// The wire contract lives in proto/ at the repo root - the single
 // source of truth for both the Kotlin stubs (generated here on every
 // build) and the TypeScript client (web-app/scripts/gen-proto.mjs).
 sourceSets {

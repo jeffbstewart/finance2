@@ -13,7 +13,7 @@ export function sessionCookie(): string {
 }
 
 /** An unauthenticated browser: `test.use({ storageState: NO_SESSION })`.
- *  Never sign out through the UI in a spec — logout revokes the shared
+ *  Never sign out through the UI in a spec - logout revokes the shared
  *  session server-side for every later spec. */
 export const NO_SESSION = { cookies: [], origins: [] } as const;
 
@@ -35,7 +35,7 @@ function nth(locator: Locator, index?: number): Locator {
 }
 
 /** Opens a mat-select by its floating label and picks an option by
- *  its visible text — several selects carry bigint/object values. */
+ *  its visible text - several selects carry bigint/object values. */
 export async function pickSelect(
   page: Page,
   label: string,
@@ -52,7 +52,7 @@ export async function pickSelect(
 }
 
 /** Types into a matInput/datepicker input located by label. Password
- *  inputs expose no textbox role — locate those by `getByLabel`. */
+ *  inputs expose no textbox role - locate those by `getByLabel`. */
 export async function fillField(
   page: Page,
   label: string,
@@ -99,7 +99,7 @@ export async function stepperBack(page: Page): Promise<void> {
  *  ONE-SHOT: it does not retry. Before reading on first load or after
  *  a mutation, wait with `expectRows`, or assert through
  *  `expect.poll(() => readTable(page))`. Raw text concatenates nested
- *  elements ("VTImanual", "editdelete") — see `readCells` for text
+ *  elements ("VTImanual", "editdelete") - see `readCells` for text
  *  that keeps element boundaries and drops icon ligatures. */
 export async function readTable(
   page: Page,
@@ -126,7 +126,7 @@ export async function readTableIn(
 }
 
 /** Body rows as clean cell text: nested elements are space-separated
- *  ("VTI manual", "Roth IRA …5678") and icon-button ligatures are
+ *  ("VTI manual", "Roth IRA ...5678") and icon-button ligatures are
  *  dropped (an actions cell reads ""). Auto-waits for the table. */
 export async function readCells(page: Page, index = 0): Promise<string[][]> {
   const table = page.locator('table[mat-table]').nth(index);
@@ -152,7 +152,7 @@ export async function readCells(page: Page, index = 0): Promise<string[][]> {
   );
 }
 
-/** Waits until the table has exactly `count` body rows — the guard to
+/** Waits until the table has exactly `count` body rows - the guard to
  *  call before a one-shot `readTable` on first load or after a mutation. */
 export async function expectRows(page: Page, count: number, index = 0): Promise<void> {
   await expect(page.locator('table[mat-table]').nth(index).locator('tr[mat-row]')).toHaveCount(count);

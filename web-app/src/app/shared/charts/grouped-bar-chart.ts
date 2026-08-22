@@ -20,7 +20,7 @@ echarts.use([EchartsBar, GridComponent, LegendComponent, TitleComponent, Tooltip
 
 export interface BarSeries {
   name: string;
-  /** One presentation magnitude per category — geometry only. */
+  /** One presentation magnitude per category - geometry only. */
   values: number[];
   /** Preformatted tooltip strings, aligned with `values`. */
   displays: string[];
@@ -28,7 +28,7 @@ export interface BarSeries {
 
 /**
  * Chart facade (Decision 6 discussion): grouped bars per category
- * (spec §9.13's current-vs-target and delta charts). Library stays
+ * (spec sec. 9.13's current-vs-target and delta charts). Library stays
  * confined to this file.
  */
 @Component({
@@ -57,7 +57,7 @@ export class GroupedBarChart implements OnDestroy {
             trigger: 'item',
             formatter: (params: { seriesIndex: number; dataIndex: number; name: string }) => {
               const s = series[params.seriesIndex];
-              return `${params.name} — ${s?.name}: ${s?.displays[params.dataIndex] ?? ''}`;
+              return `${params.name} - ${s?.name}: ${s?.displays[params.dataIndex] ?? ''}`;
             },
           },
           legend: { show: series.length > 1, bottom: 0 },

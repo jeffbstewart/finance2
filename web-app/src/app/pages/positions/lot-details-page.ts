@@ -15,10 +15,10 @@ import { BuyDialog } from './buy-dialog';
 import { SellDialog } from './sell-dialog';
 
 /**
- * Lot details (spec §9.7; §9.11 when unscoped): the ticker's lots with
+ * Lot details (spec sec. 9.7; sec. 9.11 when unscoped): the ticker's lots with
  * a select column feeding the Sell stepper, per-lot edit/delete, the
  * sale history legacy fetched but never rendered, and the
- * inflation-adjusted cost toggle (†-footnoted columns). Unscoped adds
+ * inflation-adjusted cost toggle (*-footnoted columns). Unscoped adds
  * the Account column and the hide-security affordance when no
  * positions remain.
  */
@@ -40,7 +40,7 @@ import { SellDialog } from './sell-dialog';
 export class LotDetailsPage {
   /** Router param: the security (withComponentInputBinding). */
   readonly id = input.required<string>();
-  /** Optional `account` query param; absent = all accounts (§9.11). */
+  /** Optional `account` query param; absent = all accounts (sec. 9.11). */
   readonly account = input('');
 
   private readonly dialog = inject(MatDialog);
@@ -79,8 +79,8 @@ export class LotDetailsPage {
 
   readonly saleColumns = ['sold', 'saleShares', 'salePrice', 'saleCosts', 'saleStGain', 'saleLtGain', 'saleActions'];
 
-  /** † marks cost columns restated in today's dollars (spec §9.11). */
-  readonly dagger = computed(() => (this.details()?.inflationAdjusted ? ' †' : ''));
+  /** * marks cost columns restated in today's dollars (spec sec. 9.11). */
+  readonly dagger = computed(() => (this.details()?.inflationAdjusted ? ' *' : ''));
 
   // ngOnInit, not the constructor: router inputs aren't bound yet at
   // construction (NG0950).

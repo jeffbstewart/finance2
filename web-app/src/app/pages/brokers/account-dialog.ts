@@ -15,8 +15,8 @@ export interface AccountDialogData {
 }
 
 /**
- * Add / edit account (spec §9.4). Currency is fixed at creation
- * (build-scope §5); the edit form is where sweeps are maintained by
+ * Add / edit account (spec sec. 9.4). Currency is fixed at creation
+ * (build-scope sec. 5); the edit form is where sweeps are maintained by
  * hand.
  */
 @Component({

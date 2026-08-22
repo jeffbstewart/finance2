@@ -2,7 +2,7 @@
 // pages fire from constructors/ngOnInit (reload() through the fake
 // transport), so fixture.whenStable() can resolve before the data
 // lands. settle() lets the microtask/macrotask queue drain, then runs
-// change detection — twice, because the first render often schedules
+// change detection - twice, because the first render often schedules
 // a second async step (e.g. a dialog close triggering a reload).
 import type { ComponentFixture } from '@angular/core/testing';
 

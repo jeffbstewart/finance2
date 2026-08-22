@@ -14,10 +14,10 @@ import { civilFromJs } from '../../core/dates';
 import { Notify } from '../../core/notify';
 
 /**
- * Tax report (spec §9.16): defaults to the previous calendar year,
- * From ≤ To validated, zero money cells rendered blank, footer
+ * Tax report (spec sec. 9.16): defaults to the previous calendar year,
+ * From <= To validated, zero money cells rendered blank, footer
  * totals. Portfolio-scoped and taxable-only server-side; the notes
- * line carries caveats like the non-USD exclusion (build-scope §5).
+ * line carries caveats like the non-USD exclusion (build-scope sec. 5).
  */
 @Component({
   selector: 'app-tax-page',
@@ -71,7 +71,7 @@ export class TaxPage {
     }
   }
 
-  /** Zero money renders blank (spec §9.16). */
+  /** Zero money renders blank (spec sec. 9.16). */
   blankZero(money?: FormattedMoney): string {
     if (!money || money.sortKey === 0) return '';
     return money.display;

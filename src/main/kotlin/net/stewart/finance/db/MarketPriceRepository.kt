@@ -21,10 +21,10 @@ data class MarketHistoryPoint(
 )
 
 /**
- * Persisted daily bars for MARKET-locus securities — also the spec
- * §6.1 restart-surviving cache (fetched_at drives freshness). Provider
+ * Persisted daily bars for MARKET-locus securities - also the spec
+ * sec. 6.1 restart-surviving cache (fetched_at drives freshness). Provider
  * values round HALF_EVEN to the canonical scales on write
- * (build-scope §2); currency comes from the security row, never a
+ * (build-scope sec. 2); currency comes from the security row, never a
  * caller. Binding is by name (JDBI), never by position.
  */
 class MarketPriceRepository(dataSource: DataSource) {
@@ -99,7 +99,7 @@ class MarketPriceRepository(dataSource: DataSource) {
                 .list()
         }
 
-    /** Date-ascending adjusted closes since [since], per security — sparklines. */
+    /** Date-ascending adjusted closes since [since], per security - sparklines. */
     fun recentAdjustedBySecurity(portfolioId: PortfolioId, since: LocalDate): Map<SecurityId, List<Money>> =
         jdbi.withHandle<Map<SecurityId, List<Money>>, Exception> { handle ->
             val result = linkedMapOf<SecurityId, MutableList<Money>>()

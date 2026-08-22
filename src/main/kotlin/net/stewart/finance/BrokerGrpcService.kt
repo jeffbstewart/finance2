@@ -28,9 +28,9 @@ import net.stewart.finance.proto.SetBrokerHiddenRequest
 import net.stewart.finance.proto.SetBrokerHiddenResponse
 
 /**
- * BrokerService (spec §7 "Brokers", §9.1–§9.3) with the §5.9 guard
+ * BrokerService (spec sec. 7 "Brokers", sec. 9.1-sec. 9.3) with the sec. 5.9 guard
  * rails. Broker investment values are zero until priced positions
- * arrive with the Phase 4/5 pricing work — sweeps totals are real.
+ * arrive with the Phase 4/5 pricing work - sweeps totals are real.
  */
 class BrokerGrpcService(
     private val portfolios: PortfolioRepository,
@@ -106,7 +106,7 @@ class BrokerGrpcService(
         val portfolioId = portfolio()
         val id = brokerId(request.brokerId)
         brokers.find(id, portfolioId) ?: throw notFound(request.brokerId)
-        // Guard rail (§5.9): only a broker with no accounts at all.
+        // Guard rail (sec. 5.9): only a broker with no accounts at all.
         if (brokers.hasAccounts(id, visibleOnly = false)) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription("the broker still has accounts")
@@ -120,7 +120,7 @@ class BrokerGrpcService(
         val portfolioId = portfolio()
         val id = brokerId(request.brokerId)
         brokers.find(id, portfolioId) ?: throw notFound(request.brokerId)
-        // Guard rail (§5.9): hiding requires no visible accounts.
+        // Guard rail (sec. 5.9): hiding requires no visible accounts.
         if (request.hidden && brokers.hasAccounts(id, visibleOnly = true)) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription("the broker still has visible accounts")

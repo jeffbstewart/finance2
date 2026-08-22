@@ -15,7 +15,7 @@ import { Notify, messageOf } from '../../core/notify';
 export interface MtmMarkDialogData {
   security: SecurityProfile;
   taxYear: number;
-  /** Edit mode: the mark being changed (tax year immutable — the
+  /** Edit mode: the mark being changed (tax year immutable - the
    *  server recomputes this mark and every later one). */
   mark?: MtmMark;
   /** Edit mode: whether later marks exist that will restate. */
@@ -23,10 +23,10 @@ export interface MtmMarkDialogData {
 }
 
 /**
- * Record a year-end mark (build-scope §11). The server suggests
- * shares × last price on or before Dec 31 × ECB rate on or before
+ * Record a year-end mark (build-scope sec. 11). The server suggests
+ * shares x last price on or before Dec 31 x ECB rate on or before
  * Dec 31; every field stays editable so the mark can record what was
- * actually filed (a past year's FX rate is often not in the store —
+ * actually filed (a past year's FX rate is often not in the store - 
  * the ECB feed backfills only 90 days).
  */
 @Component({
@@ -42,7 +42,7 @@ export interface MtmMarkDialogData {
   providers: [provideNativeDateAdapter()],
   template: `
     <h2 mat-dialog-title>
-      {{ editing ? 'Edit' : 'Record' }} Year-End Mark — {{ data.security.ticker }}
+      {{ editing ? 'Edit' : 'Record' }} Year-End Mark - {{ data.security.ticker }}
     </h2>
     <mat-dialog-content class="mark-form">
       <mat-form-field appearance="outline">
@@ -55,7 +55,7 @@ export interface MtmMarkDialogData {
           [disabled]="editing"
         >
         @if (editing) {
-          <mat-hint>The tax year is fixed — delete and re-record to move a mark</mat-hint>
+          <mat-hint>The tax year is fixed - delete and re-record to move a mark</mat-hint>
         }
       </mat-form-field>
       <mat-form-field appearance="outline">
@@ -150,7 +150,7 @@ export class MtmMarkDialog {
       this.previewIncome.set(preview?.ordinaryIncome?.display ?? '');
       this.notes.set(response.notes);
     } catch (err) {
-      // A failed suggestion is not fatal — the fields stay editable.
+      // A failed suggestion is not fatal - the fields stay editable.
       this.markDate = new Date(this.taxYear(), 11, 31);
       this.notes.set([messageOf(err)]);
       this.previewIncome.set('');
@@ -185,7 +185,7 @@ export class MtmMarkDialog {
             })
           ).mark;
       this.notify.success(
-        `${this.taxYear()} mark ${this.data.mark ? 'updated' : 'recorded'} — ` +
+        `${this.taxYear()} mark ${this.data.mark ? 'updated' : 'recorded'} - ` +
           `ordinary income ${mark?.ordinaryIncome?.display}`,
       );
       this.ref.close(true);

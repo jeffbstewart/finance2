@@ -20,7 +20,7 @@ import { Notify } from '../../core/notify';
 /**
  * bankferry snapshot imports (pipeline design, amended 2026-08-20):
  * upload through the session, archive, link Plaid accounts, and run
- * the freely repeatable processor. Everything here is revisitable —
+ * the freely repeatable processor. Everything here is revisitable - 
  * fix lots or create the missing account, then process again.
  * Securities Plaid reports without a ticker (401(k) trust funds) are
  * linked to a finance2 security here the same way accounts are.
@@ -48,7 +48,7 @@ export class ImportsPage {
   readonly SnapshotStatus = SnapshotStatus;
   readonly ReportSeverity = ReportSeverity;
   readonly SecurityMatch = SecurityMatch;
-  /** Template-safe bigint zero — Angular templates can't write 0n. */
+  /** Template-safe bigint zero - Angular templates can't write 0n. */
   readonly UNLINKED = BigInt(0);
 
   readonly reportLines = computed(() => this.selected()?.report?.lines ?? []);
@@ -102,7 +102,7 @@ export class ImportsPage {
     try {
       const content = new Uint8Array(await file.arrayBuffer());
       const response = await api.imports.uploadSnapshot({ content, filename: file.name });
-      this.notify.success(`${file.name} archived — link accounts, then process`);
+      this.notify.success(`${file.name} archived - link accounts, then process`);
       await this.reload(response.snapshot?.snapshotId);
     } catch (err) {
       this.notify.error(err);
@@ -144,7 +144,7 @@ export class ImportsPage {
       const response = await api.imports.processSnapshot({ snapshotId: row.snapshotId });
       const report = response.snapshot?.report;
       this.notify.success(
-        `Processed — ${report?.holdingsUpdated ?? 0} holding(s), ${report?.sweepsUpdated ?? 0} sweep(s) updated` +
+        `Processed - ${report?.holdingsUpdated ?? 0} holding(s), ${report?.sweepsUpdated ?? 0} sweep(s) updated` +
           (report?.pricesRecorded ? `, ${report.pricesRecorded} price(s) recorded` : ''),
       );
       await this.reload(row.snapshotId);
@@ -170,7 +170,7 @@ export class ImportsPage {
   async linkChanged(plaidAccount: PlaidAccountView, accountId: bigint): Promise<void> {
     try {
       await api.imports.linkPlaidAccount({ accountRef: plaidAccount.accountRef, accountId });
-      this.notify.success(accountId ? 'Account linked — process to import' : 'Link removed');
+      this.notify.success(accountId ? 'Account linked - process to import' : 'Link removed');
       const selected = this.selected();
       if (selected) await this.loadAccounts(selected);
     } catch (err) {
@@ -184,7 +184,7 @@ export class ImportsPage {
         plaidSecurityId: plaidSecurity.plaidSecurityId,
         securityId,
       });
-      this.notify.success(securityId ? 'Security linked — process to import' : 'Link removed');
+      this.notify.success(securityId ? 'Security linked - process to import' : 'Link removed');
       const selected = this.selected();
       if (selected) await this.loadSecurities(selected);
     } catch (err) {
@@ -196,11 +196,11 @@ export class ImportsPage {
    *  reason the securities panel exists. */
   identifiers(security: PlaidSecurityView): string {
     const parts = [security.ticker, security.cusip ? `CUSIP ${security.cusip}` : ''].filter(Boolean);
-    return parts.length ? parts.join(' · ') : 'no ticker';
+    return parts.length ? parts.join(' | ') : 'no ticker';
   }
 
   securityLabel(security: SecurityListing): string {
-    return security.description ? `${security.ticker} — ${security.description}` : security.ticker;
+    return security.description ? `${security.ticker} - ${security.description}` : security.ticker;
   }
 
   accountLabel(account: AccountSummary): string {

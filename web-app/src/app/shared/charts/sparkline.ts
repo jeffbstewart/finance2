@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 
 /**
  * Chart facade (Decision 6 discussion): the table-cell price trend
- * (spec §9.17). Plain inline SVG — dozens of table rows don't warrant
+ * (spec sec. 9.17). Plain inline SVG - dozens of table rows don't warrant
  * a chart-library instance each; the facade contract still isolates
  * screens from the rendering choice.
  */
@@ -19,7 +19,7 @@ import { Component, computed, input } from '@angular/core';
   styles: ':host { display: inline-block; color: #3f51b5; line-height: 0; }',
 })
 export class Sparkline {
-  /** Presentation magnitudes, oldest first — geometry only. */
+  /** Presentation magnitudes, oldest first - geometry only. */
   readonly values = input<number[]>([]);
 
   readonly width = 120;

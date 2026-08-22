@@ -9,7 +9,7 @@ package net.stewart.finance.domain
 /**
  * What kind of instrument a security is. MUTUAL_FUND is load-bearing:
  * mutual funds are bought in dollar amounts, everything else in whole
- * shares (spec §5.5).
+ * shares (spec sec. 5.5).
  */
 enum class SecurityType {
     UNKNOWN,
@@ -26,9 +26,9 @@ enum class SecurityType {
 }
 
 /**
- * A classification taxonomy (build-scope §4). Only the asset-class mix
+ * A classification taxonomy (build-scope sec. 4). Only the asset-class mix
  * ships at launch; reviving a deferred taxonomy (sector, market cap,
- * region, credit quality) is an additive enum entry plus seed data —
+ * region, credit quality) is an additive enum entry plus seed data - 
  * the storage is already generic. Server code rejects kinds it does
  * not know, so the wire cannot persist arbitrary taxonomies.
  */
@@ -43,9 +43,9 @@ enum class ClassificationKind {
 }
 
 /**
- * How the security is taxed (build-scope §11): LOTS = purchase-lot
+ * How the security is taxed (build-scope sec. 11): LOTS = purchase-lot
  * basis with ST/LT capital gains (the default); MARK_TO_MARKET = the
- * PFIC §1296 election — annual year-end marks recognize ordinary
+ * PFIC sec. 1296 election - annual year-end marks recognize ordinary
  * income and reset the basis, floored at acquisition cost.
  */
 enum class TaxTreatment {
@@ -60,7 +60,7 @@ enum class TaxTreatment {
 }
 
 /**
- * Who prices the security (build-scope §4): MARKET = the external
+ * Who prices the security (build-scope sec. 4): MARKET = the external
  * provider; MANUAL = hand-entered private price rows.
  */
 enum class PricingLocus {

@@ -1,6 +1,6 @@
 // E2E spec for the Mark to Market tab (docs/design/ui-testing.md,
 // inventory "MtmMarks / MtmMarkDialog"). The seeded EUFUND is the only
-// MARK_TO_MARKET security: one EUR lot (100 @ €90 + €10 = $9,911.00 at
+// MARK_TO_MARKET security: one EUR lot (100 @ \u20ac90 + \u20ac10 = $9,911.00 at
 // the 1.10 purchase rate) and two chained year-end marks.
 import { expect, test, type Page } from '@playwright/test';
 import { acceptConfirms, expectSnackbar, fillField, readTable, seedPortfolio } from '../support/material';
@@ -14,7 +14,7 @@ test.beforeEach(async () => {
   ids = await seedPortfolio();
 });
 
-/** The Mark to Market tab is index 2 — it only exists for a
+/** The Mark to Market tab is index 2 - it only exists for a
  *  MARK_TO_MARKET security, so the `tab` query param lands on it. */
 async function openMtmTab(page: Page): Promise<void> {
   await page.goto(`/app/securities/${ids['security.eufund']}?tab=2`);
@@ -36,14 +36,14 @@ test('lists the seeded marks with the acquisition-cost floor', async ({ page }) 
     'FMV (USD)', 'Basis After', 'Ordinary Income',
   ]);
   expect(marks.rows).toHaveLength(2);
-  // €9,500 × 1.05 = $9,975, $64.00 over the $9,911.00 floor.
+  // \u20ac9,500 x 1.05 = $9,975, $64.00 over the $9,911.00 floor.
   expect(marks.rows[0].slice(0, 8)).toEqual([
-    String(lastYear - 1), `${lastYear - 1}-12-31`, '100', '€9,500.00', '1.05',
+    String(lastYear - 1), `${lastYear - 1}-12-31`, '100', '\u20ac9,500.00', '1.05',
     '$9,975.00', '$9,975.00', '$64.00',
   ]);
-  // €10,000 × 1.08 = $10,800 against the carried-forward $9,975 basis.
+  // \u20ac10,000 x 1.08 = $10,800 against the carried-forward $9,975 basis.
   expect(marks.rows[1].slice(0, 8)).toEqual([
-    String(lastYear), `${lastYear}-12-31`, '100', '€10,000.00', '1.08',
+    String(lastYear), `${lastYear}-12-31`, '100', '\u20ac10,000.00', '1.08',
     '$10,800.00', '$10,800.00', '$825.00',
   ]);
   await expect(page.locator('.empty-note')).toHaveCount(0);
@@ -63,9 +63,9 @@ test('records the next year-end mark from the server suggestion', async ({ page 
   await openMtmTab(page);
   await page.getByRole('button', { name: 'Record year-end mark' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Record Year-End Mark — EUFUND' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Record Year-End Mark - EUFUND' })).toBeVisible();
   // Default year = latest mark + 1; the fields prefill from the stored
-  // €104 price and the most recent FX row (1.16), as raw wire decimals.
+  // \u20ac104 price and the most recent FX row (1.16), as raw wire decimals.
   await expect(page.getByRole('spinbutton', { name: 'Tax Year' })).toHaveValue(String(thisYear));
   await expect(page.getByRole('textbox', { name: 'Mark Date' })).toHaveValue(`12/31/${thisYear}`);
   await expect(page.getByRole('textbox', { name: 'Shares Held' })).toHaveValue(/^100(\.0*)?$/);
@@ -78,16 +78,16 @@ test('records the next year-end mark from the server suggestion', async ({ page 
   await expect(page.locator('p.preview')).toContainText('Suggested ordinary income: $1,264.00');
 
   await page.getByRole('button', { name: 'Record Mark' }).click();
-  await expectSnackbar(page, `${thisYear} mark recorded — ordinary income $1,264.00`);
+  await expectSnackbar(page, `${thisYear} mark recorded - ordinary income $1,264.00`);
 
-  // The ledger reloads after the dialog closes — wait for the new row
+  // The ledger reloads after the dialog closes - wait for the new row
   // before taking the table snapshot.
   await expect(page.locator('tr[mat-row]')).toHaveCount(3);
   const marks = await readTable(page);
   expect(marks.rows).toHaveLength(3);
-  // €10,400 × 1.16 = $12,064 against the $10,800 basis carried forward.
+  // \u20ac10,400 x 1.16 = $12,064 against the $10,800 basis carried forward.
   expect(marks.rows[2].slice(0, 8)).toEqual([
-    String(thisYear), `${thisYear}-12-31`, '100', '€10,400.00', '1.16',
+    String(thisYear), `${thisYear}-12-31`, '100', '\u20ac10,400.00', '1.16',
     '$12,064.00', '$12,064.00', '$1,264.00',
   ]);
 });
@@ -103,8 +103,8 @@ test('rejects a mark recorded out of tax-year order', async ({ page }) => {
   await expect(page.getByRole('textbox', { name: 'Mark Date' })).toHaveValue(`12/31/${lastYear}`);
   await page.getByRole('button', { name: 'Record Mark' }).click();
 
-  await expectSnackbar(page, `marks must be recorded in tax-year order — the latest is ${lastYear}`);
-  await expect(page.getByRole('heading', { name: 'Record Year-End Mark — EUFUND' })).toBeVisible();
+  await expectSnackbar(page, `marks must be recorded in tax-year order - the latest is ${lastYear}`);
+  await expect(page.getByRole('heading', { name: 'Record Year-End Mark - EUFUND' })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.locator('tr[mat-row]')).toHaveCount(2);
   const marks = await readTable(page);
@@ -115,12 +115,12 @@ test('editing an earlier mark restates the later one', async ({ page }) => {
   await openMtmTab(page);
   await page.getByRole('button', { name: 'Edit mark' }).first().click();
 
-  await expect(page.getByRole('heading', { name: 'Edit Year-End Mark — EUFUND' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Edit Year-End Mark - EUFUND' })).toBeVisible();
   const year = page.getByRole('spinbutton', { name: 'Tax Year' });
   await expect(year).toHaveValue(String(lastYear - 1));
   await expect(year).toBeDisabled();
   await expect(page.locator('mat-hint')).toHaveText(
-    'The tax year is fixed — delete and re-record to move a mark',
+    'The tax year is fixed - delete and re-record to move a mark',
   );
   await expect(page.locator('p.note')).toHaveText(
     'later marks restate automatically against the edited basis',
@@ -128,19 +128,19 @@ test('editing an earlier mark restates the later one', async ({ page }) => {
 
   await fillField(page, 'Fair Market Value (EUR)', '9600');
   await page.getByRole('button', { name: 'Save Mark' }).click();
-  // €9,600 × 1.05 = $10,080, $169.00 over the $9,911.00 floor.
-  await expectSnackbar(page, `${lastYear - 1} mark updated — ordinary income $169.00`);
+  // \u20ac9,600 x 1.05 = $10,080, $169.00 over the $9,911.00 floor.
+  await expectSnackbar(page, `${lastYear - 1} mark updated - ordinary income $169.00`);
 
   await expect(page.locator('tr[mat-row]').first()).toContainText('$169.00');
   const marks = await readTable(page);
   expect(marks.rows).toHaveLength(2);
   expect(marks.rows[0].slice(0, 8)).toEqual([
-    String(lastYear - 1), `${lastYear - 1}-12-31`, '100', '€9,600.00', '1.05',
+    String(lastYear - 1), `${lastYear - 1}-12-31`, '100', '\u20ac9,600.00', '1.05',
     '$10,080.00', '$10,080.00', '$169.00',
   ]);
-  // The later mark restates against the new basis: $10,800 − $10,080.
+  // The later mark restates against the new basis: $10,800 - $10,080.
   expect(marks.rows[1].slice(0, 8)).toEqual([
-    String(lastYear), `${lastYear}-12-31`, '100', '€10,000.00', '1.08',
+    String(lastYear), `${lastYear}-12-31`, '100', '\u20ac10,000.00', '1.08',
     '$10,800.00', '$10,800.00', '$720.00',
   ]);
 });

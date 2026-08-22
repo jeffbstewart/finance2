@@ -24,7 +24,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The §1296 ledger over a real schema (build-scope §11): a EUR fund
+ * The sec. 1296 ledger over a real schema (build-scope sec. 11): a EUR fund
  * bought once, marked across years, with the FX chain and the
  * acquisition-cost floor exercised end to end.
  */
@@ -94,13 +94,13 @@ class MtmServiceTest {
 
     @Test
     fun `acquisition cost converts each lot at its purchase-date rate`() {
-        // EUR 9010 × 1.10 = USD 9911.
+        // EUR 9010 x 1.10 = USD 9911.
         assertEquals(usd("9911.0000"), service.acquisitionCostUsd(portfolioId, security))
     }
 
     @Test
     fun `first mark floors at acquisition cost when FMV is lower`() {
-        // Year-end FMV EUR 9500 × 1.00 = USD 9500 < USD 9911 cost:
+        // Year-end FMV EUR 9500 x 1.00 = USD 9500 < USD 9911 cost:
         // no inclusions to reverse, income 0, basis stays at cost.
         val mark = service.record(
             portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
@@ -118,7 +118,7 @@ class MtmServiceTest {
             portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
             Quantity.of("100"), eur("9500.0000"), BigDecimal("1.00000000"),
         )
-        // FMV EUR 10000 × 1.20 = USD 12000; basis was 9911 → +2089.
+        // FMV EUR 10000 x 1.20 = USD 12000; basis was 9911 -> +2089.
         val mark = service.record(
             portfolioId, security, 2025, LocalDate.of(2025, 12, 31),
             Quantity.of("100"), eur("10000.0000"), BigDecimal("1.20000000"),
@@ -157,9 +157,9 @@ class MtmServiceTest {
         // Pre-edit: 2024 floored at cost (basis 9911), 2025 income 2089.
         assertEquals(usd("2089.0000"), second.ordinaryIncomeUsd)
 
-        // The filed 2024 FMV was actually EUR 10500 (× 1.00 = USD
+        // The filed 2024 FMV was actually EUR 10500 (x 1.00 = USD
         // 10500, above the 9911 floor): 2024 recognizes 589, and 2025
-        // restates against the new basis — 12000 − 10500 = 1500.
+        // restates against the new basis - 12000 - 10500 = 1500.
         val edited = service.update(
             portfolioId, security, first.id, LocalDate.of(2024, 12, 30),
             Quantity.of("100"), eur("10500.0000"), BigDecimal("1.00000000"),
@@ -173,14 +173,14 @@ class MtmServiceTest {
         assertEquals(usd("1500.0000"), restated[1].ordinaryIncomeUsd)
         // The 2025 mark's own stored inputs were untouched.
         assertEquals(eur("10000.0000"), restated[1].fmvLocal)
-        // Cumulative income still equals final basis − cost:
-        // 589 + 1500 = 12000 − 9911.
+        // Cumulative income still equals final basis - cost:
+        // 589 + 1500 = 12000 - 9911.
         assertEquals(usd("12000.0000"), restated[1].basisAfterUsd)
     }
 
     @Test
     fun `a restated future mark clamps at the acquisition-cost floor`() {
-        // Floor is USD 9911 (EUR 9010 × 1.10 at purchase).
+        // Floor is USD 9911 (EUR 9010 x 1.10 at purchase).
         service.record(
             portfolioId, security, 2024, LocalDate.of(2024, 12, 31),
             Quantity.of("100"), eur("12000.0000"), BigDecimal("1.00000000"),
@@ -208,7 +208,7 @@ class MtmServiceTest {
         assertEquals(usd("10000.0000"), restated.basisBeforeUsd)
         assertEquals(usd("9911.0000"), restated.basisAfterUsd)
         assertEquals(usd("-89.0000"), restated.ordinaryIncomeUsd)
-        // Cumulative income equals final basis − acquisition cost: 0.
+        // Cumulative income equals final basis - acquisition cost: 0.
         assertEquals(usd("0.0000"), edited.ordinaryIncomeUsd + restated.ordinaryIncomeUsd)
     }
 
@@ -250,7 +250,7 @@ class MtmServiceTest {
             PricingService.HistoryPoint(LocalDate.of(2024, 12, 30), eur("95.0000"), eur("95.0000")),
         )
         val suggestion = service.suggest(portfolioId, security, 2024)
-        // 100 shares × EUR 95 = EUR 9500 at rate 1.00.
+        // 100 shares x EUR 95 = EUR 9500 at rate 1.00.
         assertEquals(eur("9500.0000"), suggestion.fmvLocal)
         assertEquals(0, BigDecimal("1.00000000").compareTo(suggestion.fxRate))
         assertEquals(usd("0.0000"), suggestion.computed?.ordinaryIncomeUsd)
@@ -262,7 +262,7 @@ class MtmServiceTest {
         priceHistory = listOf(
             PricingService.HistoryPoint(LocalDate.of(2023, 12, 29), eur("92.0000"), eur("92.0000")),
         )
-        // 2023 predates every stored rate — the ECB feed's 90-day
+        // 2023 predates every stored rate - the ECB feed's 90-day
         // backfill makes this the common first-mark case.
         val suggestion = service.suggest(portfolioId, security, 2023)
         assertNull(suggestion.fxRate)

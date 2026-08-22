@@ -103,7 +103,7 @@ class SessionGrpcServiceTest {
             statusOf {
                 service.createFirstUser(
                     CreateFirstUserRequest.newBuilder()
-                        .setUsername("jéff").setPassword("correct-horse-battery").build()
+                        .setUsername("jeff").setPassword("correct-horse-battery").build()
                 )
             },
         )

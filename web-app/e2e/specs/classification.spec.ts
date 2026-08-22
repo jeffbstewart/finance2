@@ -1,6 +1,6 @@
-// E2E spec for the ClassificationEditor — the Asset Allocation tab of
+// E2E spec for the ClassificationEditor - the Asset Allocation tab of
 // the security details page (docs/design/ui-testing.md, inventory
-// "SecurityDetailsPage → ClassificationEditor"). The seeder classifies
+// "SecurityDetailsPage -> ClassificationEditor"). The seeder classifies
 // VTI 100% US Stock stamped 30 days ago (fresh), GOLD 100% Other
 // stamped 400 days ago (stale, so the refresh chip shows), and leaves
 // GHOST unclassified. Class names come from the five seeded asset
@@ -8,7 +8,7 @@
 //
 // Every locator is scoped to <app-classification-editor> so the sibling
 // Price History tab (its own assignment) can never satisfy one of these
-// assertions, and weight fields are matched exactly — "US Stock %" is a
+// assertions, and weight fields are matched exactly - "US Stock %" is a
 // substring of "Non US Stock %", which Playwright's default substring
 // name matching would resolve to two elements.
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -168,7 +168,7 @@ test('classifies a security that has no mix yet', async ({ page }) => {
   await openAssetAllocation(page, ids['security.ghost']);
   const editor = editorOf(page);
   await expect(editor.locator('.empty-note')).toHaveText(
-    'No asset class mix yet — enter the weights to the right.',
+    'No asset class mix yet - enter the weights to the right.',
   );
   await expect(editor.locator('app-pie-chart')).toHaveCount(0);
 

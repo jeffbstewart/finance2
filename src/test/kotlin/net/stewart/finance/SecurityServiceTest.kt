@@ -97,7 +97,7 @@ class SecurityServiceTest {
 
     @Test
     fun `security lifecycle - profile, classification, private prices, details`() {
-        // Add by ticker only (spec §9.18); duplicates rejected.
+        // Add by ticker only (spec sec. 9.18); duplicates rejected.
         val added = call {
             service.addSecurity(
                 AddSecurityRequest.newBuilder().setTicker("TRUST-A").setCurrencyCode("USD").build()
@@ -320,7 +320,7 @@ class SecurityServiceTest {
             service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(trustId).build())
         }
         assertEquals(25, details.priceHistoryCount)
-        assertEquals(6, details.indicators.smaCount)      // 25 − 20 + 1
+        assertEquals(6, details.indicators.smaCount)      // 25 - 20 + 1
         assertEquals(6, details.indicators.emaCount)
         assertEquals(6, details.indicators.bollingerCount)
     }

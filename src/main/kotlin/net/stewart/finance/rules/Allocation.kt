@@ -4,15 +4,15 @@ import net.stewart.finance.domain.Fraction
 import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.SecurityId
 
-// The allocation dashboard's arithmetic (FUNCTIONAL_SPEC §5.4) as pure
-// functions. All amounts must already be in the reporting currency —
-// FX conversion happens upstream (build-scope §5); mixing currencies
+// The allocation dashboard's arithmetic (FUNCTIONAL_SPEC sec. 5.4) as pure
+// functions. All amounts must already be in the reporting currency - 
+// FX conversion happens upstream (build-scope sec. 5); mixing currencies
 // here throws CurrencyMismatchException via the Money type.
 //
 // Each position's value is distributed across classes with one
 // Money.allocateBy over its weight map, so class buckets always sum
 // back to the portfolio total penny-exactly. Weight maps are validated
-// to sum to 1 (±0.0001) at write time; allocateBy's normalization
+// to sum to 1 (+/-0.0001) at write time; allocateBy's normalization
 // makes any residue proportional rather than silently dropped.
 
 /** A priced position plus its asset-class weight map, ready to allocate. */
@@ -20,7 +20,7 @@ data class ClassifiedPosition(
     val securityId: SecurityId,
     val ticker: String,
     val value: Money,
-    /** Class name → weight. Empty = unclassified (routed to [otherClass]). */
+    /** Class name -> weight. Empty = unclassified (routed to [otherClass]). */
     val weights: Map<String, Fraction>,
 ) {
     init {
@@ -60,7 +60,7 @@ const val SWEEPS_TICKER = "Sweeps"
 
 /**
  * Distributes every position across [classes] by its weight map and
- * adds [sweeps] to [cashClass] as a synthetic position (spec §5.4).
+ * adds [sweeps] to [cashClass] as a synthetic position (spec sec. 5.4).
  * Unclassified positions land wholly in [otherClass] and are reported
  * so the UI can prompt for a weight map. Buckets sum to [sweeps] plus
  * the positions' values exactly.
@@ -124,22 +124,22 @@ fun currentAllocation(
     return AllocationReport(buckets, total, unclassified)
 }
 
-/** One class's current-vs-target row (spec §5.4). */
+/** One class's current-vs-target row (spec sec. 5.4). */
 data class DriftEntry(
     val className: String,
     val current: Money,
     val currentFraction: Fraction,
     val target: Money,
     val targetFraction: Fraction,
-    /** target − current, in reporting-currency dollars. */
+    /** target - current, in reporting-currency dollars. */
     val delta: Money,
 )
 
 /**
- * Scores the report against [targetFractions] (class name → fraction,
- * validated to sum to 1 ±0.0001 at write time). Target dollar amounts
+ * Scores the report against [targetFractions] (class name -> fraction,
+ * validated to sum to 1 +/-0.0001 at write time). Target dollar amounts
  * come from one Money.allocateBy over the portfolio total, so targets
- * sum to the total and deltas sum to zero — penny-exactly.
+ * sum to the total and deltas sum to zero - penny-exactly.
  */
 fun drift(report: AllocationReport, targetFractions: Map<String, Fraction>): List<DriftEntry> {
     targetFractions.keys.firstOrNull { name -> report.buckets.none { it.className == name } }?.let {

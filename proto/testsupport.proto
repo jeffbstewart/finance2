@@ -2,7 +2,7 @@
 // harnesses (docs/design/ui-testing.md). The server registers this
 // service ONLY when FINANCE2_TEST_SUPPORT=true; it never exists in a
 // normal deployment. Calls are session-authenticated like everything
-// else — harnesses log in first.
+// else - harnesses log in first.
 syntax = "proto3";
 
 package finance;

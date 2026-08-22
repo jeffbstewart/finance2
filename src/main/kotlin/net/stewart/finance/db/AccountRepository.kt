@@ -99,7 +99,7 @@ class AccountRepository(dataSource: DataSource) {
             .execute() > 0
     }
 
-    /** Sweep-only update with provenance — the snapshot importer's path. */
+    /** Sweep-only update with provenance - the snapshot importer's path. */
     fun updateSweep(id: AccountId, sweep: Money, source: EntrySource, asOf: LocalDate): Boolean =
         jdbi.sql { handle ->
             handle.createUpdate(

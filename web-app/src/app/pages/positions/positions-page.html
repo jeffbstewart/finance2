@@ -4,8 +4,8 @@
     <mat-card-subtitle>
       @if (scopedAccount(); as account) {
         {{ account.accountNumber }} ({{ account.currencyCode }})
-        · {{ account.taxDeferred ? 'Tax Deferred' : 'Taxable' }}
-        · Sweeps: {{ account.sweepBalance?.display }}
+        | {{ account.taxDeferred ? 'Tax Deferred' : 'Taxable' }}
+        | Sweeps: {{ account.sweepBalance?.display }}
       }
     </mat-card-subtitle>
     <span class="header-spacer"></span>

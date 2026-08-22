@@ -1,7 +1,7 @@
 // Unit spec for HoldingDialog (docs/design/ui-testing.md, inventory
-// "PositionsPage → HoldingDialog"): position-level quantity entry for
+// "PositionsPage -> HoldingDialog"): position-level quantity entry for
 // tax-deferred accounts. Rendered directly with MAT_DIALOG_DATA /
-// MatDialogRef stubs — no overlay involved.
+// MatDialogRef stubs - no overlay involved.
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -127,7 +127,7 @@ describe('HoldingDialog', () => {
   describe('new holding', () => {
     it('titles with the account name and offers a security select', async () => {
       const fixture = await render({ account: roth() });
-      expect(textOf(fixture)).toContain('Set Holding — Roth IRA');
+      expect(textOf(fixture)).toContain('Set Holding - Roth IRA');
       expect(labels(fixture)).toEqual(['Security', 'Shares Held']);
       expect(formInfoCalls).toBe(1);
       expect(fixture.componentInstance.securities().map((s) => s.ticker)).toEqual(['VTI', 'GOLD']);
@@ -206,7 +206,7 @@ describe('HoldingDialog', () => {
 
     it('locks the security to a plain label and skips the form-info RPC', async () => {
       const fixture = await render(editData());
-      expect(textOf(fixture)).toContain('Edit Holding — Roth IRA');
+      expect(textOf(fixture)).toContain('Edit Holding - Roth IRA');
       expect(textOf(fixture)).toContain('GOLD');
       expect(labels(fixture)).toEqual(['Shares Held']);
       expect(formInfoCalls).toBe(0);
@@ -221,7 +221,7 @@ describe('HoldingDialog', () => {
     });
 
     // BUG: the dialog's docstring and the UI inventory both say
-    // "quantity 0 deletes", and valid() accepts "0" — but SetHolding
+    // "quantity 0 deletes", and valid() accepts "0" - but SetHolding
     // rejects any non-positive quantity ("quantity must be positive;
     // delete the holding to remove it") and the dialog never calls
     // DeleteHolding. Pinning the client half of the current behavior;

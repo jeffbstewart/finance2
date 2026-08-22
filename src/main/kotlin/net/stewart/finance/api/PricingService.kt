@@ -14,11 +14,11 @@ import net.stewart.finance.feeds.MarketData
 import net.stewart.finance.feeds.PriceSourceException
 
 /**
- * The one place services get prices (spec §5.6's public/private
+ * The one place services get prices (spec sec. 5.6's public/private
  * split): MANUAL-locus securities price from hand-entered
  * private_prices; MARKET-locus from provider bars, refreshed through
- * [MarketData] when stale. Provider failure surfaces as UNAVAILABLE —
- * a request needing a price it cannot get fails (spec §5.2).
+ * [MarketData] when stale. Provider failure surfaces as UNAVAILABLE - 
+ * a request needing a price it cannot get fails (spec sec. 5.2).
  */
 class PricingService(
     private val privatePrices: PrivatePriceRepository,
@@ -49,7 +49,7 @@ class PricingService(
         return combined
     }
 
-    /** Full date-ascending history; adjusted = raw for MANUAL (spec §5.6). */
+    /** Full date-ascending history; adjusted = raw for MANUAL (spec sec. 5.6). */
     fun history(security: SecurityRow): List<HistoryPoint> = when (security.pricingLocus) {
         PricingLocus.MANUAL ->
             privatePrices.history(security.id).map { HistoryPoint(it.date, it.price, it.price) }

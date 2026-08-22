@@ -1,4 +1,4 @@
-# finance2 container image — one durable, always-running process that
+# finance2 container image - one durable, always-running process that
 # serves gRPC + gRPC-Web + the SPA on $PORT (behind HAProxy) and
 # /healthz + /metrics on $INTERNAL_PORT (LAN-direct). See README.md
 # "Run with Docker".
@@ -6,7 +6,7 @@
 # Self-contained: the toolkit family (composite-build siblings in a
 # developer checkout) is cloned inside the build stage, so
 # `docker build .` needs nothing beside this repository. No secrets
-# are baked in — .env is excluded by .dockerignore and every
+# are baked in - .env is excluded by .dockerignore and every
 # credential arrives at run time as an environment variable.
 
 # ---- Stage 1: the Angular SPA ------------------------------------------

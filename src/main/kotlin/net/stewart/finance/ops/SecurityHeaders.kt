@@ -11,7 +11,7 @@ import com.linecorp.armeria.server.ServiceRequestContext
  * Enforces the no-third-party-requests property (ruling 2026-08-20):
  * the SPA vendors its fonts, so the CSP can pin every source to
  * 'self'. style-src additionally allows 'unsafe-inline' because
- * Angular Material injects runtime styles — the standard Angular
+ * Angular Material injects runtime styles - the standard Angular
  * trade-off; scripts stay strictly 'self'.
  */
 class SecurityHeaders : DecoratingHttpServiceFunction {

@@ -1,7 +1,7 @@
--- Plaid security → finance2 security links (pipeline design, amended
+-- Plaid security -> finance2 security links (pipeline design, amended
 -- 2026-08-21). Tickers match on their own; securities Plaid reports
--- without one — 401(k) collective investment trusts, the "Tr" class
--- of a public fund — need the human to say which finance2 security
+-- without one - 401(k) collective investment trusts, the "Tr" class
+-- of a public fund - need the human to say which finance2 security
 -- they are. Keyed by Plaid's stable security id; links persist across
 -- snapshots like account links do.
 CREATE TABLE plaid_security_links (

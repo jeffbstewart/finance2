@@ -12,7 +12,7 @@ export interface BrokerDialogData {
   name?: string;
 }
 
-/** Add / edit broker (spec §9.2): one required name field. */
+/** Add / edit broker (spec sec. 9.2): one required name field. */
 @Component({
   selector: 'app-broker-dialog',
   imports: [FormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatInputModule],

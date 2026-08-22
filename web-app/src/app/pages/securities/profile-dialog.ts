@@ -20,7 +20,7 @@ export interface ProfileDialogData {
 }
 
 /**
- * Edit the security profile (spec §9.10 header affordances; §6.3 — all
+ * Edit the security profile (spec sec. 9.10 header affordances; sec. 6.3 - all
  * fields hand-maintained, no auto-population). The MUTUAL_FUND type
  * drives dollar-vs-share purchases in the rebalance planner, and the
  * pricing locus decides market vs private pricing, so both live here.
@@ -63,7 +63,7 @@ export interface ProfileDialogData {
         <mat-select [(ngModel)]="taxTreatment">
           <mat-option [value]="TaxTreatment.LOTS">Purchase lots (capital gains)</mat-option>
           <mat-option [value]="TaxTreatment.MARK_TO_MARKET">
-            Mark-to-market (PFIC §1296, ordinary income)
+            Mark-to-market (PFIC sec. 1296, ordinary income)
           </mat-option>
         </mat-select>
       </mat-form-field>

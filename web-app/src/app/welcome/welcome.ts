@@ -10,8 +10,8 @@ import { Notify } from '../core/notify';
 import { SessionStore } from '../core/session';
 
 /**
- * The unauthenticated landing page (spec §8.2): sign-in, or — on a
- * fresh install — the create-the-first-account flow (build-scope §8),
+ * The unauthenticated landing page (spec sec. 8.2): sign-in, or - on a
+ * fresh install - the create-the-first-account flow (build-scope sec. 8),
  * which requires the setup token printed in the server log.
  */
 @Component({

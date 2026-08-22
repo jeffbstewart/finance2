@@ -1,6 +1,6 @@
 // Unit spec for RebalanceBuyDialog (docs/design/ui-testing.md,
-// inventory "RebalancePage"). The dialog makes no RPCs — it is pure
-// client-side decimal math over the class's candidate funds — so
+// inventory "RebalancePage"). The dialog makes no RPCs - it is pure
+// client-side decimal math over the class's candidate funds - so
 // there is no fake backend here, only MAT_DIALOG_DATA and a stub
 // MatDialogRef.
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -143,7 +143,7 @@ describe('RebalanceBuyDialog', () => {
     await settle(fixture as never);
   }
 
-  /** Types into a matInput the way a user does — a bare signal write
+  /** Types into a matInput the way a user does - a bare signal write
    *  never re-renders under zoneless change detection. */
   async function type(
     fixture: { nativeElement: HTMLElement; detectChanges(): void },
@@ -168,8 +168,8 @@ describe('RebalanceBuyDialog', () => {
     const fixture = await render();
     const panel = await openSecuritySelect(fixture);
     expect(Array.from(panel.querySelectorAll('mat-option'), (o) => o.textContent!.trim())).toEqual([
-      'BONDX — 100% in Bond',
-      'BALANCED — 90% in Bond',
+      'BONDX - 100% in Bond',
+      'BALANCED - 90% in Bond',
     ]);
   });
 
@@ -202,7 +202,7 @@ describe('RebalanceBuyDialog', () => {
     expect(inputByLabel(fixture, 'Net Cost').value).toBe('105');
     await type(fixture, 'Shares', '0.3');
     expect(inputByLabel(fixture, 'Net Cost').value).toBe('3.15');
-    // Truncation to 4 places, never a float: 0.33333333 × 10.50.
+    // Truncation to 4 places, never a float: 0.33333333 x 10.50.
     await type(fixture, 'Shares', '0.33333333');
     expect(inputByLabel(fixture, 'Net Cost').value).toBe('3.4999');
   });
@@ -241,7 +241,7 @@ describe('RebalanceBuyDialog', () => {
 
   // CandidateFund carries no purchase modality, so the dialog cannot
   // tell a mutual fund (bought in dollars) from an ETF (bought in
-  // whole shares) — see the e2e spec, which pins the server's
+  // whole shares) - see the e2e spec, which pins the server's
   // rejection of a net-cost-driven ETF trade.
   it('closes with the trimmed trade for the cart', async () => {
     const fixture = await render();
@@ -258,7 +258,7 @@ describe('RebalanceBuyDialog', () => {
     await pickCandidate(fixture, 'BONDX');
     buttonByText(fixture, 'Cancel').click();
     await settle(fixture);
-    // A valueless mat-dialog-close closes with '' — not undefined —
+    // A valueless mat-dialog-close closes with '' - not undefined - 
     // which the page's `if (!trade) return` guard treats as no trade.
     expect(closed).toEqual(['']);
   });

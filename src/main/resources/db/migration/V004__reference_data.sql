@@ -1,6 +1,6 @@
 -- Reference-data population, separate from DDL by ruling (build-scope
--- §9). The five spec asset classes (FUNCTIONAL_SPEC §4.2); a future
--- class (e.g. 'Commodities', build-scope §6) is a new versioned
+-- sec. 9). The five spec asset classes (FUNCTIONAL_SPEC sec. 4.2); a future
+-- class (e.g. 'Commodities', build-scope sec. 6) is a new versioned
 -- migration like this one.
 INSERT INTO asset_classes (name, display_order) VALUES
     ('Cash', 1),

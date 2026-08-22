@@ -5,7 +5,7 @@ import net.stewart.finance.domain.SecurityId
 import org.jdbi.v3.core.Jdbi
 
 /**
- * Plaid security id → finance2 security links, chosen by the human in
+ * Plaid security id -> finance2 security links, chosen by the human in
  * the import screen for securities Plaid reports without a ticker
  * (pipeline design, amended 2026-08-21). Persistent across snapshots.
  */

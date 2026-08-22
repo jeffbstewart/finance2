@@ -1,6 +1,6 @@
 // Unit spec for core/decimals.ts (docs/design/ui-testing.md, inventory
 // "Core seams"): pure functions, no TestBed, no fake backend. These are
-// the house no-float rule in code — every case here is chosen so that a
+// the house no-float rule in code - every case here is chosen so that a
 // float implementation would visibly disagree, and the expectations pin
 // truncation (never rounding) and the trailing-zero trimming that the
 // callers rely on.
@@ -288,8 +288,8 @@ describe('divDecimal', () => {
     expect(() => divDecimal('-1', '2', 8)).toThrow(/not a decimal/);
   });
 
-  it('round-trips the dialog’s shares ↔ net cost recompute', () => {
-    // rebalance-buy-dialog.ts: shares → cost at scale 4, cost → shares
+  it("round-trips the dialog's shares <-> net cost recompute", () => {
+    // rebalance-buy-dialog.ts: shares -> cost at scale 4, cost -> shares
     // at scale 8. Prices that divide evenly must survive the round trip.
     for (const [shares, price] of [
       ['3', '180.25'],

@@ -8,7 +8,7 @@ export type SessionState =
   | { kind: 'signedOut' }
   | { kind: 'signedIn'; user: UserInfo };
 
-/** Client-side session mirror of SessionService (build-scope §8):
+/** Client-side session mirror of SessionService (build-scope sec. 8):
  *  state survives reloads via GetSessionStatus (legacy defect 11's
  *  lost-on-reload sign-in cannot recur). */
 @Injectable({ providedIn: 'root' })

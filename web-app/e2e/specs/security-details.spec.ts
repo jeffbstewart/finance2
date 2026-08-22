@@ -1,7 +1,7 @@
 // E2E spec for SecurityDetailsPage's header, Price History tab and
 // ProfileDialog (docs/design/ui-testing.md, inventory
 // "SecurityDetailsPage"). The Asset Allocation editor and the MTM
-// ledger are separate assignments — this spec only checks that their
+// ledger are separate assignments - this spec only checks that their
 // tabs appear where the profile says they should.
 //
 // The seeder gives VTI 220 pinned daily bars (MARKET locus), GOLD and
@@ -46,7 +46,7 @@ test('offers the price-history editor only for MANUAL securities', async ({ page
   await expect(page.locator('mat-card-title')).toHaveText('GOLD: Gold coins in a vault');
   await expect(subtitle(page)).toContainText('Privately Traded');
   await expect(subtitle(page)).toContainText('Private Investment');
-  await expect(subtitle(page)).toContainText('Net Expense Ratio: —');
+  await expect(subtitle(page)).toContainText('Net Expense Ratio: - ');
 
   await page.getByRole('link', { name: 'Edit price history' }).click();
   await expect(page).toHaveURL(new RegExp(`/securities/${ids['security.gold']}/prices$`));
@@ -77,7 +77,7 @@ test('round-trips the selected tab through the query param', async ({ page }) =>
     'true',
   );
 
-  // Reloading the URL lands on the same tab (spec §8.2).
+  // Reloading the URL lands on the same tab (spec sec. 8.2).
   await page.goto(`${detailsUrl('security.vti')}?tab=1`);
   await expect(page.getByRole('tab', { name: 'Asset Allocation' })).toHaveAttribute(
     'aria-selected',
@@ -172,7 +172,7 @@ test('disables Submit for a malformed expense ratio', async ({ page }) => {
 
   await fillField(page, 'Net Expense Ratio', '-0.01');
   await expect(submit).toBeDisabled();
-  // BUG: the mat-error is never displayed — mat-form-field only
+  // BUG: the mat-error is never displayed - mat-form-field only
   // projects errors while the control's errorState is true, and the
   // ratio field is a bare ngModel with no Angular validator.
   await expect(page.locator('mat-error')).toHaveCount(0);

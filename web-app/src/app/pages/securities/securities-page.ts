@@ -12,7 +12,7 @@ import { Notify } from '../../core/notify';
 import { Sparkline } from '../../shared/charts/sparkline';
 import { AddSecurityDialog } from './add-security-dialog';
 
-/** Securities list (spec §9.17): ticker/sparkline/description table,
+/** Securities list (spec sec. 9.17): ticker/sparkline/description table,
  *  add FAB, and the hidden-security reveal legacy never had. */
 @Component({
   selector: 'app-securities-page',

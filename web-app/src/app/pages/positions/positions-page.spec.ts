@@ -4,7 +4,7 @@
 // with a recording stub.
 //
 // Note on the dialog stub: PositionsPage imports MatDialogModule, so
-// the module's own MatDialog would be the one the component injects —
+// the module's own MatDialog would be the one the component injects - 
 // TestBed.inject(MatDialog) returns a different instance and spies on
 // it never fire. Overriding the *component's* providers puts the stub
 // in the node injector, which wins.
@@ -374,7 +374,7 @@ describe('PositionsPage', () => {
       const fixture = await render('2');
       expect(warningRequests).toEqual([{ brokerId: 0n, accountId: 2n }]);
       const text = textOf(fixture);
-      expect(text).toContain('Import reconciliation — 1 item(s) to fix');
+      expect(text).toContain('Import reconciliation - 1 item(s) to fix');
       expect(text).toContain('ticker INTLX is not a known security');
       expect(text).not.toContain('institution reports 12 shares');
       const panelLinks = Array.from(
@@ -573,9 +573,9 @@ describe('PositionsPage', () => {
     expect(textOf(fixture)).toContain('No positions yet.');
   });
 
-  // BUG: FUNCTIONAL_SPEC §9.6 requires the all-positions list to be
+  // BUG: FUNCTIONAL_SPEC sec. 9.6 requires the all-positions list to be
   // sorted by current value descending, and PositionsPage's own
-  // docstring says the server does it. Neither side sorts — the page
+  // docstring says the server does it. Neither side sorts - the page
   // renders ListPositions' order verbatim. Pinning current behavior.
   it('renders the server order verbatim, unsorted by current value', async () => {
     positionsFor = () =>

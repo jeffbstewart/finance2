@@ -1,5 +1,5 @@
 // Unit spec for AccountDialog (docs/design/ui-testing.md, inventory
-// "BrokerAccountsPage → AccountDialog"). The dialog is rendered
+// "BrokerAccountsPage -> AccountDialog"). The dialog is rendered
 // directly with stub MAT_DIALOG_DATA / MatDialogRef providers; the
 // AccountService is faked through installFakeApi.
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -334,7 +334,7 @@ describe('AccountDialog', () => {
     });
 
     it('sends a non-numeric sweep balance to the server unvalidated', async () => {
-      // Not a bug — the inventory records that sweepBalance has no
+      // Not a bug - the inventory records that sweepBalance has no
       // client-side validator; the server answers INVALID_ARGUMENT.
       const fixture = render(data);
       const error = vi.spyOn(TestBed.inject(Notify), 'error');

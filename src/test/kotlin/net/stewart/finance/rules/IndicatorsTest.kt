@@ -25,7 +25,7 @@ class IndicatorsTest {
 
     @Test
     fun `ema seeds with the first window's mean`() {
-        // window 3 -> k = 0.5: seed 2, then 4×0.5 + 2×0.5 = 3, then 5×0.5 + 3×0.5 = 4.
+        // window 3 -> k = 0.5: seed 2, then 4x0.5 + 2x0.5 = 3, then 5x0.5 + 3x0.5 = 4.
         val points = ema(history("1", "2", "3", "4", "5"), window = 3)
         assertEquals(listOf(usd("2"), usd("3"), usd("4")), points.map { it.value })
     }
@@ -34,7 +34,7 @@ class IndicatorsTest {
     fun `bollinger bands are mean plus and minus two population sigma`() {
         val points = bollingerBands(history("1", "2", "3"), window = 3)
         val p = points.single()
-        // mean 2; population variance 2/3; σ ≈ 0.81649658.
+        // mean 2; population variance 2/3; sigma ~ 0.81649658.
         assertEquals(usd("2"), p.mean)
         assertEquals(usd("3.6330"), p.upper)
         assertEquals(usd("0.3670"), p.lower)
@@ -58,7 +58,7 @@ class IndicatorsTest {
     fun `default window is the spec's 20 samples`() {
         val flat = history(*Array(25) { "10" })
         val points = sma(flat)
-        assertEquals(6, points.size) // 25 − 20 + 1
+        assertEquals(6, points.size) // 25 - 20 + 1
         assertTrue(points.all { it.value == usd("10") })
     }
 

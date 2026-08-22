@@ -11,7 +11,7 @@ import net.stewart.finance.domain.MarketSource
 /**
  * EODHD end-of-day client (Decision 4 fallback). The bar endpoint
  * carries OHLCV plus a split+dividend adjusted close, but not the
- * per-day corporate actions themselves — those are separate endpoints
+ * per-day corporate actions themselves - those are separate endpoints
  * we deliberately skip to preserve the 20-calls/day fallback budget,
  * so bars report dividend 0 / split 1 (the adjusted close is still
  * correct, which is what valuation and charts consume).

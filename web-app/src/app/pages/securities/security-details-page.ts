@@ -36,12 +36,12 @@ const SECURITY_TYPE_LABELS: Record<SecurityType, string> = {
 };
 
 /**
- * Security details (spec §9.10, launch scope build-scope §4): header
+ * Security details (spec sec. 9.10, launch scope build-scope sec. 4): header
  * with profile edit, a Price History tab (indicators, duration filter,
- * inflation toggle — the toggle legacy designed but never wired), and
+ * inflation toggle - the toggle legacy designed but never wired), and
  * an Asset Allocation tab with the date-stamped classification editor.
  * The selected tab rides the `tab` query param so the URL reloads to
- * the same view (§8.2).
+ * the same view (sec. 8.2).
  */
 @Component({
   selector: 'app-security-details-page',
@@ -96,7 +96,7 @@ export class SecurityDetailsPage {
     this.manualPricing() ? 'Privately Traded' : 'Publicly Traded',
   );
 
-  /** Duration filter is client-side (spec §9.10): cutoff in ISO form. */
+  /** Duration filter is client-side (spec sec. 9.10): cutoff in ISO form. */
   private readonly cutoff = computed<string>(() => {
     const duration = this.duration();
     if (duration === 'all') return '';

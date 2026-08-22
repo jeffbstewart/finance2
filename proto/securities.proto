@@ -1,8 +1,8 @@
 // SecurityService: the securities list, security details with price
 // history and technical indicators, profile and classification edits,
-// and the private price-history editor (FUNCTIONAL_SPEC §7
-// "Securities & prices", §9.10–§9.12, §9.17–§9.18; launch
-// classification scope per build-scope §4).
+// and the private price-history editor (FUNCTIONAL_SPEC sec. 7
+// "Securities & prices", sec. 9.10-sec. 9.12, sec. 9.17-sec. 9.18; launch
+// classification scope per build-scope sec. 4).
 syntax = "proto3";
 
 package finance;
@@ -14,7 +14,7 @@ option java_multiple_files = true;
 
 // The MUTUAL_FUND distinction is load-bearing in the rebalance
 // planner: mutual funds are bought in dollars, everything else in
-// whole shares (FUNCTIONAL_SPEC §5.5). UNSPECIFIED renders as
+// whole shares (FUNCTIONAL_SPEC sec. 5.5). UNSPECIFIED renders as
 // "Unknown".
 enum SecurityType {
   SECURITY_TYPE_UNSPECIFIED = 0;
@@ -24,7 +24,7 @@ enum SecurityType {
   PRIVATE_INVESTMENT = 4;
 }
 
-// Who prices the security (build-scope §4): MARKET = the external
+// Who prices the security (build-scope sec. 4): MARKET = the external
 // provider; MANUAL = hand-entered private price rows. Extensible for
 // later venue/exchange nuance.
 enum PricingLocus {
@@ -33,9 +33,9 @@ enum PricingLocus {
   MANUAL = 2;
 }
 
-// How the security is taxed (build-scope §11): LOTS = purchase-lot
+// How the security is taxed (build-scope sec. 11): LOTS = purchase-lot
 // basis with ST/LT capital gains; MARK_TO_MARKET = the annual PFIC
-// §1296 election — year-end marks recognize ordinary income and reset
+// sec. 1296 election - year-end marks recognize ordinary income and reset
 // the basis, floored at acquisition cost.
 enum TaxTreatment {
   TAX_TREATMENT_UNSPECIFIED = 0;
@@ -45,7 +45,7 @@ enum TaxTreatment {
 
 // One classification weight map. Kind is data, not an enum: only
 // "ASSET_CLASS" ships at launch; deferred taxonomies revive as new
-// kinds (build-scope §4). Weights are keyed by class key (e.g. an
+// kinds (build-scope sec. 4). Weights are keyed by class key (e.g. an
 // asset_classes name) as a proto map, so a duplicate key is
 // unrepresentable; display order is the client's concern (proto maps
 // are unordered).
@@ -95,8 +95,8 @@ message ListSecuritiesResponse {
   repeated SecurityListing securities = 1;
 }
 
-// Adding takes just a ticker (FUNCTIONAL_SPEC §9.18); every profile
-// field is then edited manually — there is no auto-population (§6.3).
+// Adding takes just a ticker (FUNCTIONAL_SPEC sec. 9.18); every profile
+// field is then edited manually - there is no auto-population (sec. 6.3).
 message AddSecurityRequest {
   string ticker = 1;
   string currency_code = 2;
@@ -125,7 +125,7 @@ message BollingerPoint {
 }
 
 // Computed server-side over the date-ascending adjusted closes with a
-// 20-sample window (FUNCTIONAL_SPEC §5.8).
+// 20-sample window (FUNCTIONAL_SPEC sec. 5.8).
 message TechnicalIndicators {
   repeated IndicatorPoint sma = 1;
   repeated IndicatorPoint ema = 2;
@@ -134,7 +134,7 @@ message TechnicalIndicators {
 
 message GetSecurityDetailsRequest {
   int64 security_id = 1;
-  // Present prices in constant dollars via CPI (FUNCTIONAL_SPEC §5.7).
+  // Present prices in constant dollars via CPI (FUNCTIONAL_SPEC sec. 5.7).
   bool inflation_adjusted = 2;
 }
 
@@ -156,8 +156,8 @@ message UpdateSecurityProfileRequest {
 
 message UpdateSecurityProfileResponse {}
 
-// Guard rail (§5.9): hiding requires no open positions; deletion is
-// not offered — a security with no references can be hidden instead.
+// Guard rail (sec. 5.9): hiding requires no open positions; deletion is
+// not offered - a security with no references can be hidden instead.
 message SetSecurityHiddenRequest {
   int64 security_id = 1;
   bool hidden = 2;
@@ -166,8 +166,8 @@ message SetSecurityHiddenRequest {
 message SetSecurityHiddenResponse {}
 
 // Replaces one classification set atomically. Weights are keyed by
-// class key (duplicates unrepresentable) and must sum to 1 (±0.0001),
-// validated server-side; as_of date-stamps the mix (build-scope §4).
+// class key (duplicates unrepresentable) and must sum to 1 (+/-0.0001),
+// validated server-side; as_of date-stamps the mix (build-scope sec. 4).
 message SetClassificationRequest {
   int64 security_id = 1;
   string kind = 2;
@@ -178,7 +178,7 @@ message SetClassificationRequest {
 message SetClassificationResponse {}
 
 // Private price-history CRUD applies only to MANUAL-locus securities;
-// MARKET-locus securities reject it (FUNCTIONAL_SPEC §5.6).
+// MARKET-locus securities reject it (FUNCTIONAL_SPEC sec. 5.6).
 message PrivatePriceRow {
   int64 price_id = 1;
   FormattedDate date = 2;
@@ -217,7 +217,7 @@ message DeletePrivatePriceRequest {
 
 message DeletePrivatePriceResponse {}
 
-// One year-end PFIC §1296 mark (build-scope §11). USD amounts are the
+// One year-end PFIC sec. 1296 mark (build-scope sec. 11). USD amounts are the
 // tax truth; fmv_local and fx_rate record how they were derived.
 message MtmMark {
   int64 mark_id = 1;
@@ -238,15 +238,15 @@ message ListMtmMarksRequest {
 
 message ListMtmMarksResponse {
   repeated MtmMark marks = 1; // tax-year ascending
-  // Total acquisition cost in USD at purchase-date FX — the basis
-  // floor (build-scope §11).
+  // Total acquisition cost in USD at purchase-date FX - the basis
+  // floor (build-scope sec. 11).
   FormattedMoney acquisition_cost_usd = 2;
 }
 
 // Computes the proposed year-end mark from stored prices and FX:
-// shares held on Dec 31 × last price on or before Dec 31 × ECB rate
+// shares held on Dec 31 x last price on or before Dec 31 x ECB rate
 // on or before Dec 31. Anything the store cannot supply is left unset
-// and explained in notes — the user enters it by hand.
+// and explained in notes - the user enters it by hand.
 message SuggestMtmMarkRequest {
   int64 security_id = 1;
   int32 tax_year = 2;
@@ -274,7 +274,7 @@ message RecordMtmMarkResponse {
   MtmMark mark = 1;
 }
 
-// Edits a recorded mark's inputs (the tax year is immutable — delete
+// Edits a recorded mark's inputs (the tax year is immutable - delete
 // and re-record to move a mark between years). The basis chain feeds
 // forward, so the server recomputes this mark and every later one.
 message UpdateMtmMarkRequest {
@@ -289,7 +289,7 @@ message UpdateMtmMarkResponse {
   MtmMark mark = 1;
 }
 
-// Only the latest mark may be deleted — the basis chain feeds forward.
+// Only the latest mark may be deleted - the basis chain feeds forward.
 message DeleteMtmMarkRequest {
   int64 mark_id = 1;
 }

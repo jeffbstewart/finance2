@@ -88,7 +88,7 @@ class RebalanceTest {
         )
         assertEquals(usd("1500.00"), plan.rebalanceTotal)
         assertEquals(usd("500.00"), plan.addedFunds)
-        assertEquals(usd("1000.00"), plan.remaining) // 500 sweeps + 500 added − 0 spent
+        assertEquals(usd("1000.00"), plan.remaining) // 500 sweeps + 500 added - 0 spent
     }
 
     @Test
@@ -131,12 +131,12 @@ class RebalanceTest {
         )
         val bond = plan.classes.single { it.className == "Bond" }
         // Bond needs its full $300 target; both bond funds qualify
-        // (weight 1 ≥ 0.9), tied weights order by ticker.
+        // (weight 1 >= 0.9), tied weights order by ticker.
         assertEquals(listOf("BND", "VBTLX"), bond.candidates.map { it.ticker })
         val bnd = bond.candidates[0]
-        assertEquals(Quantity.of("3"), bnd.suggestedShares) // ⌊300 / 80⌋
+        assertEquals(Quantity.of("3"), bnd.suggestedShares) // floor(300 / 80)
         assertEquals(usd("240.00"), bnd.cost)
-        assertEquals(Quantity.of("27"), bond.candidates[1].suggestedShares) // ⌊300 / 11⌋
+        assertEquals(Quantity.of("27"), bond.candidates[1].suggestedShares) // floor(300 / 11)
         // VTI is not a bond candidate; the Cash class has none.
         assertTrue(plan.classes.single { it.className == "Cash" }.candidates.isEmpty())
     }

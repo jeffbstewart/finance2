@@ -197,7 +197,7 @@ describe('LotDetailsPage', () => {
       providers: [provideZonelessChangeDetection(), provideRouter([])],
     });
     // MatDialog comes from MatDialogModule, not the root injector, so it
-    // has to be overridden on the component itself — TestBed.inject
+    // has to be overridden on the component itself - TestBed.inject
     // would hand back a different instance than the page resolves.
     TestBed.overrideComponent(LotDetailsPage, {
       add: { providers: [{ provide: MatDialog, useValue: dialogStub }] },
@@ -285,7 +285,7 @@ describe('LotDetailsPage', () => {
 
   it('inflation toggle refetches, daggers the five cost headers, and footnotes', async () => {
     const fixture = await render();
-    expect(textOf(fixture)).not.toContain('†');
+    expect(textOf(fixture)).not.toContain('*');
     respond = () => inflatedDetails();
     fixture.componentInstance.toggleInflation(true);
     await settle(fixture);
@@ -296,11 +296,11 @@ describe('LotDetailsPage', () => {
     ]);
     const [lots] = tables(fixture);
     const header = cells(lots, 'tr[mat-header-row]')[0];
-    expect(header.filter((h) => h.includes('†'))).toEqual([
-      'Buy $/Share †', 'Comm. †', 'Basis †', 'ST Gain †', 'LT Gain †',
+    expect(header.filter((h) => h.includes('*'))).toEqual([
+      'Buy $/Share *', 'Comm. *', 'Basis *', 'ST Gain *', 'LT Gain *',
     ]);
     expect(host(fixture).querySelector('p.footnote')!.textContent!.trim()).toBe(
-      "† restated in today's dollars via CPI",
+      "* restated in today's dollars via CPI",
     );
     // Only the cost columns are restated; the current price is untouched.
     const row = cells(lots, 'tr[mat-row]')[0];

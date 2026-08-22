@@ -1,5 +1,5 @@
 // Unit spec for PrivatePriceDialog (docs/design/ui-testing.md,
-// inventory "PrivatePricesPage → PrivatePriceDialog"). The dialog is
+// inventory "PrivatePricesPage -> PrivatePriceDialog"). The dialog is
 // created directly with a stubbed MatDialogRef and MAT_DIALOG_DATA, so
 // no overlay is involved; SecurityService is faked via installFakeApi.
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -113,7 +113,7 @@ describe('PrivatePriceDialog', () => {
     return input;
   }
 
-  /** Types the way a user does so ngModel sees an input event — a bare
+  /** Types the way a user does so ngModel sees an input event - a bare
    *  field assignment never re-renders under zoneless. Dates are
    *  M/D/YYYY, which the native adapter parses as local time. */
   async function type(
@@ -127,7 +127,7 @@ describe('PrivatePriceDialog', () => {
     await settle(fixture as never);
   }
 
-  /** Submit — the datepicker's calendar toggle is a button too. */
+  /** Submit - the datepicker's calendar toggle is a button too. */
   function submitButton(fixture: { nativeElement: HTMLElement }): HTMLButtonElement {
     const button = Array.from(host(fixture).querySelectorAll('button')).find((b) =>
       b.textContent!.includes('Submit'),
@@ -192,7 +192,7 @@ describe('PrivatePriceDialog', () => {
 
     // BUG: the <mat-error> is unreachable. mat-form-field only renders
     // its error slot when the control's own validators fail, and the
-    // only validator here is `required` — a non-empty but malformed
+    // only validator here is `required` - a non-empty but malformed
     // price ("abc") is "valid" to Angular Forms, so the message never
     // reaches the DOM. Submit is still correctly disabled. Pinning
     // current behavior; see "Suspected bugs" in the PR.
@@ -244,7 +244,7 @@ describe('PrivatePriceDialog', () => {
       await settle(fixture);
       expect(close).toHaveBeenCalledTimes(1);
       // Valueless `mat-dialog-close` closes with the attribute's ""
-      // — falsy, so PrivatePricesPage skips the reload.
+      // - falsy, so PrivatePricesPage skips the reload.
       expect(close.mock.calls[0][0]).toBe('');
       expect(added).toEqual([]);
     });

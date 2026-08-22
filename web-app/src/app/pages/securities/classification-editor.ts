@@ -25,7 +25,7 @@ interface WeightRow {
 }
 
 /**
- * The asset-class mix (spec §9.10 tab 2; launch scope build-scope §4):
+ * The asset-class mix (spec sec. 9.10 tab 2; launch scope build-scope sec. 4):
  * pie of the current weights plus the percent-per-class edit form with
  * a must-sum-to-100 cross validator. Saving date-stamps the mix
  * (as_of = today) so staleness can prompt a refresh later.
@@ -52,7 +52,7 @@ interface WeightRow {
             }
           </p>
         } @else {
-          <p class="empty-note">No asset class mix yet — enter the weights to the right.</p>
+          <p class="empty-note">No asset class mix yet - enter the weights to the right.</p>
         }
       </div>
       <div class="form-pane">
@@ -172,7 +172,7 @@ export class ClassificationEditor {
     this.validationError.set(this.validate());
   }
 
-  /** Mirror of the server rule: each 0–100, sum 100 (±0.01). */
+  /** Mirror of the server rule: each 0-100, sum 100 (+/-0.01). */
   private validate(): string | null {
     let totalTenThousandths = 0;
     for (const row of this.rows()) {
@@ -180,7 +180,7 @@ export class ClassificationEditor {
       if (!isDecimalString(percent)) {
         return `${row.name}: enter a number between 0 and 100`;
       }
-      // percent → fraction → integer ten-thousandths, all as exact
+      // percent -> fraction -> integer ten-thousandths, all as exact
       // string shifts; no float arithmetic on entered values.
       const fraction = percentToFraction(percent);
       const scaled = Number(shiftRight(fraction, 4));

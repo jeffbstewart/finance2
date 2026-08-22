@@ -17,7 +17,7 @@ const CLASSES = ['Cash', 'US Stock', 'Non US Stock', 'Bond', 'Other'];
 const PORTFOLIO_TOTAL = '$40,241.05';
 
 /** `fillField` matches labels by substring, and "US Stock %" is inside
- *  "Non US Stock %" — the target dialog needs an exact match. */
+ *  "Non US Stock %" - the target dialog needs an exact match. */
 async function fillPercent(page: Page, label: string, value: string): Promise<void> {
   await page.getByRole('textbox', { name: `${label} %`, exact: true }).fill(value);
 }
@@ -70,7 +70,7 @@ test('draws the four dashboard charts and the rebalance door', async ({ page }) 
 
 test('class links open the contributors page', async ({ page }) => {
   await page.goto('/app/allocation');
-  // "US Stock" is a substring of "Non US Stock" — match exactly.
+  // "US Stock" is a substring of "Non US Stock" - match exactly.
   await page.getByRole('link', { name: 'US Stock', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/allocation\/class\/US%20Stock$/);
   await expect(page.locator('mat-card-title')).toHaveText('Positions in US Stock');
@@ -109,7 +109,7 @@ test('the Cash class shows the synthetic sweeps contribution', async ({ page }) 
   // $500 Brokerage + $55.25 Roth + EUR 250 x 1.16 from the EUR account.
   expect(table.rows).toEqual([['Sweeps', '0', '100%', '$845.25']]);
   // BUG: the sweeps row has no security behind it, so its ticker cell
-  // still renders a link — to /securities/0, which is a dead end.
+  // still renders a link - to /securities/0, which is a dead end.
   await expect(page.getByRole('link', { name: 'Sweeps' })).toHaveAttribute(
     'href',
     '/app/securities/0',
@@ -180,7 +180,7 @@ test('saving a new target updates the dashboard', async ({ page }) => {
 
   await expectSnackbar(page, 'Target allocation saved');
   await expect(page.locator('mat-dialog-container')).toHaveCount(0);
-  // The page reloads behind the dialog — wait for the new figure before
+  // The page reloads behind the dialog - wait for the new figure before
   // reading the table (readTable does no waiting of its own).
   await expect(page.locator('tr[mat-row]').first().locator('td').last()).toHaveText('5%');
 

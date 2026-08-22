@@ -21,7 +21,7 @@ export interface HoldingDialogData {
 
 /**
  * Position-level holdings entry for tax-deferred accounts
- * (build-scope §1): no lots, no basis — just the current share count.
+ * (build-scope sec. 1): no lots, no basis - just the current share count.
  * Setting quantity 0 via delete removes the row.
  */
 @Component({
@@ -36,7 +36,7 @@ export interface HoldingDialogData {
   ],
   template: `
     <h2 mat-dialog-title>
-      {{ data.securityId ? 'Edit Holding' : 'Set Holding' }} — {{ data.account.name }}
+      {{ data.securityId ? 'Edit Holding' : 'Set Holding' }} - {{ data.account.name }}
     </h2>
     <mat-dialog-content class="holding-form">
       @if (data.securityId) {

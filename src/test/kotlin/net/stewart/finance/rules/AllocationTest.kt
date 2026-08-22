@@ -130,7 +130,7 @@ class AllocationTest {
         val byName = entries.associateBy { it.className }
         assertEquals(usd("107.50"), byName.getValue("Cash").target)
         assertEquals(usd("537.50"), byName.getValue("US Stock").target)
-        assertEquals(usd("82.50"), byName.getValue("Cash").delta)     // 107.50 − 25
+        assertEquals(usd("82.50"), byName.getValue("Cash").delta)     // 107.50 - 25
         assertEquals(usd("-162.50"), byName.getValue("US Stock").delta)
         assertEquals(usd("1075.00"), entries.fold(Money.zero(CurrencyUnit.USD)) { a, e -> a + e.target })
         assertEquals(usd("0"), entries.fold(Money.zero(CurrencyUnit.USD)) { a, e -> a + e.delta })

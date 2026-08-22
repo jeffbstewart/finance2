@@ -41,8 +41,8 @@ function eurAccount(): AccountSummary {
     accountNumber: 'X-3',
     currencyCode: 'EUR',
     taxDeferred: false,
-    sweepBalance: money('250.00', { currency: 'EUR', display: '€250.00' }),
-    investmentValue: money('0', { currency: 'EUR', display: '€0.00' }),
+    sweepBalance: money('250.00', { currency: 'EUR', display: '\u20ac250.00' }),
+    investmentValue: money('0', { currency: 'EUR', display: '\u20ac0.00' }),
   });
 }
 
@@ -130,7 +130,7 @@ describe('BrokerAccountsPage', () => {
 
   afterEach(() => restoreApi());
 
-  /** `id` is a required router input — set it before the first CD run
+  /** `id` is a required router input - set it before the first CD run
    *  or ngOnInit reads an unbound signal (NG0950). */
   async function render(id = '1') {
     const fixture = TestBed.createComponent(BrokerAccountsPage);
@@ -166,7 +166,7 @@ describe('BrokerAccountsPage', () => {
   }
 
   /** MatDialogModule re-provides MatDialog, so the page's instance
-   *  lives in the component's standalone injector — not TestBed's root
+   *  lives in the component's standalone injector - not TestBed's root
    *  one. Spy on this one or the page's `open` calls go unseen. */
   function dialogOf(fixture: { debugElement: { injector: { get(t: unknown): unknown } } }): MatDialog {
     return fixture.debugElement.injector.get(MatDialog) as MatDialog;
@@ -208,7 +208,7 @@ describe('BrokerAccountsPage', () => {
     const fixture = await render('2');
     expect(textOf(fixture)).toContain('Accounts at EuroBank');
     expect(cells(fixture, 'tr[mat-row]')).toEqual([
-      ['EUR Brokerage', 'X-3 (EUR)', 'No', '€250.00', '€0.00', 'edit'],
+      ['EUR Brokerage', 'X-3 (EUR)', 'No', '\u20ac250.00', '\u20ac0.00', 'edit'],
     ]);
   });
 
@@ -296,7 +296,7 @@ describe('BrokerAccountsPage', () => {
     const fixture = await render('1');
     const slices = pieStub(fixture)!.slices();
     expect(slices[1].value).toBe(250); // EUR 250 counted as 250, not $290
-    expect(slices[1].display).toBe('€0.00 + €250.00 sweeps');
+    expect(slices[1].display).toBe('\u20ac0.00 + \u20ac250.00 sweeps');
   });
 
   it('opens the scoped positions page when a pie slice is clicked', async () => {
@@ -322,7 +322,7 @@ describe('BrokerAccountsPage', () => {
     const fixture = await render('1');
     expect(warningRequests).toEqual([{ brokerId: 1n, accountId: 0n }]);
     const text = textOf(fixture);
-    expect(text).toContain('Import reconciliation — 2 item(s) to fix');
+    expect(text).toContain('Import reconciliation - 2 item(s) to fix');
     expect(text).toContain('snapshot as of 2026-08-10');
     expect(text).toContain('ticker INTLX is not a known security');
     expect(text).toContain('institution reports 12 shares, lots hold 10');

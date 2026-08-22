@@ -45,7 +45,7 @@ private fun sale(
 
 class LotsTest {
 
-    // --- the long-term boundary (spec §5.1: more than one year) ---
+    // --- the long-term boundary (spec sec. 5.1: more than one year) ---
 
     @Test
     fun `exactly one year is not long-term, one day more is`() {
@@ -74,7 +74,7 @@ class LotsTest {
         assertTrue(!state.closed)
         assertEquals(usd("3.00"), state.soldCosts.getValue(SaleId(1)))
         assertEquals(usd("7.00"), state.stillHeldCosts)
-        // basis = 7 × $10 + $7 pro-rated costs
+        // basis = 7 x $10 + $7 pro-rated costs
         assertEquals(usd("77.00"), state.basis)
     }
 
@@ -133,7 +133,7 @@ class LotsTest {
         val gains = saleGains(listOf(theLot), listOf(theSale))
         assertEquals(1, gains.size)
         val g = gains.single()
-        // (30 − 10) × 3 − $3 pro-rated purchase costs − $9 sale costs
+        // (30 - 10) x 3 - $3 pro-rated purchase costs - $9 sale costs
         assertEquals(usd("48.00"), g.gain)
         assertTrue(g.longTerm)
         assertEquals(usd("3.00"), g.proRatedPurchaseCosts)
@@ -182,8 +182,8 @@ class LotsTest {
         assertEquals(qty("5"), p.shortTermShares)
         assertEquals(usd("177.00"), p.basis)            // 77 + 100
         assertEquals(usd("300.00"), p.currentValue)     // 175 + 125
-        assertEquals(usd("98.00"), p.longTermGain)      // 175 − 77
-        assertEquals(usd("25.00"), p.shortTermGain)     // 125 − 100
+        assertEquals(usd("98.00"), p.longTermGain)      // 175 - 77
+        assertEquals(usd("25.00"), p.shortTermGain)     // 125 - 100
     }
 
     @Test
@@ -203,7 +203,7 @@ class LotsTest {
         }
     }
 
-    // --- sale validation (guard rail §5.9) ---
+    // --- sale validation (guard rail sec. 5.9) ---
 
     @Test
     fun `validation accepts a coherent sale`() {

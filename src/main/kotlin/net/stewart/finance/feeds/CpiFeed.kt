@@ -8,13 +8,13 @@ import org.slf4j.LoggerFactory
 /** FRED's CSV export of the CPIAUCSL series (public domain; see NOTICE). */
 const val FRED_CPIAUCSL_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL"
 
-/** Classpath location of the embedded snapshot (spec §10: the server
+/** Classpath location of the embedded snapshot (spec sec. 10: the server
  *  must start, CPI included, without internet access). */
 const val CPI_SNAPSHOT_RESOURCE = "/cpi/CPIAUCSL.csv"
 
 /**
  * Keeps cpi_observations populated: seeded once from the embedded
- * snapshot, refreshed from FRED in the background (monthly data — a
+ * snapshot, refreshed from FRED in the background (monthly data - a
  * weekly pull is plenty). Fixes the legacy fetch-once-and-die-offline
  * defect 13 by construction.
  */

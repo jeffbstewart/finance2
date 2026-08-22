@@ -74,17 +74,17 @@ test('portfolio-wide list shows every held security with footer totals', async (
   expect(rowFor(table.rows, 'GOLD')[SHARES]).toBe('5');
   expect(rowFor(table.rows, 'GOLD')[BASIS]).toBe('$0.00');
   expect(rowFor(table.rows, 'GOLD')[VALUE]).toBe('$16,792.50');
-  // Row amounts stay in the security's own currency (build-scope §5).
-  expect(rowFor(table.rows, 'EUFUND')[VALUE]).toBe('€10,400.00');
+  // Row amounts stay in the security's own currency (build-scope sec. 5).
+  expect(rowFor(table.rows, 'EUFUND')[VALUE]).toBe('\u20ac10,400.00');
 
   expect(table.footer[TICKER]).toBe('Total');
   expect(table.footer[VALUE]).toMatch(/^\$[\d,]+\.\d\d$/);
   await expect(page.locator('.empty-note')).toHaveCount(0);
 });
 
-// BUG: FUNCTIONAL_SPEC §9.6 requires "Default sort: current value
+// BUG: FUNCTIONAL_SPEC sec. 9.6 requires "Default sort: current value
 // descending" for the all-positions list (PositionsPage's own docstring
-// repeats the claim), but neither ListPositions nor the page sorts —
+// repeats the claim), but neither ListPositions nor the page sorts - 
 // rows arrive in lot/holding insertion order. GOLD is the most valuable
 // position and still is not first. Pinning current behavior.
 test('portfolio-wide list is NOT sorted by current value descending', async ({ page }) => {
@@ -146,7 +146,7 @@ test('the EUR account prices its position in euros', async ({ page }) => {
   const table = await readTable(page);
   expect(tickersOf(table.rows)).toEqual(['EUFUND']);
   expect(table.rows[0][SHARES]).toBe('100');
-  expect(table.rows[0][VALUE]).toBe('€10,400.00');
+  expect(table.rows[0][VALUE]).toBe('\u20ac10,400.00');
 });
 
 test('an empty scoped account offers hide and delete', async ({ page }) => {
@@ -181,9 +181,9 @@ test('the buy dialog omits tax-deferred accounts and records a purchase', async 
   await expect(page.getByRole('heading', { name: 'Purchase Security' })).toBeVisible();
   await expect(page.getByText('If you paid no commission, enter 0 here.')).toBeVisible();
 
-  // Tax-deferred accounts don't take lot purchases (build-scope §1).
+  // Tax-deferred accounts don't take lot purchases (build-scope sec. 1).
   // GetPurchaseFormInfo lists accounts by broker name, then account
-  // name — so EuroBank precedes Vanguard.
+  // name - so EuroBank precedes Vanguard.
   await page.getByRole('combobox', { name: 'Account' }).click();
   const options = await page.getByRole('option').allInnerTexts();
   expect(options.map((o) => o.trim())).toEqual([
@@ -250,7 +250,7 @@ test('cancelling the buy dialog leaves the list unchanged', async ({ page }) => 
 test('the holding dialog sets a tax-deferred position', async ({ page }) => {
   await gotoAccount(page, 'account.roth');
   await page.getByRole('button', { name: 'Set holding' }).click();
-  await expect(page.getByRole('heading', { name: 'Set Holding — Roth IRA' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Set Holding - Roth IRA' })).toBeVisible();
 
   const submit = page.getByRole('button', { name: 'Submit' });
   await expect(submit).toBeDisabled();
@@ -267,7 +267,7 @@ test('the holding dialog sets a tax-deferred position', async ({ page }) => {
 
 // BUG: HoldingDialog's docstring and the UI inventory both say
 // "quantity 0 deletes" the holding, and the dialog's validator accepts
-// "0" — but SetHolding rejects any non-positive quantity, so the only
+// "0" - but SetHolding rejects any non-positive quantity, so the only
 // thing 0 produces is an error snackbar. There is a DeleteHolding RPC
 // the dialog never calls. Pinning current behavior.
 test('quantity 0 is accepted by the form but rejected by the server', async ({ page }) => {
@@ -280,7 +280,7 @@ test('quantity 0 is accepted by the form but rejected by the server', async ({ p
   await submit.click();
   await expectSnackbar(page, 'quantity must be positive; delete the holding to remove it');
   // The dialog stays open so the entry can be corrected.
-  await expect(page.getByRole('heading', { name: 'Set Holding — Roth IRA' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Set Holding - Roth IRA' })).toBeVisible();
 });
 
 test('the edit-account dialog opens preloaded from the scoped account', async ({ page }) => {

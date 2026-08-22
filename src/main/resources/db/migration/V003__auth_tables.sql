@@ -1,6 +1,6 @@
 -- auth-kotlin-toolkit support tables, duplicated verbatim from the
 -- toolkit's db/auth/V001__auth_tables.sql + V002__passkey_credential.sql
--- (build-scope §8: consumer-versioned copy, MediaManager precedent —
+-- (build-scope sec. 8: consumer-versioned copy, MediaManager precedent - 
 -- a second Flyway location would collide with this chain's version
 -- numbers). The toolkit's files are the source of truth; refresh this
 -- copy when the toolkit's auth DDL changes.

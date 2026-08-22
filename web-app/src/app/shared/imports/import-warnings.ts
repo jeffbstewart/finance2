@@ -5,7 +5,7 @@ import type { ImportWarning } from '../../../proto-gen/imports_pb';
 
 /**
  * The reconciliation warnings the last snapshot run left against the
- * accounts in view (pipeline design §E, amended 2026-08-21): shown on
+ * accounts in view (pipeline design sec. E, amended 2026-08-21): shown on
  * the broker and account pages so the human is prompted to fix lots,
  * add securities, or delete vanished holdings, then re-process. Renders
  * nothing when there is nothing to fix.
@@ -18,7 +18,7 @@ import type { ImportWarning } from '../../../proto-gen/imports_pb';
       <section class="import-warnings" role="status">
         <h3 class="import-warnings-title">
           <mat-icon inline>warning</mat-icon>
-          Import reconciliation — {{ warnings().length }} item(s) to fix
+          Import reconciliation - {{ warnings().length }} item(s) to fix
           @if (asOf()) {
             <span class="import-warnings-asof">(snapshot as of {{ asOf() }})</span>
           }
