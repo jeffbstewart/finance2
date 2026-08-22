@@ -114,14 +114,26 @@ export class SecurityDetailsPage {
     const cutoff = this.cutoff();
     const inRange = (date?: { year: number; month: number; day: number }) =>
       !!date && (!cutoff || isoDate(date) >= cutoff);
+    const mirrored = details.mirrorPriceHistory.length > 0;
     const series: TimeSeries[] = [
       {
         name: 'Adjusted Close',
+        // Beside a mirror the sparse actuals are the point: mark them.
+        markers: mirrored && this.manualPricing(),
         points: details.priceHistory
           .filter((p) => inRange(p.date))
           .map((p) => ({ date: isoDate(p.date!), value: Number(p.adjustedClose?.value) })),
       },
     ];
+    if (mirrored) {
+      series.push({
+        name: `${details.security?.mirrorsTicker ?? 'Mirror'} (right axis)`,
+        axis: 'right',
+        points: details.mirrorPriceHistory
+          .filter((p) => inRange(p.date))
+          .map((p) => ({ date: isoDate(p.date!), value: Number(p.adjustedClose?.value) })),
+      });
+    }
     const indicators = details.indicators;
     const indicator = this.indicator();
     if (indicator === 'sma' && indicators) {

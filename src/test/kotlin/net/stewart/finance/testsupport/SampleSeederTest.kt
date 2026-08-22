@@ -45,6 +45,7 @@ class SampleSeederTest {
                     "broker.vanguard", "broker.eurobank", "broker.old",
                     "account.brokerage", "account.roth", "account.eur", "account.closed",
                     "security.vti", "security.bondx", "security.gold", "security.eufund", "security.solo", "security.ghost",
+                    "security.vtiTr",
                     "lot.vti_lt", "lot.vti_st", "lot.bondx", "lot.eufund",
                     "sale.last_year", "sale.this_year", "snapshot.sample",
                 )
@@ -52,7 +53,7 @@ class SampleSeederTest {
             "missing keys: ${ids.keys}",
         )
         val securities = SecurityRepository(db.dataSource).list(portfolioId, includeHidden = true)
-        assertEquals(6, securities.size)
+        assertEquals(7, securities.size)
         assertEquals(1, securities.count { it.hidden })
         // The MTM ledger carries its two chained marks.
         val marks = MtmMarkRepository(db.dataSource)
@@ -76,7 +77,7 @@ class SampleSeederTest {
         seeder.reset()
         assertTrue(SecurityRepository(db.dataSource).list(portfolioId, includeHidden = true).isEmpty())
         val ids = seeder.seed(portfolioId)
-        assertEquals(6, SecurityRepository(db.dataSource).list(portfolioId, includeHidden = true).size)
+        assertEquals(7, SecurityRepository(db.dataSource).list(portfolioId, includeHidden = true).size)
         assertTrue(ids.isNotEmpty())
     }
 }

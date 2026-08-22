@@ -229,37 +229,23 @@ class SecurityGrpcService(
         val row = findSecurity(request.securityId)
         // MANUAL locus: hand-entered history (adjusted = raw); MARKET
         // locus: persisted provider bars, refreshed when stale.
-        val raw = pricing.history(row)
         // Constant-dollar presentation (spec sec. 5.7): both series convert
         // to today's dollars; the chart and the indicators use the same
         // adjusted series -- one consistent direction.
-        val points = if (!request.inflationAdjusted) raw else {
-            val cpi = cpiSeries() ?: throw StatusException(
-                Status.FAILED_PRECONDITION.withDescription("CPI data is not loaded yet")
-            )
-            val today = LocalDate.now()
-            try {
-                raw.map {
-                    PricingService.HistoryPoint(
-                        it.date,
-                        cpi.convert(it.close, it.date, today),
-                        cpi.convert(it.adjustedClose, it.date, today),
-                    )
-                }
-            } catch (e: IllegalArgumentException) {
-                throw StatusException(
-                    Status.FAILED_PRECONDITION.withDescription(e.message ?: "CPI coverage error")
-                )
-            }
-        }
+        val points = presentHistory(pricing.history(row), request.inflationAdjusted)
         val builder = GetSecurityDetailsResponse.newBuilder().setSecurity(row.toProfile())
         for (point in points) {
-            builder.addPriceHistory(
-                PricePoint.newBuilder()
-                    .setDate(point.date.toProto())
-                    .setClose(point.close.toProto().amount)
-                    .setAdjustedClose(point.adjustedClose.toProto().amount)
-            )
+            builder.addPriceHistory(point.toProto())
+        }
+        // The mirrored public fund, presented the same way, for the
+        // two-axis chart. A mirror that has since been deleted or is
+        // unreachable just leaves the series empty.
+        row.mirrorsSecurityId?.let { mirrorId ->
+            securities.find(mirrorId, portfolio())?.let { mirror ->
+                for (point in presentHistory(pricing.history(mirror), request.inflationAdjusted)) {
+                    builder.addMirrorPriceHistory(point.toProto())
+                }
+            }
         }
         // Indicators run over the adjusted-close series (spec sec. 5.8).
         val history = points.map { ClosePoint(it.date, it.adjustedClose) }
@@ -351,6 +337,37 @@ class SecurityGrpcService(
     }
 
     private fun mtmMarksExist(row: SecurityRow): Boolean = mtm.listForSecurity(row).isNotEmpty()
+
+    /** Nominal, or every close restated in today's dollars via CPI. */
+    private fun presentHistory(
+        raw: List<PricingService.HistoryPoint>,
+        inflationAdjusted: Boolean,
+    ): List<PricingService.HistoryPoint> {
+        if (!inflationAdjusted) return raw
+        val cpi = cpiSeries() ?: throw StatusException(
+            Status.FAILED_PRECONDITION.withDescription("CPI data is not loaded yet")
+        )
+        val today = LocalDate.now()
+        return try {
+            raw.map {
+                PricingService.HistoryPoint(
+                    it.date,
+                    cpi.convert(it.close, it.date, today),
+                    cpi.convert(it.adjustedClose, it.date, today),
+                )
+            }
+        } catch (e: IllegalArgumentException) {
+            throw StatusException(
+                Status.FAILED_PRECONDITION.withDescription(e.message ?: "CPI coverage error")
+            )
+        }
+    }
+
+    private fun PricingService.HistoryPoint.toProto(): PricePoint = PricePoint.newBuilder()
+        .setDate(date.toProto())
+        .setClose(close.toProto().amount)
+        .setAdjustedClose(adjustedClose.toProto().amount)
+        .build()
 
     override suspend fun setSecurityHidden(request: SetSecurityHiddenRequest): SetSecurityHiddenResponse {
         val row = findSecurity(request.securityId)
