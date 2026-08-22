@@ -1,14 +1,18 @@
 # Durable single-host deployment (README.md "Run with Docker").
 #
 #   cp example.env .env   # fill in the H2 passwords, proxies, API keys
-#   docker compose up -d            # pulls the published image
-#   docker compose up -d --build    # or build it from this checkout
+#   docker compose up -d              # pulls the published image
 #   docker compose logs -f finance2   # first run prints the setup token
 #
 # The image is published by CI on every merge to main as
-# ghcr.io/jeffbstewart/finance2:latest (and :sha-<short> for pinning);
-# Portainer tracks :latest and updates with "re-pull image". `build:`
-# stays so a developer checkout can build the same name locally.
+# ghcr.io/jeffbstewart/finance2:latest (and :sha-<short>, :pr-<N> for
+# pinning), stamped with the PR it came from (see the foot of the UI's
+# nav). This file never builds: pull_policy is always, so a Portainer
+# update pulls whether or not "re-pull image" is ticked, and nothing a
+# stack does can tag a local build with the registry's name. To build
+# from a checkout use the developer override, which tags finance2:local:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 #
 # Everything comes from the environment - Portainer's stack variables,
 # or a .env beside this file for the compose CLI (read for ${...}
@@ -44,8 +48,8 @@
 # (172.28.0.0/24) if you would rather not care which gateway it is.
 services:
   finance2:
-    build: .
     image: ${FINANCE2_IMAGE:-ghcr.io/jeffbstewart/finance2:latest}
+    pull_policy: always
     container_name: finance2
     restart: unless-stopped
     # Never root. The image's own user is 10001; override to match the
