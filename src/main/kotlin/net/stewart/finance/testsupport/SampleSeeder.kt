@@ -68,6 +68,7 @@ class SampleSeeder(private val dataSource: DataSource) {
     /** Domain tables only; users, sessions, FX, and CPI survive. */
     fun reset() {
         val order = listOf(
+            "trading_plan_steps", "trading_plans",
             "mtm_marks", "sale_allocations", "sales", "purchase_lots", "holdings",
             "snapshot_uploads", "plaid_account_links", "security_classifications",
             "target_allocations", "private_prices", "market_prices",
