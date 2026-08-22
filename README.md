@@ -35,9 +35,16 @@ required ones.
 
 ```bash
 cp example.env .env               # set FINANCE2_DATA, H2_PASSWORD, H2_FILE_PASSWORD, TRUSTED_PROXIES, API keys
-docker compose up -d              # pulls ghcr.io/jeffbstewart/finance2:latest
-docker compose up -d --build      # or build the image from this checkout instead
+docker compose up -d              # pulls ghcr.io/jeffbstewart/finance2:latest (always)
 docker compose logs -f finance2   # the first boot prints the one-time setup token
+```
+
+To run a build of your own checkout instead, add the developer
+override - it tags the result `finance2:local`, never the registry's
+name, and the UI shows `dev build`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
 - Which build is this? The foot of the left nav shows the build stamp
@@ -46,10 +53,14 @@ docker compose logs -f finance2   # the first boot prints the one-time setup tok
   commit. Hover for the version. Images are also tagged `pr-<N>`, so
   `FINANCE2_IMAGE=ghcr.io/jeffbstewart/finance2:pr-82` pins exactly
   that PR. Anything built outside CI says `dev build`.
-- Portainer: deploy the stack from this repository and update it with
-  **Re-pull image** on - the update pulls `:latest` rather than
-  rebuilding. (Before the image was published, an update with re-pull
-  tried Docker Hub for `finance2` and failed with "pull access denied".)
+- Portainer: deploy the stack from this repository; every update
+  pulls `:latest` (`pull_policy: always`), so the **Re-pull image**
+  toggle no longer matters. Earlier, the compose file also carried
+  `build: .`, and an update without re-pull silently built from the
+  checkout and tagged it with the registry's name - a build with no
+  stamp, showing `dev build`, shadowing the CI image. If a host still
+  has one of those, `docker rmi ghcr.io/jeffbstewart/finance2:latest`
+  (with the stack stopped) and redeploy.
 
 - The encrypted database lives in the host directory `FINANCE2_DATA`
   (required - compose refuses to start without it), bind-mounted at
