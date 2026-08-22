@@ -1,6 +1,6 @@
 # Trading plans: propose, project, print
 
-Status: proposal for Jeff's ruling, 2026-08-22. Replaces the buy-only
+Status: ruled 2026-08-22 (see "Rulings"). Replaces the buy-only
 rebalance planner of spec sec. 5.5 (`ScoreRebalance`) with a plan the
 human composes step by step; the allocation view then shows what the
 portfolio looks like after the plan, and the plan prints.
@@ -92,9 +92,6 @@ per-class value and fraction, per-account value and sweep - plus:
   long-term gain at the plan price. This is the one place the plan
   uses tax knowledge, and it is labelled *estimate at plan price*.
   Tax-deferred accounts report no gain.
-- **Wash-sale flag** (optional, later): a sell at a loss with a buy of
-  the same security within 30 days in any account is flagged. Not in
-  the first cut.
 
 The app never proposes a step and never says a plan is good. Within
 a sale or purchase the human has decided on, it may lay out and order
@@ -106,12 +103,13 @@ opinion.
 ### Persistence
 
 Plans are saved (`trading_plans`, `trading_plan_steps`), with status
-**draft** -> **printed** (the human printed it; it is frozen and
-re-scoring makes a copy) -> **archived**. A printed plan keeps its
-step prices and its projection as scored, so the record of "what I
-decided and on what numbers" survives price changes. Executing is not
-a status: the app cannot know, and the positions pages are where the
-real trades get recorded afterwards.
+**open** -> **archived**. Plans stay editable for their whole life;
+printing is a convenience that stamps `last_printed_at` and changes
+nothing else. Step prices are refreshed on every score, so a plan
+always shows current numbers; the printed page carries its "priced
+on" instant, which is the record of what the numbers were when it was
+presented. Executing is not a status: the app cannot know, and the
+positions pages are where the real trades get recorded afterwards.
 
 ## Wire contract (sketch)
 
@@ -121,7 +119,7 @@ service TradingPlanService {
   rpc GetPlan(GetPlanRequest) returns (GetPlanResponse);        // steps + projection
   rpc CreatePlan(CreatePlanRequest) returns (CreatePlanResponse);
   rpc SetPlanSteps(SetPlanStepsRequest) returns (SetPlanStepsResponse); // replace all, re-score
-  rpc MarkPlanPrinted(MarkPlanPrintedRequest) returns (MarkPlanPrintedResponse);
+  rpc MarkPlanPrinted(MarkPlanPrintedRequest) returns (MarkPlanPrintedResponse); // stamps last_printed_at only
   rpc ArchivePlan(ArchivePlanRequest) returns (ArchivePlanResponse);
 }
 
@@ -169,11 +167,14 @@ One page, **Plan**, under Allocation:
    Target, Delta per class; below it, per-account rows with sweep
    before/after and value before/after; the cash check and the
    taxable-gain estimates inline where they apply.
-4. **Printed page**: the steps as a checklist with boxes, grouped by
-   account in execution order, each with "at approximately $price";
-   then the projection summary; then the footer: *Priced on <date>.
-   finance2 does not execute trades. Record the actual fills on the
-   Positions page afterwards.*
+4. **Printed page**: the whole plan on one document - first read
+   across the table with a spouse, then carried to the brokerages:
+   the projection summary (Before / After / Target per class, and the
+   cash in and out) at the top, because that is the conversation;
+   then the steps as a checklist with boxes, grouped by account in
+   execution order, each with "at approximately $price"; then the
+   footer: *Priced on <date>. finance2 does not execute trades. Record
+   the actual fills on the Positions page afterwards.*
 
 The existing Rebalance page and its buy dialog are removed when Plan
 lands (their specs and e2e with them).
@@ -186,6 +187,8 @@ lands (their specs and e2e with them).
   account's recorded method); choosing lots is done when the real sale
   is recorded.
 - Tracking execution against the plan.
+- Wash-sale detection: plans are made once or twice a year; not worth
+  the machinery (ruling).
 
 ## Layers
 
@@ -198,18 +201,21 @@ lands (their specs and e2e with them).
    taxable-gain estimate through the existing lot rules.
 3. UI: the Plan page, step dialogs, print stylesheet; removal of the
    Rebalance page and `ScoreRebalance`.
-4. Optional: wash-sale flag; plan copy from a printed plan.
+4. Optional: copy a plan as the starting point for the next one.
 
-Questions for the ruling:
+## Rulings (Jeff, 2026-08-22)
 
-- Should a **Transfer** support an in-kind move (security, shares)
-  between two accounts at the same broker? Cheap to add later; omitted
-  now for clarity.
-- Is the printed plan per **account** (one sheet per brokerage to
-  carry) or one sheet for the whole plan? The sketch does both: one
-  page, grouped by account.
-- Should printing freeze the plan (proposed) or should plans stay
-  editable and printing just stamp a date?
+- **In-kind transfers: out.** A transfer moves cash only.
+- **The printed plan is the whole plan**, one document: presented to
+  a spouse first, then executed by hand. Not per brokerage.
+- **Plans stay editable.** Printing is a convenience that stamps a
+  date; nothing freezes.
+- **Wash sales: ignored.** Once or twice a year does not warrant it.
+- **The Buy picker does not order by tax status.** A purchase has no
+  immediate tax consequence, so there is nothing to compute; putting
+  tax-deferred accounts first would be the app holding an asset-
+  location opinion. It orders by the one fact that constrains a buy:
+  available cash, grouped by account.
 
 ## Amendment: assisted selection - ordering facts, not recommending (2026-08-22)
 
@@ -242,7 +248,6 @@ selling it computed through the existing lot rules at the plan price:
 | Est. gain if sold in full | lot rules at plan price, by the account's recorded method; split short/long term |
 | Gain per dollar sold | est. gain / value - the comparable figure across positions of different sizes |
 | Holding period flags | lots that cross from short- to long-term within N days (a sale today vs after that date) |
-| Wash-sale flag | a buy of the same security within 30 days before, in any account, or already in this plan |
 
 Default ordering, stated in a caption the human can change with one
 click: **tax-deferred accounts first** (rebalancing there realizes
@@ -253,7 +258,7 @@ first), then **short-term gains**. Alternative orderings offered:
 the Sell step dialog prefilled with the security and account; the
 human types the shares or dollars. A partial sale's estimate is
 recomputed for the amount entered (lot rules run on the partial
-quantity by the recorded method).
+quantity by the recorded method). No wash-sale check (ruling).
 
 What the picker will not do: pick a quantity, suggest selling the
 whole overweight, or rank across classes. It ranks within the class
@@ -263,10 +268,12 @@ the human opened.
 
 Symmetric and simpler: from a class under target, **Buy...** lists the
 securities whose classification carries weight in that class, across
-accounts with cash available, with the account's tax status and
-available sweep. Ordering: *tax-deferred accounts first* (income
-producers belong there - the human's own rule, recorded in the
-target's rationale text), then by available cash. No expense-ratio,
+accounts with cash available, with the account's tax status shown as
+a fact and its available sweep. Ordering: **by available cash,
+grouped by account** - the one thing that constrains a buy. Not by
+tax status (ruling: a buy has no immediate tax consequence, and an
+asset-location preference is the human's policy, written in the
+target's rationale, not the app's sort key). No expense-ratio,
 performance, or "best fund" ranking: that would be choosing a fund.
 
 ### Projection additions
