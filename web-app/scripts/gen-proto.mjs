@@ -45,6 +45,7 @@ const PROTO_FILES = [
   'securities.proto',
   'positions.proto',
   'allocation.proto',
+  'trading_plan.proto',
   // plaid_snapshot.proto is deliberately absent: the browser uploads
   // snapshot bytes opaquely; only the server parses them.
   'imports.proto',

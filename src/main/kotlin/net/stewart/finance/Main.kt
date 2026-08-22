@@ -21,6 +21,8 @@ import net.stewart.finance.api.MtmService
 import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.api.AccountValuation
+import net.stewart.finance.api.TradingPlanAssembler
+import net.stewart.finance.db.TradingPlanRepository
 import net.stewart.finance.api.SnapshotImportService
 import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.auth.RequestMetaInterceptor
@@ -206,6 +208,11 @@ fun main() {
                 val valuation = AccountValuation(
                     securities, lots, sales, HoldingRepository(db.dataSource), pricing,
                 )
+                val planAssembler = TradingPlanAssembler(
+                    accounts, securities, lots, sales, HoldingRepository(db.dataSource),
+                    classifications, AssetClassRepository(db.dataSource), TargetAllocationRepository(db.dataSource),
+                    pricing, reporting,
+                )
                 val mtmMarks = MtmMarkRepository(db.dataSource)
                 val mtm = MtmService(
                     lots, sales, mtmMarks, FxRepository(db.dataSource), reporting,
@@ -239,6 +246,9 @@ fun main() {
                             AssetClassRepository(db.dataSource), TargetAllocationRepository(db.dataSource),
                             reporting,
                         )
+                    ),
+                    GrpcServiceSpec(
+                        TradingPlanGrpcService(portfolios, accounts, TradingPlanRepository(db.dataSource), planAssembler)
                     ),
                     GrpcServiceSpec(
                         run {

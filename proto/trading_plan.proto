@@ -1,0 +1,249 @@
+// TradingPlanService: human-composed plans of buys, sells, transfers,
+// and external adds/draws, and the projection of the portfolio after
+// them (docs/design/trading-plan.md, ruled 2026-08-22).
+//
+// finance2 never executes anything. A plan is a document the human
+// takes to the brokerage and carries out by hand; the real purchases,
+// sales, holdings, and sweeps are recorded afterwards through their
+// own services. Nothing in this service mutates positions or cash,
+// and nothing in it proposes a step: the candidate lists order
+// computed consequences of a decision the human already made.
+syntax = "proto3";
+
+package finance;
+
+import "common.proto";
+import "allocation.proto";
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+enum StepKind {
+  STEP_KIND_UNSPECIFIED = 0;
+  STEP_BUY = 1;           // account, security, shares or amount
+  STEP_SELL = 2;          // account, security, shares or amount
+  STEP_TRANSFER = 3;      // cash from account to to_account
+  STEP_ADD_EXTERNAL = 4;  // cash into account from outside the portfolio
+  STEP_DRAW_EXTERNAL = 5; // cash out of account to outside (drawdown)
+}
+
+enum PlanStatus {
+  PLAN_STATUS_UNSPECIFIED = 0;
+  PLAN_OPEN = 1;
+  PLAN_ARCHIVED = 2;
+}
+
+// A step as the human entered it. For BUY/SELL give shares OR amount;
+// the other is derived at the plan price when scored.
+message PlanStepInput {
+  StepKind kind = 1;
+  int64 account_id = 2;
+  int64 to_account_id = 3; // TRANSFER only
+  int64 security_id = 4;   // BUY, SELL
+  Decimal shares = 5;      // empty when amount is given
+  Decimal amount = 6;      // account currency; empty when shares is given
+  string note = 7;
+}
+
+// A step as scored.
+message PlanStep {
+  int64 step_id = 1;
+  int32 position = 2;
+  PlanStepInput input = 3;
+  string account_name = 4;
+  string to_account_name = 5;
+  string ticker = 6;
+  FormattedDecimal shares = 7;        // entered or derived
+  FormattedMoney amount = 8;          // entered or derived, account currency
+  FormattedMoney plan_price = 9;      // the price used; absent for cash steps
+  // Estimated realized gain at plan price, taxable SELL only.
+  FormattedMoney est_short_term_gain = 10;
+  FormattedMoney est_long_term_gain = 11;
+  repeated string problems = 12;      // "Roth IRA sweep would be -$300.00"
+}
+
+message AccountProjection {
+  int64 account_id = 1;
+  string broker_name = 2;
+  string name = 3;
+  bool tax_deferred = 4;
+  FormattedMoney sweep_before = 5;  // account currency
+  FormattedMoney sweep_after = 6;
+  FormattedMoney value_before = 7;  // reporting currency, positions + sweep
+  FormattedMoney value_after = 8;
+}
+
+message ClassProjection {
+  string name = 1;
+  FormattedMoney before = 2;
+  FormattedDecimal before_fraction = 3;
+  FormattedMoney after = 4;
+  FormattedDecimal after_fraction = 5;
+  FormattedDecimal target_fraction = 6; // absent without a target
+  FormattedMoney delta = 7;             // after - target x projected total; absent without a target
+}
+
+message Projection {
+  repeated PlanStep steps = 1;
+  repeated AccountProjection accounts = 2;
+  repeated ClassProjection classes = 3;
+  FormattedMoney current_total = 4;
+  FormattedMoney projected_total = 5;
+  FormattedMoney external_in = 6;
+  FormattedMoney external_out = 7;
+  bool executable = 8;       // no step has a problem
+  string priced_at = 9;      // ISO-8601 instant the prices were taken
+}
+
+message PlanSummary {
+  int64 plan_id = 1;
+  string name = 2;
+  PlanStatus status = 3;
+  string created_at = 4;
+  string updated_at = 5;
+  string last_printed_at = 6; // empty until printed
+  int32 step_count = 7;
+}
+
+message Plan {
+  PlanSummary summary = 1;
+  Projection projection = 2;
+}
+
+message ListPlansRequest {
+  bool include_archived = 1;
+}
+
+message ListPlansResponse {
+  repeated PlanSummary plans = 1; // newest first
+}
+
+message GetPlanRequest {
+  int64 plan_id = 1;
+}
+
+message GetPlanResponse {
+  Plan plan = 1;
+}
+
+message CreatePlanRequest {
+  string name = 1;
+}
+
+message CreatePlanResponse {
+  Plan plan = 1;
+}
+
+message RenamePlanRequest {
+  int64 plan_id = 1;
+  string name = 2;
+}
+
+message RenamePlanResponse {}
+
+// Replaces every step of the plan, in the given order, and re-scores.
+message SetPlanStepsRequest {
+  int64 plan_id = 1;
+  repeated PlanStepInput steps = 2;
+}
+
+message SetPlanStepsResponse {
+  Plan plan = 1;
+}
+
+// Stamps last_printed_at; changes nothing else (plans stay editable).
+message MarkPlanPrintedRequest {
+  int64 plan_id = 1;
+}
+
+message MarkPlanPrintedResponse {
+  PlanSummary summary = 1;
+}
+
+message SetPlanStatusRequest {
+  int64 plan_id = 1;
+  PlanStatus status = 2; // PLAN_OPEN or PLAN_ARCHIVED
+}
+
+message SetPlanStatusResponse {}
+
+message DeletePlanRequest {
+  int64 plan_id = 1;
+}
+
+message DeletePlanResponse {}
+
+// A position the human could sell to reduce a class, with the computed
+// consequence of selling it in full at the plan price. Ordered by the
+// requested key; the app orders facts, it does not recommend.
+message SellCandidate {
+  int64 account_id = 1;
+  string account_name = 2;
+  bool tax_deferred = 3;
+  int64 security_id = 4;
+  string ticker = 5;
+  FormattedDecimal class_weight = 6;   // this security's weight in the class
+  FormattedDecimal held = 7;
+  FormattedMoney value_in_class = 8;   // reporting currency
+  FormattedMoney plan_price = 9;       // security currency
+  // Taxable accounts only: lot rules at plan price, FIFO, sold in full.
+  FormattedMoney est_short_term_gain = 10;
+  FormattedMoney est_long_term_gain = 11;
+  FormattedDecimal gain_per_dollar = 12; // (st + lt) / value; absent when tax-deferred or unpriced
+  // Lots that become long-term within 45 days: the earliest such date.
+  FormattedDate next_long_term_date = 13;
+}
+
+enum SellOrder {
+  SELL_ORDER_UNSPECIFIED = 0;
+  SELL_ORDER_TAX_COST = 1;      // tax-deferred, then losses (largest per dollar), then LT gains, then ST gains
+  SELL_ORDER_LARGEST_FIRST = 2; // by value in class
+  SELL_ORDER_BY_ACCOUNT = 3;
+  SELL_ORDER_NONE = 4;          // ticker, then account
+}
+
+message GetSellCandidatesRequest {
+  string class_name = 1;
+  SellOrder order = 2; // UNSPECIFIED = SELL_ORDER_TAX_COST
+}
+
+message GetSellCandidatesResponse {
+  repeated SellCandidate candidates = 1;
+  string order_caption = 2; // the ordering, stated, for the picker's caption
+}
+
+// A security carrying weight in a class, in an account with cash.
+// Ordered by available cash, grouped by account (ruling: a buy has no
+// tax consequence, and asset location is the human's policy).
+message BuyCandidate {
+  int64 account_id = 1;
+  string account_name = 2;
+  bool tax_deferred = 3;
+  FormattedMoney available_sweep = 4; // account currency
+  int64 security_id = 5;
+  string ticker = 6;
+  FormattedDecimal class_weight = 7;
+  FormattedMoney plan_price = 8;
+  bool bought_in_dollars = 9;
+}
+
+message GetBuyCandidatesRequest {
+  string class_name = 1;
+}
+
+message GetBuyCandidatesResponse {
+  repeated BuyCandidate candidates = 1;
+}
+
+service TradingPlanService {
+  rpc ListPlans(ListPlansRequest) returns (ListPlansResponse);
+  rpc GetPlan(GetPlanRequest) returns (GetPlanResponse);
+  rpc CreatePlan(CreatePlanRequest) returns (CreatePlanResponse);
+  rpc RenamePlan(RenamePlanRequest) returns (RenamePlanResponse);
+  rpc SetPlanSteps(SetPlanStepsRequest) returns (SetPlanStepsResponse);
+  rpc MarkPlanPrinted(MarkPlanPrintedRequest) returns (MarkPlanPrintedResponse);
+  rpc SetPlanStatus(SetPlanStatusRequest) returns (SetPlanStatusResponse);
+  rpc DeletePlan(DeletePlanRequest) returns (DeletePlanResponse);
+  rpc GetSellCandidates(GetSellCandidatesRequest) returns (GetSellCandidatesResponse);
+  rpc GetBuyCandidates(GetBuyCandidatesRequest) returns (GetBuyCandidatesResponse);
+}
