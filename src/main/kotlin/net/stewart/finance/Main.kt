@@ -20,6 +20,7 @@ import net.stewart.auth.SessionService
 import net.stewart.finance.api.MtmService
 import net.stewart.finance.api.PricingService
 import net.stewart.finance.api.ReportingCurrency
+import net.stewart.finance.api.AccountValuation
 import net.stewart.finance.api.SnapshotImportService
 import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.auth.RequestMetaInterceptor
@@ -199,6 +200,9 @@ fun main() {
                 val pricing = PricingService(privatePrices, MarketPriceRepository(db.dataSource), marketData)
                 val lots = LotRepository(db.dataSource)
                 val sales = SaleRepository(db.dataSource)
+                val valuation = AccountValuation(
+                    securities, lots, sales, HoldingRepository(db.dataSource), pricing,
+                )
                 val mtmMarks = MtmMarkRepository(db.dataSource)
                 val mtm = MtmService(
                     lots, sales, mtmMarks, FxRepository(db.dataSource), reporting,
@@ -207,8 +211,8 @@ fun main() {
                 listOf(
                     GrpcServiceSpec(InfoGrpcService(BuildInfo.fromEnv())),
                     GrpcServiceSpec(SessionGrpcService(users, sessions, logins, setupToken, secureCookies)),
-                    GrpcServiceSpec(BrokerGrpcService(portfolios, brokers, accounts, reporting)),
-                    GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting)),
+                    GrpcServiceSpec(BrokerGrpcService(portfolios, brokers, accounts, reporting, valuation)),
+                    GrpcServiceSpec(AccountGrpcService(portfolios, brokers, accounts, reporting, valuation)),
                     GrpcServiceSpec(
                         SecurityGrpcService(
                             portfolios, securities, classifications, privatePrices,

@@ -51,8 +51,8 @@ export class BrokersPage {
       .map((b) => ({
         id: String(b.brokerId),
         name: b.name,
-        value: b.totalHoldings?.sortKey ?? 0,
-        display: b.totalHoldings?.display ?? '',
+        value: (b.totalHoldings?.sortKey ?? 0) + (b.sweeps?.sortKey ?? 0),
+        display: `${b.totalHoldings?.display ?? ''} + ${b.sweeps?.display ?? ''} sweeps`,
       })),
   );
 

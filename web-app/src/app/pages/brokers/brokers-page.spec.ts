@@ -290,11 +290,11 @@ describe('BrokersPage', () => {
     expect(stub).toBeTruthy();
     const slices = (stub!.componentInstance as PieChartStub).slices();
     expect(slices.map((s) => s.name)).toEqual(['Vanguard', 'EuroBank']);
-    expect(slices[0].display).toBe('$52,000.00');
+    expect(slices[0].display).toBe('$52,000.00 + $555.25 sweeps');
     expect(slices[0].id).toBe('1');
-    expect(slices[0].value).toBe(52000);
+    expect(slices[0].value).toBe(52555.25);
     // Hidden brokers stay out of the pie even when the table shows them.
-    expect(pie(fixture)!.title()).toBe('Total Holdings By Broker');
+    expect(pie(fixture)!.title()).toBe('Total Value By Broker');
   });
 
   it('keeps the pie in sync with the show-hidden table', async () => {

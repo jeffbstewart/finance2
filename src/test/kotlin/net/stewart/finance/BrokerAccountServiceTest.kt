@@ -11,7 +11,16 @@ import net.stewart.finance.auth.FinanceUserRepository
 import net.stewart.finance.db.AccountRepository
 import net.stewart.finance.db.BrokerRepository
 import net.stewart.finance.db.FxRepository
+import net.stewart.finance.db.HoldingRepository
+import net.stewart.finance.db.LotRepository
+import net.stewart.finance.db.MarketPriceRepository
 import net.stewart.finance.db.PortfolioRepository
+import net.stewart.finance.db.PrivatePriceRepository
+import net.stewart.finance.db.SaleRepository
+import net.stewart.finance.db.SecurityRepository
+import net.stewart.finance.api.AccountValuation
+import net.stewart.finance.api.PricingService
+import net.stewart.finance.feeds.MarketData
 import net.stewart.finance.proto.CreateAccountRequest
 import net.stewart.finance.proto.CreateBrokerRequest
 import net.stewart.finance.proto.Decimal
@@ -43,8 +52,18 @@ class BrokerAccountServiceTest {
     private val brokerRepo by lazy { BrokerRepository(db.dataSource) }
     private val accountRepo by lazy { AccountRepository(db.dataSource) }
     private val reporting by lazy { ReportingCurrency(FxRepository(db.dataSource)) }
-    private val brokerService by lazy { BrokerGrpcService(portfolios, brokerRepo, accountRepo, reporting) }
-    private val accountService by lazy { AccountGrpcService(portfolios, brokerRepo, accountRepo, reporting) }
+    /** Real valuation over an empty ledger: every value is zero, and a
+     *  provider is never contacted (no sources). */
+    private val valuation by lazy {
+        val marketRepo = MarketPriceRepository(db.dataSource)
+        AccountValuation(
+            SecurityRepository(db.dataSource), LotRepository(db.dataSource), SaleRepository(db.dataSource),
+            HoldingRepository(db.dataSource),
+            PricingService(PrivatePriceRepository(db.dataSource), marketRepo, MarketData(marketRepo, emptyList())),
+        )
+    }
+    private val brokerService by lazy { BrokerGrpcService(portfolios, brokerRepo, accountRepo, reporting, valuation) }
+    private val accountService by lazy { AccountGrpcService(portfolios, brokerRepo, accountRepo, reporting, valuation) }
 
     private fun <T> asUser(user: FinanceUser, block: suspend () -> T): T {
         val ctx = Context.current().withValue(GRPC_AUTH_USER_KEY, user)
