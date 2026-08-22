@@ -189,7 +189,7 @@ test('a whole-share security priced by net cost is rejected by the scorer', asyn
 
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('combobox', { name: 'Security' }).click();
-  await page.getByRole('option', { name: 'VTI' }).click();
+  await page.getByRole('option', { name: /^VTI - / }).click();
   await expect(dialog.getByRole('textbox', { name: 'Price Per Share' })).toHaveValue('$201.90');
 
   // Exact decimal division, truncated to 8 places: 100 / 201.90.

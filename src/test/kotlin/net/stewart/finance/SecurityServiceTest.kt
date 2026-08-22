@@ -384,11 +384,26 @@ class SecurityServiceTest {
         // and nothing can mirror the trust.
         assertEquals(Status.Code.INVALID_ARGUMENT, statusOf { mirror(fund.securityId, euro.securityId) })
         assertEquals(Status.Code.INVALID_ARGUMENT, statusOf { mirror(euro.securityId, trust.securityId) })
+        // The mirror's history rides along with the trust's details.
+        call {
+            service.addPrivatePrice(
+                AddPrivatePriceRequest.newBuilder().setSecurityId(fund.securityId)
+                    .setDate(date(2026, 6, 1)).setPrice(decimal("100.00")).build()
+            )
+        }
+        val withMirror = call {
+            service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(trust.securityId).build())
+        }
+        assertEquals(listOf("100.0000"), withMirror.mirrorPriceHistoryList.map { it.adjustedClose.value })
+        assertEquals(0, withMirror.priceHistoryCount)
+
         // 0 clears.
         call { mirror(trust.securityId, 0) }
-        assertEquals(0L, call {
+        val cleared = call {
             service.getSecurityDetails(GetSecurityDetailsRequest.newBuilder().setSecurityId(trust.securityId).build())
-        }.security.mirrorsSecurityId)
+        }
+        assertEquals(0L, cleared.security.mirrorsSecurityId)
+        assertEquals(0, cleared.mirrorPriceHistoryCount)
     }
 
     @Test

@@ -277,6 +277,40 @@ describe('SecurityDetailsPage', () => {
     ]);
   });
 
+  it('charts a mirrored fund on the right axis and marks the sparse actuals', async () => {
+    respond = () => {
+      const details = detailsFor(
+        vtiProfile({
+          ticker: 'VTI-TR',
+          pricingLocus: PricingLocus.MANUAL,
+          mirrorsSecurityId: 1n,
+          mirrorsTicker: 'VTI',
+        }),
+      );
+      details.mirrorPriceHistory = details.priceHistory.map((p) =>
+        create(PricePointSchema, {
+          date: p.date,
+          close: decimal(String(Number(p.close?.value) * 2)),
+          adjustedClose: decimal(String(Number(p.adjustedClose?.value) * 2)),
+        }),
+      );
+      return details;
+    };
+    const fixture = await render();
+    const series = chart(fixture)!.series();
+    expect(series.map((s) => [s.name, s.axis ?? 'left', !!s.markers])).toEqual([
+      ['Adjusted Close', 'left', true],
+      ['VTI (right axis)', 'right', false],
+    ]);
+    expect(series[1].points.map((p) => p.value)).toEqual([360, 380, 400.2, 403.8]);
+    // The duration filter applies to both.
+    fixture.componentInstance.duration.set('month');
+    await settle(fixture);
+    const month = chart(fixture)!.series();
+    expect(month[0].points.length).toBe(month[1].points.length);
+    expect(textOf(fixture)).toContain('Mirrors VTI');
+  });
+
   it('adds one dashed series for SMA and for EMA', async () => {
     const fixture = await render();
     const page = fixture.componentInstance;
