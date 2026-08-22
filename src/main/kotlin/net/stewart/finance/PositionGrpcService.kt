@@ -6,6 +6,7 @@ import java.time.DateTimeException
 import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
 import net.stewart.finance.api.PricingService
+import net.stewart.finance.api.Sparklines
 import net.stewart.finance.api.ReportingCurrency
 import net.stewart.finance.api.provenanceOf
 import net.stewart.finance.api.toFormatted
@@ -108,7 +109,7 @@ class PositionGrpcService(
         val accountFilter = if (request.accountId > 0) AccountId(request.accountId) else null
         val securityById = securities.list(portfolioId, includeHidden = true).associateBy { it.id }
         val prices = pricing.latestBySecurity(portfolioId, securityById.values)
-        val sparklines = pricing.sparklines(portfolioId, today.minusMonths(SPARKLINE_MONTHS))
+        val sparklineSeries = pricing.sparklineSeries(portfolioId, today.minusMonths(SPARKLINE_MONTHS))
 
         val lotsBySecurity = lots.list(portfolioId, accountFilter).groupBy { it.securityId }
         val salesBySecurity = sales.list(portfolioId, accountFilter).groupBy { it.securityId }
@@ -146,11 +147,7 @@ class PositionGrpcService(
             val row = PositionRow.newBuilder()
                 .setSecurityId(securityId.value)
                 .setTicker(security.ticker)
-                .setSparkline(
-                    Sparkline.newBuilder().addAllAdjustedCloses(
-                        sparklines[securityId].orEmpty().map { it.toProto().amount }
-                    )
-                )
+                .setSparkline(Sparklines.build(security, sparklineSeries, securityById))
                 .setShares(shares.toFormatted())
                 .setBasis(basis.toFormatted())
                 .setCurrentValue(value.toFormatted())

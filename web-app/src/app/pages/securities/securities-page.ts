@@ -9,7 +9,7 @@ import { RouterLink } from '@angular/router';
 import { PricingLocus, SecurityType, type SecurityListing } from '../../../proto-gen/securities_pb';
 import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
-import { Sparkline } from '../../shared/charts/sparkline';
+import { Sparkline, type SparklineDot } from '../../shared/charts/sparkline';
 import { AddSecurityDialog } from './add-security-dialog';
 
 /** Securities list (spec sec. 9.17): ticker/sparkline/description table,
@@ -67,6 +67,11 @@ export class SecuritiesPage {
   }
 
   /** Six-month adjusted closes as chart geometry (presentation only). */
+  /** The security's own observations on a borrowed line (see Sparkline). */
+  dots(security: SecurityListing): SparklineDot[] {
+    return (security.sparkline?.actuals ?? []).map((d) => ({ index: d.index, value: Number(d.value?.value) }));
+  }
+
   trend(security: SecurityListing): number[] {
     return (security.sparkline?.adjustedCloses ?? []).map((d) => Number(d.value));
   }

@@ -18,7 +18,14 @@
       </ng-container>
       <ng-container matColumnDef="sparkline">
         <th mat-header-cell *matHeaderCellDef>Trend</th>
-        <td mat-cell *matCellDef="let s"><app-sparkline [values]="trend(s)" /></td>
+        <td mat-cell *matCellDef="let s">
+          <app-sparkline
+            [values]="trend(s)"
+            [proxy]="s.sparkline?.proxyTicker ?? ''"
+            [dots]="dots(s)"
+            [ownPoints]="s.sparkline?.ownPoints ?? 0"
+          />
+        </td>
       </ng-container>
       <ng-container matColumnDef="description">
         <th mat-header-cell *matHeaderCellDef>Description</th>

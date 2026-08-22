@@ -147,6 +147,38 @@ describe('SecuritiesPage', () => {
     ]);
   });
 
+  it('draws a borrowed trend dashed, captioned via the mirror, with the own prices as dots', async () => {
+    listing = () => [
+      create(SecurityListingSchema, {
+        securityId: 11n, ticker: 'VBTIX-TR', description: 'Total Bond Market Index Trust',
+        securityType: SecurityType.COLLECTIVE_TRUST, pricingLocus: PricingLocus.MANUAL,
+        sparkline: create(SparklineSchema, {
+          adjustedCloses: ['100', '102', '104', '103'].map((v) => decimal(v)),
+          proxyTicker: 'VBTIX',
+          ownPoints: 2,
+          actuals: [
+            { index: 0, value: decimal('100.5') },
+            { index: 3, value: decimal('102.0') },
+          ],
+        }),
+      }),
+      ...sampleSecurities(),
+    ];
+    const fixture = await render();
+    const trust = rowFor(fixture, 'VBTIX-TR');
+    const path = trust.querySelector('svg path')!;
+    expect(path.getAttribute('stroke-dasharray')).toBe('4 3');
+    expect(trust.querySelectorAll('svg circle')).toHaveLength(2);
+    const via = trust.querySelector<HTMLElement>('.via')!;
+    expect(via.textContent!.trim()).toBe('via VBTIX');
+    expect(via.getAttribute('title')).toContain("2 prices in the window");
+    // A security with its own line has no caption, no dashes, no dots.
+    const vti = rowFor(fixture, 'VTI');
+    expect(vti.querySelector('svg path')!.getAttribute('stroke-dasharray')).toBeNull();
+    expect(vti.querySelector('.via')).toBeNull();
+    expect(vti.querySelectorAll('svg circle')).toHaveLength(0);
+  });
+
   it('lists only visible securities and asks the server for exactly that', async () => {
     const fixture = await render();
     expect(listRequests).toEqual([{ includeHidden: false }]);

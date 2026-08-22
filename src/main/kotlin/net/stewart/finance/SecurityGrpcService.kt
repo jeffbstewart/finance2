@@ -9,6 +9,7 @@ import java.time.LocalDate
 import net.stewart.armeria.auth.currentAuthUser
 import net.stewart.finance.api.MtmService
 import net.stewart.finance.api.PricingService
+import net.stewart.finance.api.Sparklines
 import net.stewart.finance.api.toFormatted
 import net.stewart.finance.api.toFormattedDate
 import net.stewart.finance.api.toFormattedPercent
@@ -111,18 +112,18 @@ class SecurityGrpcService(
 
     override suspend fun listSecurities(request: ListSecuritiesRequest): ListSecuritiesResponse {
         val portfolioId = portfolio()
-        val sparklines = pricing.sparklines(portfolioId, LocalDate.now().minusMonths(SPARKLINE_MONTHS))
+        val series = pricing.sparklineSeries(portfolioId, LocalDate.now().minusMonths(SPARKLINE_MONTHS))
+        val rows = securities.list(portfolioId, includeHidden = true)
+        val byId = rows.associateBy { it.id }
         val builder = ListSecuritiesResponse.newBuilder()
-        for (row in securities.list(portfolioId, request.includeHidden)) {
-            val closes = sparklines[row.id].orEmpty()
+        for (row in rows) {
+            if (row.hidden && !request.includeHidden) continue
             builder.addSecurities(
                 SecurityListing.newBuilder()
                     .setSecurityId(row.id.value)
                     .setTicker(row.ticker)
                     .setDescription(row.description)
-                    .setSparkline(
-                        Sparkline.newBuilder().addAllAdjustedCloses(closes.map { it.toProto().amount })
-                    )
+                    .setSparkline(Sparklines.build(row, series, byId))
                     .setHidden(row.hidden)
                     .setMarketTicker(row.marketTicker ?: "")
                     .setSecurityType(row.securityType.toProto())

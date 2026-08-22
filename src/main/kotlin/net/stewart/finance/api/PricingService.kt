@@ -49,6 +49,19 @@ class PricingService(
         return combined
     }
 
+    /** [sparklines] with dates: what [Sparklines.build] needs to borrow a
+     *  mirror's line and place a security's own closes on it. */
+    fun sparklineSeries(portfolioId: PortfolioId, since: LocalDate): Map<SecurityId, List<DatedPrice>> {
+        val combined = linkedMapOf<SecurityId, List<DatedPrice>>()
+        privatePrices.recentDatedBySecurity(portfolioId, since).forEach { (id, points) ->
+            combined[id] = points.map { (date, price) -> DatedPrice(date, price) }
+        }
+        marketPrices.recentDatedAdjustedBySecurity(portfolioId, since).forEach { (id, points) ->
+            combined[id] = points.map { (date, price) -> DatedPrice(date, price) }
+        }
+        return combined
+    }
+
     /** Full date-ascending history; adjusted = raw for MANUAL (spec sec. 5.6). */
     fun history(security: SecurityRow): List<HistoryPoint> = when (security.pricingLocus) {
         PricingLocus.MANUAL ->
