@@ -171,7 +171,7 @@ class AllocationGrpcService(
                 securityId = row.id,
                 ticker = row.ticker,
                 price = reporting.toReporting(price, today),
-                purchaseModality = if (row.securityType == SecurityType.MUTUAL_FUND) {
+                purchaseModality = if (row.securityType.boughtInDollars) {
                     PurchaseModality.PURCHASE_DOLLAR_AMOUNTS
                 } else {
                     PurchaseModality.PURCHASE_WHOLE_SHARES

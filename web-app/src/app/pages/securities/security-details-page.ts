@@ -33,6 +33,7 @@ const SECURITY_TYPE_LABELS: Record<SecurityType, string> = {
   [SecurityType.ETF]: 'ETF',
   [SecurityType.MUTUAL_FUND]: 'Mutual Fund',
   [SecurityType.PRIVATE_INVESTMENT]: 'Private Investment',
+  [SecurityType.COLLECTIVE_TRUST]: 'Collective Trust',
 };
 
 /**

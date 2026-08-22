@@ -127,6 +127,7 @@ enum SecurityMatch {
   BY_TICKER = 1; // the ticker names a known security; no link needed
   BY_LINK = 2;   // matched through a human-made link
   UNMATCHED = 3; // neither - link it (or add the security) and re-process
+  BY_CUSIP = 4;  // the CUSIP names a known security (trust funds often have one)
 }
 
 // One distinct non-cash security an archived snapshot holds, with how

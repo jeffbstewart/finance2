@@ -57,11 +57,11 @@ class MarketData(
             for (source in sources) {
                 try {
                     space(source)
-                    val bars = source.dailyBars(security.ticker, startDate)
+                    val bars = source.dailyBars(security.feedTicker, startDate)
                     repo.upsertBars(security.id, bars, source.id)
                     log.info(
                         "{}: {} bars for {} from {}",
-                        source.id, bars.size, security.ticker, startDate ?: "inception"
+                        source.id, bars.size, security.feedTicker, startDate ?: "inception"
                     )
                     return
                 } catch (e: QuotaExceededException) {
