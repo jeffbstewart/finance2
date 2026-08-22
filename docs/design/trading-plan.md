@@ -205,3 +205,77 @@ Questions for the ruling:
   page, grouped by account.
 - Should printing freeze the plan (proposed) or should plans stay
   editable and printing just stamp a date?
+
+## Amendment: assisted selection - ordering facts, not recommending (2026-08-22)
+
+A class is over its target and the human decides to sell some of it.
+The app can help choose *what* to sell within that decision by laying
+out the tax consequence of each candidate, computed from the human's
+own records at the plan price, and ordering by it. That stays on the
+right side of the no-advice line as long as three things hold:
+
+1. Every number is a computed consequence of a sale the human has
+   already chosen to make - never a reason to make one. The app
+   orders; it does not suggest the decision, the amount, or the class.
+2. The ordering key is shown and switchable. No tax *rates* are ever
+   assumed, so the app never says "this saves you $X in tax"; it says
+   "this realizes a $1,200 short-term loss".
+3. Everything is labelled *estimate at plan price*, and the sale's
+   real lot selection happens when the real sale is recorded.
+
+### The Sell picker, per class
+
+From the projection's class row (over target), **Sell...** opens the
+picker for that class: every position that contributes to the class,
+across all visible accounts, one row per position (account, security,
+class weight, held quantity, value in class), with the consequence of
+selling it computed through the existing lot rules at the plan price:
+
+| Column | Source |
+|---|---|
+| Tax status | account: tax-deferred -> *no tax on sale*; taxable -> gains apply |
+| Est. gain if sold in full | lot rules at plan price, by the account's recorded method; split short/long term |
+| Gain per dollar sold | est. gain / value - the comparable figure across positions of different sizes |
+| Holding period flags | lots that cross from short- to long-term within N days (a sale today vs after that date) |
+| Wash-sale flag | a buy of the same security within 30 days before, in any account, or already in this plan |
+
+Default ordering, stated in a caption the human can change with one
+click: **tax-deferred accounts first** (rebalancing there realizes
+nothing), then **taxable positions at a loss** (largest loss per
+dollar first), then **taxable long-term gains** (smallest per dollar
+first), then **short-term gains**. Alternative orderings offered:
+*largest position first*, *by account*, *none*. Picking a row opens
+the Sell step dialog prefilled with the security and account; the
+human types the shares or dollars. A partial sale's estimate is
+recomputed for the amount entered (lot rules run on the partial
+quantity by the recorded method).
+
+What the picker will not do: pick a quantity, suggest selling the
+whole overweight, or rank across classes. It ranks within the class
+the human opened.
+
+### The Buy picker, per class
+
+Symmetric and simpler: from a class under target, **Buy...** lists the
+securities whose classification carries weight in that class, across
+accounts with cash available, with the account's tax status and
+available sweep. Ordering: *tax-deferred accounts first* (income
+producers belong there - the human's own rule, recorded in the
+target's rationale text), then by available cash. No expense-ratio,
+performance, or "best fund" ranking: that would be choosing a fund.
+
+### Projection additions
+
+- Per taxable account, the plan's **estimated realized gain** total,
+  short and long term, and the **loss harvested** total - so a plan
+  that sells losers to offset gains shows the net.
+- Lots crossing the one-year line during the plan's window are
+  listed, since "wait three weeks and it is long-term" is a fact
+  worth a line.
+
+### Tests
+Property: ordering is a pure function of (positions, lots, plan
+price, key) and is stable; tax-deferred rows always precede taxable
+under the default key; a position at a loss never sorts below a
+position at a gain under the default key. The gain estimates reuse
+the lot-rules tests' fixtures so the picker and the real sale agree.
