@@ -12,6 +12,52 @@ import java.net.InetSocketAddress
 import org.slf4j.LoggerFactory
 
 /**
+ * One TRUSTED_PROXIES entry: a single address ("172.28.0.1") or a CIDR
+ * range ("172.28.0.0/24", "fd00::/8"). A range is what a proxy on the
+ * same Docker host needs: its source address is the gateway of
+ * whichever network the container landed on, and a stack re-creation
+ * can move that.
+ */
+class TrustedPeer private constructor(
+    private val network: ByteArray,
+    private val prefixBits: Int,
+    private val text: String,
+) {
+    fun matches(peer: InetAddress): Boolean {
+        val bytes = peer.address
+        if (bytes.size != network.size) return false
+        val fullBytes = prefixBits / 8
+        for (i in 0 until fullBytes) if (bytes[i] != network[i]) return false
+        val rest = prefixBits % 8
+        if (rest == 0) return true
+        val mask = (0xFF shl (8 - rest)) and 0xFF
+        return (bytes[fullBytes].toInt() and mask) == (network[fullBytes].toInt() and mask)
+    }
+
+    override fun toString(): String = text
+
+    companion object {
+        /** Parses an address or CIDR; throws on anything else (config errors fail at boot). */
+        fun parse(entry: String): TrustedPeer {
+            val spec = entry.trim()
+            require(spec.isNotEmpty()) { "empty TRUSTED_PROXIES entry" }
+            val slash = spec.indexOf('/')
+            val address = InetAddress.getByName(if (slash < 0) spec else spec.substring(0, slash))
+            val width = address.address.size * 8
+            val bits = if (slash < 0) {
+                width
+            } else {
+                spec.substring(slash + 1).toIntOrNull()
+                    ?.takeIf { it in 0..width }
+                    ?: throw IllegalArgumentException("bad prefix length in TRUSTED_PROXIES entry \"$spec\"")
+            }
+            val label = if (slash < 0) address.hostAddress else "${address.hostAddress}/$bits"
+            return TrustedPeer(address.address, bits, label)
+        }
+    }
+}
+
+/**
  * Deployment-topology enforcement (build-scope sec. 10, rulings 2026-08-18
  * and 2026-08-19): every main-port request must arrive from a trusted
  * proxy - a request from any other peer is rejected outright, and a
@@ -27,8 +73,8 @@ class TrustedProxyDecorator(
 ) : DecoratingHttpServiceFunction {
 
     private val log = LoggerFactory.getLogger(TrustedProxyDecorator::class.java)
-    private val trusted: Set<InetAddress> = trustedProxies.map { InetAddress.getByName(it) }.toSet()
-    private val trustedForLog: String = trusted.joinToString(", ") { it.hostAddress }
+    private val trusted: List<TrustedPeer> = trustedProxies.map(TrustedPeer::parse)
+    private val trustedForLog: String = trusted.joinToString(", ")
 
     init {
         require(trusted.isNotEmpty()) { "TrustedProxyDecorator requires at least one proxy address" }
@@ -40,7 +86,7 @@ class TrustedProxyDecorator(
             return delegate.serve(ctx, req)
         }
         val peer = (ctx.remoteAddress() as? InetSocketAddress)?.address
-        if (peer == null || peer !in trusted) {
+        if (peer == null || trusted.none { it.matches(peer) }) {
             // Diagnosable on purpose: the usual cause is the proxy reaching
             // us from an address other than the one in TRUSTED_PROXIES
             // (Docker bridge gateway, IPv6 loopback, a NAT hop), and the

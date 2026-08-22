@@ -56,6 +56,42 @@ class TrustedProxyDecoratorTest {
     }
 
     @Test
+    fun `a CIDR entry trusts the whole range and nothing beside it`() {
+        // A same-host proxy reaches us from the gateway of whatever
+        // network the container landed on; a range survives the move.
+        val ranged = TrustedProxyDecorator(setOf("172.28.0.0/24", "fd00::/8"), internalPort = INTERNAL_PORT)
+        fun from(peer: String): HttpStatus {
+            val request = HttpRequest.of(HttpMethod.POST, "/finance.SessionService/Login")
+                .withHeaders(
+                    HttpRequest.of(HttpMethod.POST, "/x").headers().toBuilder()
+                        .add("x-forwarded-for", "203.0.113.9").build()
+                )
+            val ctx = ServiceRequestContext.builder(request)
+                .remoteAddress(InetSocketAddress(peer, 55555))
+                .localAddress(InetSocketAddress("10.0.0.1", MAIN_PORT))
+                .build()
+            return ranged.serve(okService, ctx, request).aggregate().join().status()
+        }
+        assertEquals(HttpStatus.OK, from("172.28.0.1"))
+        assertEquals(HttpStatus.OK, from("172.28.0.254"))
+        assertEquals(HttpStatus.FORBIDDEN, from("172.28.1.1"))
+        assertEquals(HttpStatus.FORBIDDEN, from("10.0.0.2"))
+        assertEquals(HttpStatus.OK, from("fd12:3456::1"))
+        assertEquals(HttpStatus.FORBIDDEN, from("fe80::1"))
+    }
+
+    @Test
+    fun `malformed entries fail at construction, not at request time`() {
+        for (bad in listOf("172.28.0.0/33", "172.28.0.0/x", "", "not an address")) {
+            val failed = runCatching { TrustedProxyDecorator(setOf(bad)) }.isFailure
+            assertEquals(true, failed, "expected \"$bad\" to be rejected")
+        }
+        // An exact address still means exactly that address.
+        assertEquals("10.0.0.2", TrustedPeer.parse(" 10.0.0.2 ").toString())
+        assertEquals("172.28.0.0/24", TrustedPeer.parse("172.28.0.0/24").toString())
+    }
+
+    @Test
     fun `the internal ops port bypasses proxy enforcement`() {
         // LAN-direct by design; InternalPortGate restricts what answers.
         assertEquals(HttpStatus.OK, serve("/metrics", "10.0.0.99", INTERNAL_PORT))
