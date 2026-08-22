@@ -6,7 +6,7 @@ import net.stewart.finance.domain.UserId
 import org.jdbi.v3.core.Jdbi
 
 /**
- * Portfolio lookup with the spec §3.2 behavior: each user operates on
+ * Portfolio lookup with the spec sec. 3.2 behavior: each user operates on
  * one portfolio named "default", created (with its grant) on first
  * authenticated use.
  */

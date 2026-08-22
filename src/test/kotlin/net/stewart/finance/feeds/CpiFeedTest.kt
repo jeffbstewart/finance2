@@ -41,7 +41,7 @@ class CpiFeedTest {
         assertEquals(YearMonth.parse("2026-08"), refreshed.lastMonth)
 
         // The persisted series converts sanely: identity on same date,
-        // and a known 1947→snapshot-era ratio is > 1.
+        // and a known 1947->snapshot-era ratio is > 1.
         val today = LocalDate.parse("2026-08-15")
         assertEquals(
             Money.of("100", CurrencyUnit.USD),

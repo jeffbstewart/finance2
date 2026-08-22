@@ -16,9 +16,9 @@ import { Notify } from '../../core/notify';
 import { RebalanceBuyDialog, type ProposedTrade } from './rebalance-buy-dialog';
 
 /**
- * Rebalance planner (spec §9.14, §5.5): pick the destination account
+ * Rebalance planner (spec sec. 9.14, sec. 5.5): pick the destination account
  * (its sweeps fund the plan), optionally add hypothetical funds, and
- * build a buy-side cart. Every change re-scores on the server —
+ * build a buy-side cart. Every change re-scores on the server - 
  * nothing here persists anything. Zero added funds = buy-only mode:
  * the server sizes the plan so the most overweight class reaches
  * target without selling.

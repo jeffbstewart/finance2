@@ -1,7 +1,7 @@
 // Unit spec for SecurityDetailsPage's header + Price History tab
 // (docs/design/ui-testing.md, inventory "SecurityDetailsPage").
 // The Asset Allocation editor and the MTM ledger are separate
-// assignments — they are only stubbed/faked far enough that the tab
+// assignments - they are only stubbed/faked far enough that the tab
 // group renders. The clock is pinned because the duration filter is
 // computed client-side from `new Date()`.
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -40,8 +40,8 @@ import { ClassificationEditor } from './classification-editor';
 import { ProfileDialog } from './profile-dialog';
 import { SecurityDetailsPage } from './security-details-page';
 
-// The pinned "today". Duration cutoffs: 1 Year → 2025-08-20,
-// 1 Quarter → 2026-05-20, 1 Month → 2026-07-20.
+// The pinned "today". Duration cutoffs: 1 Year -> 2025-08-20,
+// 1 Quarter -> 2026-05-20, 1 Month -> 2026-07-20.
 const TODAY = new Date(2026, 7, 20);
 
 /** Four adjusted closes straddling every duration cutoff above.
@@ -226,7 +226,7 @@ describe('SecurityDetailsPage', () => {
     const fixture = await render();
     const text = textOf(fixture);
     expect(text).toContain('VTI: (no description yet)');
-    expect(text).toContain('Net Expense Ratio: —');
+    expect(text).toContain('Net Expense Ratio: - ');
     expect(text).toContain('(hidden)');
   });
 
@@ -259,7 +259,7 @@ describe('SecurityDetailsPage', () => {
     respond = () =>
       detailsFor(vtiProfile({ securityType: SecurityType.SECURITY_TYPE_UNSPECIFIED }));
     const fixture = await render();
-    expect(textOf(fixture)).toContain('Publicly Traded · Unknown · USD');
+    expect(textOf(fixture)).toContain('Publicly Traded | Unknown | USD');
   });
 
   it('hands the chart facade one adjusted-close series by default', async () => {
@@ -346,7 +346,7 @@ describe('SecurityDetailsPage', () => {
   });
 
   // BUG: the "1 Month" cutoff is `Date.setMonth(month - 1)`, which
-  // overflows on long months — on 2026-03-31 it lands on 2026-03-03
+  // overflows on long months - on 2026-03-31 it lands on 2026-03-03
   // (Feb 31), so the window is 28 days instead of one month.
   it('pins the month-overflow cutoff on the 31st', async () => {
     vi.setSystemTime(new Date(2026, 2, 31));
@@ -441,7 +441,7 @@ describe('SecurityDetailsPage', () => {
   it('opens the profile dialog with the loaded security and reloads on a change', async () => {
     const fixture = await render();
     // MatDialog is provided by MatDialogModule, which the standalone
-    // page imports — so it lives in the component's injector, not the
+    // page imports - so it lives in the component's injector, not the
     // TestBed root.
     const dialog = fixture.debugElement.injector.get(MatDialog);
     const open = vi
@@ -458,7 +458,7 @@ describe('SecurityDetailsPage', () => {
     const [component, config] = open.mock.calls[0];
     expect(component).toBe(ProfileDialog);
     expect((config as { data: { security: SecurityProfile } }).data.security.ticker).toBe('VTI');
-    expect(requests).toHaveLength(2); // dialog reported a change → reload
+    expect(requests).toHaveLength(2); // dialog reported a change -> reload
   });
 
   it('does not reload when the profile dialog is dismissed', async () => {

@@ -15,9 +15,9 @@ import { ImportWarnings } from '../../shared/imports/import-warnings';
 import { AccountDialog } from './account-dialog';
 import { BrokerDialog } from './broker-dialog';
 
-/** Accounts at one broker (spec §9.3): accounts table with totals,
+/** Accounts at one broker (spec sec. 9.3): accounts table with totals,
  *  holdings pie, add/edit, hide-empty-brokerage, and the broker's
- *  unresolved import warnings (pipeline design §E). */
+ *  unresolved import warnings (pipeline design sec. E). */
 @Component({
   selector: 'app-broker-accounts-page',
   imports: [

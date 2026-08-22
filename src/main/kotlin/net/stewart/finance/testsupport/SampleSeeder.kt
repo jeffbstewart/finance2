@@ -40,7 +40,7 @@ import net.stewart.finance.feeds.DailyBar
  * report's previous-calendar-year default sees a sale, sparklines see
  * six months of prices, and the MTM ledger's default year follows its
  * last mark. Seeding goes through the same repositories and services
- * production uses — invariants hold by construction.
+ * production uses - invariants hold by construction.
  */
 class SampleSeeder(private val dataSource: DataSource) {
 
@@ -60,7 +60,7 @@ class SampleSeeder(private val dataSource: DataSource) {
     private val links = PlaidAccountLinkRepository(dataSource)
     private val mtm = MtmService(
         lots, sales, marks, fx, ReportingCurrency(fx),
-        // The seeder records marks with explicit figures — no price
+        // The seeder records marks with explicit figures - no price
         // history needed.
         history = { emptyList() },
     )
@@ -118,7 +118,7 @@ class SampleSeeder(private val dataSource: DataSource) {
         ids["account.eur"] = eur.value
         ids["account.closed"] = closed.value
 
-        // Securities. VTI: MARKET locus with pinned synthetic bars —
+        // Securities. VTI: MARKET locus with pinned synthetic bars - 
         // fetched_at is now, so MarketData treats it fresh and no
         // provider is ever contacted.
         val vti = securities.create(portfolioId, "VTI", CurrencyUnit.USD)
@@ -130,7 +130,7 @@ class SampleSeeder(private val dataSource: DataSource) {
             vti,
             (0 until 220).map { i ->
                 val date = today.minusDays((219 - i).toLong())
-                // Gentle deterministic uptrend: 180.00 → 201.90.
+                // Gentle deterministic uptrend: 180.00 -> 201.90.
                 val close = BigDecimal("180.00").add(BigDecimal("0.10").multiply(BigDecimal(i)))
                 DailyBar(
                     date = date, open = close, high = close, low = close,
@@ -171,7 +171,7 @@ class SampleSeeder(private val dataSource: DataSource) {
         privatePrices.add(eufund, today.minusDays(7), Money.of("104.0000", CurrencyUnit.EUR))
         classifications.replace(eufund, net.stewart.finance.domain.ClassificationKind.ASSET_CLASS, mapOf("Non US Stock" to Fraction.ONE), today.minusDays(30))
 
-        // SOLO: priced, visible, never held — the empty-lot-ledger state
+        // SOLO: priced, visible, never held - the empty-lot-ledger state
         // (lot details, hide-security) and the single-close sparkline.
         val solo = securities.create(portfolioId, "SOLO", CurrencyUnit.USD)
         securities.updateProfile(solo, "Priced, never held", SecurityType.STOCK, PricingLocus.MANUAL, TaxTreatment.LOTS, null)
@@ -220,7 +220,7 @@ class SampleSeeder(private val dataSource: DataSource) {
         ids["sale.this_year"] = saleThisYear.value
 
         // EUFUND: one EUR lot (100 @ EUR 90 + EUR 10 = EUR 9010 cost;
-        // × 1.10 = USD 9911 floor) and two year-end marks.
+        // x 1.10 = USD 9911 floor) and two year-end marks.
         ids["lot.eufund"] = lots.create(
             eur, eufund, eufundBought,
             Quantity.of("100"), Money.of("90.0000", CurrencyUnit.EUR), Money.of("10.0000", CurrencyUnit.EUR),

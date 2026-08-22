@@ -7,7 +7,7 @@ import net.stewart.auth.UserRepository
 import net.stewart.finance.db.sql
 import org.jdbi.v3.core.Jdbi
 
-/** The single finance2 user row (build-scope §8: local auth, no email). */
+/** The single finance2 user row (build-scope sec. 8: local auth, no email). */
 data class FinanceUser(
     override val id: Long,
     override val username: String,

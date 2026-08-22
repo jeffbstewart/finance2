@@ -80,12 +80,12 @@ import net.stewart.finance.rules.validateSaleAllocations
 private const val SPARKLINE_MONTHS = 6L
 
 /**
- * PositionService (spec §7 "Positions & trades", §9.5–§9.9, §9.16):
+ * PositionService (spec sec. 7 "Positions & trades", sec. 9.5-sec. 9.9, sec. 9.16):
  * lots and sales for taxable accounts through the Phase 2 lot engine,
- * position-level holdings for tax-deferred accounts (build-scope §1),
+ * position-level holdings for tax-deferred accounts (build-scope sec. 1),
  * and the tax report. Valuation prices come from private_prices for
  * MANUAL-locus securities; a position on an unpriced security fails
- * the request (spec §5.2) — MARKET-locus pricing arrives with the
+ * the request (spec sec. 5.2) - MARKET-locus pricing arrives with the
  * price-source module.
  */
 class PositionGrpcService(
@@ -177,7 +177,7 @@ class PositionGrpcService(
     override suspend fun getLotDetails(request: GetLotDetailsRequest): GetLotDetailsResponse {
         val portfolioId = portfolio()
         val today = LocalDate.now()
-        // Constant-dollar cost columns (spec §5.7, §9.11): purchase-date
+        // Constant-dollar cost columns (spec sec. 5.7, sec. 9.11): purchase-date
         // dollars re-expressed as of today, in one direction only.
         // Current prices/values stay as-is; gains compare against the
         // adjusted basis.
@@ -226,7 +226,7 @@ class PositionGrpcService(
                     .setAccountName(record.accountName)
             )
         }
-        // The sale history for the ticker (spec §9.7 — the legacy UI
+        // The sale history for the ticker (spec sec. 9.7 - the legacy UI
         // never rendered it).
         val gains = saleGains(lotRecords.map { it.toRules() }, rulesSales).groupBy { it.saleId }
         for (record in saleRecords) {
@@ -278,7 +278,7 @@ class PositionGrpcService(
         val price = parseMoney(request.pricePerShare.value, account.currency, "price per share")
         val commission = parseMoney(request.commission.value.ifEmpty { "0" }, account.currency, "commission")
         if (price.signum() < 0 || commission.signum() < 0) throw invalid("amounts must not be negative")
-        // Guard rail (§5.9): shrinking a lot below what its sales
+        // Guard rail (sec. 5.9): shrinking a lot below what its sales
         // already consumed would corrupt them.
         val sold = sales.list(portfolioId, record.accountId, record.securityId)
             .flatMap { it.allocations }
@@ -298,7 +298,7 @@ class PositionGrpcService(
     override suspend fun deletePurchase(request: DeletePurchaseRequest): DeletePurchaseResponse {
         val record = lots.find(lotId(request.lotId), portfolio())
             ?: throw StatusException(Status.NOT_FOUND.withDescription("no lot ${request.lotId}"))
-        // Guard rail (§5.9): a lot with sales cannot vanish from under them.
+        // Guard rail (sec. 5.9): a lot with sales cannot vanish from under them.
         if (lots.hasSales(record.id)) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription("the lot has recorded sales; delete those first")
@@ -312,12 +312,12 @@ class PositionGrpcService(
         val portfolioId = portfolio()
         val account = taxableAccount(request.accountId, portfolioId)
         val security = findSecurity(request.securityId, portfolioId)
-        // Guard (build-scope §11): sale-year treatment under the
+        // Guard (build-scope sec. 11): sale-year treatment under the
         // mark-to-market election is not yet ruled.
         if (security.taxTreatment == TaxTreatment.MARK_TO_MARKET) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(
-                    "${security.ticker} is marked-to-market; sale treatment is not yet ruled (build-scope §11)"
+                    "${security.ticker} is marked-to-market; sale treatment is not yet ruled (build-scope sec. 11)"
                 )
             )
         }
@@ -363,7 +363,7 @@ class PositionGrpcService(
     override suspend fun setHolding(request: SetHoldingRequest): SetHoldingResponse {
         val portfolioId = portfolio()
         val account = accountOf(request.accountId, portfolioId)
-        // Position-level entry is the tax-deferred path (build-scope §1);
+        // Position-level entry is the tax-deferred path (build-scope sec. 1);
         // taxable accounts keep their lot ledger.
         if (!account.taxDeferred) {
             throw StatusException(
@@ -413,7 +413,7 @@ class PositionGrpcService(
             if (security.taxTreatment == TaxTreatment.MARK_TO_MARKET) continue
             if (security.currency != reporting.currency) {
                 // Non-USD sales await the FX tax-treatment ruling
-                // (build-scope §5 open question).
+                // (build-scope sec. 5 open question).
                 excluded += saleGroup.size
                 continue
             }
@@ -449,7 +449,7 @@ class PositionGrpcService(
                 "$excluded sale(s) in non-USD accounts are excluded pending the FX tax-treatment ruling"
             )
         }
-        // PFIC mark-to-market ordinary income (build-scope §11):
+        // PFIC mark-to-market ordinary income (build-scope sec. 11):
         // year-end marks in range, separate from capital gains.
         var totalMtm = reporting.zero()
         for (mark in mtmMarks.listForTaxReport(portfolioId, from, to)) {
@@ -507,12 +507,12 @@ class PositionGrpcService(
         allocations.map { (lotId, shares) -> SaleAllocation(lotId, shares) },
     )
 
-    /** Spec §5.2: a position on an unpriced security fails the request. */
+    /** Spec sec. 5.2: a position on an unpriced security fails the request. */
     private fun priceFor(security: SecurityRow, prices: Map<SecurityId, Money>): Money =
         prices[security.id] ?: throw StatusException(
             Status.FAILED_PRECONDITION.withDescription(
                 if (security.pricingLocus == PricingLocus.MANUAL) {
-                    "${security.ticker} has no price entries yet — add one to value the position"
+                    "${security.ticker} has no price entries yet - add one to value the position"
                 } else {
                     "${security.ticker} has no market data yet - configure a provider key or retry"
                 }
@@ -520,7 +520,7 @@ class PositionGrpcService(
         )
 
     private fun requireMatchingCurrency(account: AccountRow, security: SecurityRow) {
-        // Account-owned currency (build-scope §5), enforced at write time.
+        // Account-owned currency (build-scope sec. 5), enforced at write time.
         if (account.currency != security.currency) {
             throw invalid(
                 "${security.ticker} is denominated in ${security.currency}; " +
@@ -532,7 +532,7 @@ class PositionGrpcService(
     private fun taxableAccount(raw: Long, portfolioId: PortfolioId): AccountRow {
         val account = accountOf(raw, portfolioId)
         // Lots are the taxable record; tax-deferred accounts track
-        // position-level holdings instead (build-scope §1).
+        // position-level holdings instead (build-scope sec. 1).
         if (account.taxDeferred) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(

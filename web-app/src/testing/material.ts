@@ -1,4 +1,4 @@
-// Unit-lane drivers for Angular Material widgets — the twin of
+// Unit-lane drivers for Angular Material widgets - the twin of
 // e2e/support/material.ts (docs/design/ui-testing.md). Zoneless change
 // detection never sees a field assignment: drive the DOM the way a
 // user would, then settle().
@@ -36,7 +36,7 @@ export async function typeInto(
 }
 
 /** Opens a labelled mat-select and picks the option with `optionText`.
- *  The open panel is found through the trigger's aria-controls — a
+ *  The open panel is found through the trigger's aria-controls - a
  *  just-closed panel can linger in the overlay container, so a global
  *  `mat-option` query may see two selects' options. */
 export async function pickOption(

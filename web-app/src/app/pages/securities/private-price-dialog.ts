@@ -17,8 +17,8 @@ export interface PrivatePriceDialogData {
   row?: PrivatePriceRow;
 }
 
-/** Add / edit one private price (spec §9.12): date + price per share,
- *  both required — actually validated, unlike legacy. */
+/** Add / edit one private price (spec sec. 9.12): date + price per share,
+ *  both required - actually validated, unlike legacy. */
 @Component({
   selector: 'app-private-price-dialog',
   imports: [

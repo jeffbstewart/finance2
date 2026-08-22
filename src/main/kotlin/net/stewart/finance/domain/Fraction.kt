@@ -3,13 +3,13 @@ package net.stewart.finance.domain
 import java.math.BigDecimal
 
 /**
- * A unitless fraction — a classification weight, a portfolio share, the
- * result of dividing money by money (the only sanctioned money÷money
+ * A unitless fraction - a classification weight, a portfolio share, the
+ * result of dividing money by money (the only sanctioned money/money
  * operation). Not restricted to [0, 1]: drift and delta math produce
  * values outside that range.
  *
- * Fixed scale 4 (docs/design/initial-build-scope.md §2); the spec's
- * ±0.0001 tolerances are one unit in the last place of this type.
+ * Fixed scale 4 (docs/design/initial-build-scope.md sec. 2); the spec's
+ * +/-0.0001 tolerances are one unit in the last place of this type.
  */
 class Fraction private constructor(val value: BigDecimal) : Comparable<Fraction> {
 

@@ -6,10 +6,10 @@ import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SaleId
 
-// The lot & gains engine (FUNCTIONAL_SPEC §5.1–§5.3): pure functions
-// over the Phase 2 value types — no database, no clock, no I/O. This
+// The lot & gains engine (FUNCTIONAL_SPEC sec. 5.1-sec. 5.3): pure functions
+// over the Phase 2 value types - no database, no clock, no I/O. This
 // is the tax record's arithmetic for taxable accounts (build-scope
-// §1); tax-deferred accounts never enter here.
+// sec. 1); tax-deferred accounts never enter here.
 //
 // Cost pro-rating uses Money.allocateBy throughout, so a lot's
 // purchase costs and a sale's costs are distributed penny-exactly:
@@ -17,14 +17,14 @@ import net.stewart.finance.domain.SaleId
 
 /**
  * The tax rule: held long-term when held *more than* one year,
- * computed calendar-correctly (the legacy tree disagreed with itself —
- * ">1 year" in one path, ">366 days" in another; spec §5.1 picks the
+ * computed calendar-correctly (the legacy tree disagreed with itself - 
+ * ">1 year" in one path, ">366 days" in another; spec sec. 5.1 picks the
  * former).
  */
 fun heldLongTerm(dateBought: LocalDate, asOf: LocalDate): Boolean =
     asOf.isAfter(dateBought.plusYears(1))
 
-/** Lots with |stillHeld| at or below this are closed (spec §5.1). */
+/** Lots with |stillHeld| at or below this are closed (spec sec. 5.1). */
 val CLOSED_TOLERANCE: Quantity = Quantity.of("0.0001")
 
 /** One purchase lot. All money is in the lot's (= account's) currency. */
@@ -94,7 +94,7 @@ data class LotState(
     /** Purchase costs pro-rated to each sale that consumed this lot. */
     val soldCosts: Map<SaleId, Money>,
 ) {
-    /** stillHeld × purchase price + pro-rated purchase costs (spec §5.1). */
+    /** stillHeld x purchase price + pro-rated purchase costs (spec sec. 5.1). */
     val basis: Money =
         lot.pricePerShare * openShares() + stillHeldCosts
 
@@ -105,7 +105,7 @@ data class LotState(
 /**
  * Computes a lot's state. Sales are processed in (date, id) order so
  * the cost partition is deterministic regardless of input order.
- * Overselling beyond [CLOSED_TOLERANCE] is a caller bug — validate
+ * Overselling beyond [CLOSED_TOLERANCE] is a caller bug - validate
  * with [validateSaleAllocations] before recording a sale.
  */
 fun lotState(lot: Lot, sales: List<Sale>): LotState {
@@ -131,7 +131,7 @@ fun lotState(lot: Lot, sales: List<Sale>): LotState {
     )
 }
 
-/** The per-(sale, lot) gain detail behind the tax report (spec §5.3). */
+/** The per-(sale, lot) gain detail behind the tax report (spec sec. 5.3). */
 data class SaleLotGain(
     val saleId: SaleId,
     val lotId: LotId,
@@ -147,9 +147,9 @@ data class SaleLotGain(
 )
 
 /**
- * Gains for every (sale, lot) pair: (salePrice − buyPrice) × shares −
- * pro-rated purchase costs − sale costs apportioned across the sale's
- * lots proportionally to shares sold (spec §4.2, §5.3). Long/short
+ * Gains for every (sale, lot) pair: (salePrice - buyPrice) x shares -
+ * pro-rated purchase costs - sale costs apportioned across the sale's
+ * lots proportionally to shares sold (spec sec. 4.2, sec. 5.3). Long/short
  * term classifies by holding period at the sale date.
  */
 fun saleGains(lots: List<Lot>, sales: List<Sale>): List<SaleLotGain> {
@@ -180,7 +180,7 @@ fun saleGains(lots: List<Lot>, sales: List<Sale>): List<SaleLotGain> {
     }
 }
 
-/** The per-ticker aggregate across a position's open lots (spec §5.1–§5.2). */
+/** The per-ticker aggregate across a position's open lots (spec sec. 5.1-sec. 5.2). */
 data class Position(
     val shares: Quantity,
     val shortTermShares: Quantity,
@@ -194,8 +194,8 @@ data class Position(
 /**
  * Aggregates open lots at [currentPrice] as of [asOf]. A lot's
  * still-held shares are all the same age, so each open lot lands
- * whole in the short- or long-term bucket by its purchase date —
- * which also makes spec §5.1's "long-term consumed first" rule hold
+ * whole in the short- or long-term bucket by its purchase date - 
+ * which also makes spec sec. 5.1's "long-term consumed first" rule hold
  * trivially: within one lot there is never a mixed-age remainder.
  */
 fun position(lots: List<Lot>, sales: List<Sale>, currentPrice: Money, asOf: LocalDate): Position {
@@ -226,7 +226,7 @@ fun position(lots: List<Lot>, sales: List<Sale>, currentPrice: Money, asOf: Loca
 }
 
 /**
- * Server-side validation for recording a sale (guard rail §5.9,
+ * Server-side validation for recording a sale (guard rail sec. 5.9,
  * fixing legacy defect 7): every allocation targets a known open lot,
  * never exceeds that lot's still-held shares, and the per-lot amounts
  * sum exactly to the sale's total. Throws [IllegalArgumentException]

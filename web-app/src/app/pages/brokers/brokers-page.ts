@@ -14,9 +14,9 @@ import { Notify } from '../../core/notify';
 import { PieChart, type PieSlice } from '../../shared/charts/pie-chart';
 import { BrokerDialog } from './broker-dialog';
 
-/** Brokerages (spec §9.1): broker table with totals, holdings pie,
+/** Brokerages (spec sec. 9.1): broker table with totals, holdings pie,
  *  add FAB, the hidden-broker reveal legacy never had, and a count of
- *  unresolved import warnings per broker (pipeline design §E). */
+ *  unresolved import warnings per broker (pipeline design sec. E). */
 @Component({
   selector: 'app-brokers-page',
   imports: [

@@ -1,5 +1,5 @@
 // Exact-decimal string helpers (house rule: no float arithmetic on
-// wire values — docs/design/initial-build-scope.md §2). Percent ↔
+// wire values - docs/design/initial-build-scope.md sec. 2). Percent <->
 // fraction conversion is a decimal-point shift on the string, never a
 // division.
 
@@ -10,7 +10,7 @@ export function isDecimalString(s: string): boolean {
   return DECIMAL_PATTERN.test(s.trim());
 }
 
-/** Shift the decimal point `places` to the left: "33.33" → "0.3333" for 2. */
+/** Shift the decimal point `places` to the left: "33.33" -> "0.3333" for 2. */
 export function shiftLeft(s: string, places: number): string {
   const trimmed = s.trim();
   if (!isDecimalString(trimmed)) throw new Error(`not a decimal: ${s}`);
@@ -22,7 +22,7 @@ export function shiftLeft(s: string, places: number): string {
   return trimZeros(`${padded.slice(0, at)}.${padded.slice(at)}`);
 }
 
-/** Shift the decimal point `places` to the right: "0.3333" → "33.33" for 2. */
+/** Shift the decimal point `places` to the right: "0.3333" -> "33.33" for 2. */
 export function shiftRight(s: string, places: number): string {
   const trimmed = s.trim();
   if (!isDecimalString(trimmed)) throw new Error(`not a decimal: ${s}`);
@@ -43,7 +43,7 @@ export function fractionToPercent(fraction: string): string {
 
 /**
  * A decimal string as a BigInt scaled by 10^scale, for exact sums and
- * comparisons (quantities use scale 8 — build-scope §2). Throws when
+ * comparisons (quantities use scale 8 - build-scope sec. 2). Throws when
  * the value has more fractional digits than the scale.
  */
 export function toScaledBigInt(s: string, scale: number): bigint {
@@ -64,9 +64,9 @@ export function fromScaledBigInt(v: bigint, scale: number): string {
 }
 
 /**
- * Exact decimal multiply for the rebalance planner's shares × price =
- * cost (spec §9.14): scaled-BigInt product, truncated to outScale.
- * Planning inputs only — stored money still comes from the server.
+ * Exact decimal multiply for the rebalance planner's shares x price =
+ * cost (spec sec. 9.14): scaled-BigInt product, truncated to outScale.
+ * Planning inputs only - stored money still comes from the server.
  */
 export function mulDecimal(a: string, b: string, outScale: number): string {
   const scaled = toScaledBigInt(a, 8) * toScaledBigInt(b, 8); // scale 16

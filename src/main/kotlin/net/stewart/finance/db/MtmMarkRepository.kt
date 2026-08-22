@@ -29,7 +29,7 @@ data class MtmMarkRecord(
 )
 
 /**
- * The per-security mark-to-market ledger (build-scope §11): one row
+ * The per-security mark-to-market ledger (build-scope sec. 11): one row
  * per elected security per tax year, in filing order. USD amounts are
  * the tax truth; the local FMV and FX rate record how they were
  * derived.

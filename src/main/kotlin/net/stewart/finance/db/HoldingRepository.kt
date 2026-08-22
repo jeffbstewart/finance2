@@ -20,8 +20,8 @@ data class HoldingRecord(
 )
 
 /**
- * Position-level holdings — the record for tax-deferred accounts
- * (build-scope §1), with provenance.
+ * Position-level holdings - the record for tax-deferred accounts
+ * (build-scope sec. 1), with provenance.
  */
 class HoldingRepository(dataSource: DataSource) {
 

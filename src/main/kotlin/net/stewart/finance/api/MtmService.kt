@@ -19,7 +19,7 @@ import net.stewart.finance.domain.TaxTreatment
 import net.stewart.finance.rules.computeMark
 
 /**
- * The PFIC §1296 mark-to-market ledger logic (build-scope §11). All
+ * The PFIC sec. 1296 mark-to-market ledger logic (build-scope sec. 11). All
  * USD figures flow through dated FX (never a silent 1:1); the basis
  * floor is total acquisition cost at purchase-date rates, which for a
  * single never-partially-sold position equals the unreversed-
@@ -65,7 +65,7 @@ class MtmService(
 
     /**
      * The proposed year-end mark from stored prices and FX. Whatever
-     * the store cannot supply stays null with an explanatory note —
+     * the store cannot supply stays null with an explanatory note - 
      * the ECB feed backfills only 90 days, so a past year's Dec 31
      * rate is often absent and gets entered by hand.
      */
@@ -77,12 +77,12 @@ class MtmService(
 
         val quantity = sharesHeld(portfolioId, security, markDate)
         if (quantity.isZero()) {
-            notes += "no purchase lots on or before $markDate — record the purchase first"
+            notes += "no purchase lots on or before $markDate - record the purchase first"
         }
 
         val pricePoint = history(security).lastOrNull { it.date <= markDate }
         if (pricePoint == null) {
-            notes += "no stored price on or before $markDate — enter the FMV by hand"
+            notes += "no stored price on or before $markDate - enter the FMV by hand"
         } else if (pricePoint.date != markDate) {
             notes += "price from ${pricePoint.date} (latest on or before $markDate)"
         }
@@ -90,7 +90,7 @@ class MtmService(
         val fxRate = fx.latestRate(security.currency, reporting.currency, markDate)
         if (fxRate == null) {
             notes += "no stored ${security.currency}->${reporting.currency} rate on or before " +
-                "$markDate — enter the rate by hand"
+                "$markDate - enter the rate by hand"
         }
 
         val fmvLocal = pricePoint?.let {
@@ -124,7 +124,7 @@ class MtmService(
         if (latest != null && latest.taxYear >= taxYear) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(
-                    "marks must be recorded in tax-year order — the latest is ${latest.taxYear}"
+                    "marks must be recorded in tax-year order - the latest is ${latest.taxYear}"
                 )
             )
         }
@@ -152,7 +152,7 @@ class MtmService(
 
     /**
      * Edits a recorded mark's inputs (tax year immutable) and
-     * recomputes the basis chain from it forward — every later mark's
+     * recomputes the basis chain from it forward - every later mark's
      * basis and ordinary income restate from its own stored inputs.
      */
     fun update(
@@ -172,10 +172,10 @@ class MtmService(
             throw StatusException(Status.NOT_FOUND.withDescription("no mark ${markId.value}"))
         }
         // Tax years are calendar years (README assumption): the mark
-        // date must fall inside Jan 1 – Dec 31 of its tax year.
+        // date must fall inside Jan 1 - Dec 31 of its tax year.
         if (markDate.year != mark.taxYear) {
             throw invalid(
-                "mark date $markDate is not in tax year ${mark.taxYear} — " +
+                "mark date $markDate is not in tax year ${mark.taxYear} - " +
                     "delete and re-record to move a mark between years"
             )
         }
@@ -205,7 +205,7 @@ class MtmService(
         return checkNotNull(edited)
     }
 
-    /** Only the latest mark may go — the basis chain feeds forward. */
+    /** Only the latest mark may go - the basis chain feeds forward. */
     fun delete(portfolioId: PortfolioId, markId: MtmMarkId): MtmMarkRecord {
         val mark = marks.find(markId, portfolioId)
             ?: throw StatusException(Status.NOT_FOUND.withDescription("no mark ${markId.value}"))
@@ -213,7 +213,7 @@ class MtmService(
         if (latest.id != mark.id) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(
-                    "only the latest mark (${latest.taxYear}) may be deleted — the basis chain feeds forward"
+                    "only the latest mark (${latest.taxYear}) may be deleted - the basis chain feeds forward"
                 )
             )
         }
@@ -227,7 +227,7 @@ class MtmService(
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(
                     "${security.ticker} has recorded sales, but sale-year treatment for " +
-                        "mark-to-market securities is not yet ruled (build-scope §11)"
+                        "mark-to-market securities is not yet ruled (build-scope sec. 11)"
                 )
             )
         }
@@ -247,7 +247,7 @@ class MtmService(
         taxYear, markDate, quantity, fmvLocal, fxRate,
     )
 
-    /** One mark's figures against an explicit predecessor — the shared
+    /** One mark's figures against an explicit predecessor - the shared
      *  step for recording, suggesting, and the edit chain recompute. */
     private fun computeFigures(
         portfolioId: PortfolioId,
@@ -263,7 +263,7 @@ class MtmService(
         if (floor.isZero()) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(
-                    "no purchase lots for ${security.ticker} on or before $markDate — record the purchase first"
+                    "no purchase lots for ${security.ticker} on or before $markDate - record the purchase first"
                 )
             )
         }
@@ -305,7 +305,7 @@ class MtmService(
         if (security.taxTreatment != TaxTreatment.MARK_TO_MARKET) {
             throw StatusException(
                 Status.FAILED_PRECONDITION.withDescription(
-                    "${security.ticker} is not marked-to-market — elect the treatment on its profile first"
+                    "${security.ticker} is not marked-to-market - elect the treatment on its profile first"
                 )
             )
         }

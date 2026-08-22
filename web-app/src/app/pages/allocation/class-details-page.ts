@@ -7,7 +7,7 @@ import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
 import { PieChart, type PieSlice } from '../../shared/charts/pie-chart';
 
-/** Allocation class details (spec §9.15): the positions contributing
+/** Allocation class details (spec sec. 9.15): the positions contributing
  *  to one asset class, with a pie of contributions. */
 @Component({
   selector: 'app-class-details-page',

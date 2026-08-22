@@ -15,7 +15,7 @@ data class ClassificationSetRow(
 )
 
 /**
- * Generic classification storage (build-scope §4): kinds are data,
+ * Generic classification storage (build-scope sec. 4): kinds are data,
  * "ASSET_CLASS" at launch; each (security, kind) set is date-stamped
  * and replaced atomically.
  */
@@ -70,7 +70,7 @@ class ClassificationRepository(dataSource: DataSource) {
     }
 
     /**
-     * Every security's asset-class weight map, in one query — feeds
+     * Every security's asset-class weight map, in one query - feeds
      * the allocation dashboard and rebalancer without an N+1.
      */
     fun assetClassWeightsBySecurity(portfolioId: PortfolioId): Map<SecurityId, Map<String, Fraction>> =

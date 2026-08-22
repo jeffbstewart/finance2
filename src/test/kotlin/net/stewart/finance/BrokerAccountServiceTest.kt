@@ -147,7 +147,7 @@ class BrokerAccountServiceTest {
             )
         }
         val converted = asUser(jeff) { brokerService.listBrokers(ListBrokersRequest.getDefaultInstance()) }
-        assertEquals("$1,344.56", converted.totalSweeps.display) // 1234.56 + 100×1.10
+        assertEquals("$1,344.56", converted.totalSweeps.display) // 1234.56 + 100x1.10
 
         // Guard rails: a broker with visible accounts cannot hide; an
         // account with no positions can hide; then the broker can.

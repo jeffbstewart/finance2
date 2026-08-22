@@ -1,6 +1,6 @@
 // Boots finance2 for the e2e lane on a scratch database with test
 // support enabled. Invoked by Playwright's webServer (cwd: web-app).
-// Requires a built SPA (npm run check) — the server serves ../spa.
+// Requires a built SPA (npm run check) - the server serves ../spa.
 import { spawn } from 'node:child_process';
 import { existsSync, rmSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 
 const repoRoot = resolve(process.cwd(), '..');
 if (!existsSync(join(repoRoot, 'spa', 'index.html'))) {
-  console.error('spa/ is missing — run `npm run check` before the e2e lane');
+  console.error('spa/ is missing - run `npm run check` before the e2e lane');
   process.exit(1);
 }
 

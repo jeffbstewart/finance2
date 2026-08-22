@@ -3,7 +3,7 @@
 // sparkline is plain SVG, so it is asserted directly rather than
 // through a chart stub. MatDialog is stubbed at the component
 // injector so the FAB's reload-on-change contract can be driven
-// without an overlay — the dialog itself has its own spec.
+// without an overlay - the dialog itself has its own spec.
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -175,7 +175,7 @@ describe('SecuritiesPage', () => {
     const fixture = await render();
     expect(rows(fixture)).toEqual([]);
     expect(host(fixture).querySelector('.empty-note')!.textContent!.trim()).toBe(
-      'No securities yet — add the first with the button below.',
+      'No securities yet - add the first with the button below.',
     );
   });
 
@@ -250,7 +250,7 @@ describe('SecuritiesPage', () => {
     fab.click();
     await settle(fixture);
     expect(dialogOpen).toHaveBeenCalledWith(AddSecurityDialog);
-    expect(listRequests).toHaveLength(1); // cancelled: afterClosed() → undefined
+    expect(listRequests).toHaveLength(1); // cancelled: afterClosed() -> undefined
 
     dialogResult = true;
     fab.click();

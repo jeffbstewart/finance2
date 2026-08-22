@@ -12,7 +12,7 @@ data class BrokerRow(
     val hidden: Boolean,
 )
 
-/** Brokers, always scoped to one portfolio — a broker id from another
+/** Brokers, always scoped to one portfolio - a broker id from another
  *  portfolio behaves exactly like a nonexistent one. */
 class BrokerRepository(dataSource: DataSource) {
 

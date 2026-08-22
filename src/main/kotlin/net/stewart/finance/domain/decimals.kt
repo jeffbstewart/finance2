@@ -3,7 +3,7 @@ package net.stewart.finance.domain
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-// The numeric policy from docs/design/initial-build-scope.md §2: every
+// The numeric policy from docs/design/initial-build-scope.md sec. 2: every
 // domain value lives at a fixed canonical scale, construction is strict
 // (excess decimal places are an error, not a silent round), rounding
 // happens only where an operation's contract declares HALF_EVEN, and

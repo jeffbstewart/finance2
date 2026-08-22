@@ -23,7 +23,7 @@ table {
   flex-direction: column;
 
   // The chart facades are block elements that must keep the cell's
-  // full width — centering would shrink them to zero.
+  // full width - centering would shrink them to zero.
   app-pie-chart,
   app-grouped-bar-chart {
     width: 100%;

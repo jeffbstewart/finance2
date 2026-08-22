@@ -22,7 +22,7 @@ class FxRepositoryTest {
 
     @Test
     fun `self-currency conversion is exactly one, no lookup`() {
-        // No rows in fx_rates at all — the identity needs none.
+        // No rows in fx_rates at all - the identity needs none.
         assertEquals(BigDecimal.ONE, repo.latestRate(CurrencyUnit.USD, CurrencyUnit.USD, today))
         assertEquals(BigDecimal.ONE, repo.latestRate(CurrencyUnit.EUR, CurrencyUnit.EUR, today))
         // And storing a self-conversion rate is a caller bug.

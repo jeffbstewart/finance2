@@ -28,7 +28,7 @@ echarts.use([
 export interface TimeSeriesPoint {
   /** ISO civil date, `YYYY-MM-DD`. */
   date: string;
-  /** Presentation magnitude — chart geometry only, never arithmetic. */
+  /** Presentation magnitude - chart geometry only, never arithmetic. */
   value: number;
 }
 
@@ -41,7 +41,7 @@ export interface TimeSeries {
 
 /**
  * Chart facade (Decision 6 discussion): line chart over civil dates
- * with a timeline scrubber (spec §9.10 tab 1). Library stays confined
+ * with a timeline scrubber (spec sec. 9.10 tab 1). Library stays confined
  * to this file.
  */
 @Component({

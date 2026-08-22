@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConnectError } from '@connectrpc/connect';
 
-/** Mutation feedback per spec §8.3: short snackbar on success, longer
+/** Mutation feedback per spec sec. 8.3: short snackbar on success, longer
  *  on error, no raw alert()s. */
 @Injectable({ providedIn: 'root' })
 export class Notify {

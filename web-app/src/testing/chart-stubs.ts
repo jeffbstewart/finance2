@@ -1,6 +1,6 @@
 // Chart stand-ins for unit specs (docs/design/ui-testing.md).
 //
-// ECharts renders to canvas — nothing to assert in the DOM. Pages are
+// ECharts renders to canvas - nothing to assert in the DOM. Pages are
 // tested on the DATA they hand the facade: override the real facade
 // imports with these same-selector stubs and read `.slices` /
 // `.series` off the stub instance, or call `emitSliceClick` to drive

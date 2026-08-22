@@ -27,7 +27,7 @@ class CpiTest {
 
     @Test
     fun `interpolates linearly within a month`() {
-        // Jan 16: 15 of 31 days elapsed -> 100 + 10 × 15/31 = 104.8387…
+        // Jan 16: 15 of 31 days elapsed -> 100 + 10 x 15/31 = 104.8387...
         assertEquals(
             usd("104.8387"),
             cpi.convert(usd("100"), LocalDate.parse("2020-01-01"), LocalDate.parse("2020-01-16")),
@@ -47,10 +47,10 @@ class CpiTest {
 
     @Test
     fun `bounded flat extrapolation before and after coverage`() {
-        // Up to 2 months before the first point…
+        // Up to 2 months before the first point...
         assertEquals(BigDecimal("100"), cpi.indexOn(LocalDate.parse("2019-11-15")))
         assertFailsWith<IllegalArgumentException> { cpi.indexOn(LocalDate.parse("2019-10-31")) }
-        // …and 4 months after the last (publication lag).
+        // ...and 4 months after the last (publication lag).
         assertEquals(BigDecimal("110"), cpi.indexOn(LocalDate.parse("2020-06-30")))
         assertFailsWith<IllegalArgumentException> { cpi.indexOn(LocalDate.parse("2020-07-01")) }
     }
@@ -64,8 +64,8 @@ class CpiTest {
     @Test
     fun `interpolation spans missing months (the 2025-10 CPIAUCSL gap)`() {
         val gapped = series("2020-01" to "100", "2020-03" to "120")
-        // Feb 1 sits 31 of 60 days into the Jan→Mar span:
-        // 100 + 20 × 31/60 = 110.333…
+        // Feb 1 sits 31 of 60 days into the Jan->Mar span:
+        // 100 + 20 x 31/60 = 110.333...
         assertEquals(
             usd("110.3333"),
             gapped.convert(usd("100"), LocalDate.parse("2020-01-01"), LocalDate.parse("2020-02-01")),

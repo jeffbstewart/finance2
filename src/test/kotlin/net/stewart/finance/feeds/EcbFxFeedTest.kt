@@ -96,7 +96,7 @@ class EcbFxFeedTest {
             fetchFullHistory = { fullFetches++; deepHistory },
         )
         // Empty store: purchase-date conversions need arbitrarily old
-        // rates (build-scope §11), so the full archive comes first.
+        // rates (build-scope sec. 11), so the full archive comes first.
         feed.refresh()
         assertEquals(1, fullFetches)
         assertEquals(0, windowFetches)

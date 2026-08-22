@@ -17,7 +17,7 @@ echarts.use([EchartsPie, LegendComponent, TitleComponent, TooltipComponent, Canv
 export interface PieSlice {
   id: string;
   name: string;
-  /** Presentation magnitude (the wire's sort_key — never arithmetic). */
+  /** Presentation magnitude (the wire's sort_key - never arithmetic). */
   value: number;
   /** Preformatted display value for the tooltip. */
   display: string;

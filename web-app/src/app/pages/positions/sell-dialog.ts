@@ -28,13 +28,13 @@ interface LotAllocation {
   sellShares: string;
 }
 
-/** Quantities carry scale 8 (build-scope §2). */
+/** Quantities carry scale 8 (build-scope sec. 2). */
 const SHARE_SCALE = 8;
 
 /**
- * Sell dialog (spec §9.9): 3-step linear stepper — sale summary, per-
+ * Sell dialog (spec sec. 9.9): 3-step linear stepper - sale summary, per-
  * lot share picks that must sum to the step-1 total (validated here
- * exactly, and again server-side per guard rail §5.9), confirm.
+ * exactly, and again server-side per guard rail sec. 5.9), confirm.
  */
 @Component({
   selector: 'app-sell-dialog',
@@ -56,7 +56,7 @@ const SHARE_SCALE = 8;
           <ng-template matStepLabel>Sale Summary</ng-template>
           <p class="context">
             {{ data.brokerName }} {{ data.brokerName ? ':' : '' }} {{ data.accountName }}
-            — {{ data.ticker }}
+            - {{ data.ticker }}
           </p>
           <div class="sell-form">
             <mat-form-field appearance="outline">
@@ -89,7 +89,7 @@ const SHARE_SCALE = 8;
           @for (allocation of allocations(); track allocation.lot.lotId) {
             <div class="lot-pick">
               <span class="lot-label">
-                Bought {{ allocation.lot.bought?.display }} —
+                Bought {{ allocation.lot.bought?.display }} - 
                 {{ allocation.lot.sharesStillHeld?.display }} held at
                 {{ allocation.lot.buyPricePerShare?.display }}
               </span>
@@ -159,8 +159,8 @@ export class SellDialog {
     );
   }
 
-  /** Cross-validation (spec §9.9 step 2): capped per lot, sums to the
-   *  step-1 total — exact scaled integers, no float arithmetic. */
+  /** Cross-validation (spec sec. 9.9 step 2): capped per lot, sums to the
+   *  step-1 total - exact scaled integers, no float arithmetic. */
   step2Error(): string | null {
     if (!isDecimalString(this.shares)) return null;
     let total: bigint;

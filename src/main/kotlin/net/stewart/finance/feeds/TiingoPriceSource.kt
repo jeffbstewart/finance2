@@ -10,9 +10,9 @@ import net.stewart.finance.domain.MarketSource
 
 /**
  * Tiingo end-of-day client (Decision 4 primary). The response carries
- * spec §6.1's field list verbatim; numbers are read as raw JSON
+ * spec sec. 6.1's field list verbatim; numbers are read as raw JSON
  * literals into BigDecimal, never doubles. The token travels in the
- * Authorization header, never the URL — tokens can contain characters
+ * Authorization header, never the URL - tokens can contain characters
  * ($, %) that break URIs, and URLs leak into logs.
  */
 class TiingoPriceSource(

@@ -5,8 +5,8 @@ import java.time.LocalDate
 import net.stewart.finance.domain.MarketSource
 
 /**
- * One provider daily bar (spec §6.1's field list). Amounts are exact
- * decimals parsed from the provider's raw JSON literals — the SDKs'
+ * One provider daily bar (spec sec. 6.1's field list). Amounts are exact
+ * decimals parsed from the provider's raw JSON literals - the SDKs'
  * float fields are the known trap (house rules). Providers that omit
  * corporate actions report dividend 0 / split 1.
  */
@@ -22,7 +22,7 @@ data class DailyBar(
     val volume: Long,
 )
 
-/** Typed quota detection (spec §6.1): triggers provider failover. */
+/** Typed quota detection (spec sec. 6.1): triggers provider failover. */
 class QuotaExceededException(source: MarketSource, message: String) :
     Exception("$source quota exceeded: $message")
 

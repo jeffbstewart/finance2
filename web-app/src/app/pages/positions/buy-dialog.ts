@@ -14,16 +14,16 @@ import { isDecimalString } from '../../core/decimals';
 import { Notify } from '../../core/notify';
 
 export interface BuyDialogData {
-  /** Preselects the account (spec §9.5's FAB). */
+  /** Preselects the account (spec sec. 9.5's FAB). */
   accountId?: bigint;
   /** Preselects the security (lot-details buy). */
   securityId?: bigint;
-  /** Edit mode: the lot being changed — account/security are fixed
-   *  (guard rail §5.9: moving a lot would corrupt its sales). */
+  /** Edit mode: the lot being changed - account/security are fixed
+   *  (guard rail sec. 5.9: moving a lot would corrupt its sales). */
   lot?: LotRow;
 }
 
-/** Buy dialog (spec §9.8): date, account, security, shares, price,
+/** Buy dialog (spec sec. 9.8): date, account, security, shares, price,
  *  commission. Edit mode reuses the form minus account/security. */
 @Component({
   selector: 'app-buy-dialog',
@@ -112,7 +112,7 @@ export class BuyDialog {
   private async loadChoices(): Promise<void> {
     try {
       const info = await api.positions.getPurchaseFormInfo({});
-      // Tax-deferred accounts don't take lot purchases (build-scope §1).
+      // Tax-deferred accounts don't take lot purchases (build-scope sec. 1).
       this.accounts.set(info.accounts.filter((a) => !a.taxDeferred));
       this.securities.set(info.securities);
     } catch (err) {

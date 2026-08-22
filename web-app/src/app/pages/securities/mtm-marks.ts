@@ -9,7 +9,7 @@ import { Notify } from '../../core/notify';
 import { MtmMarkDialog } from './mtm-mark-dialog';
 
 /**
- * The PFIC §1296 ledger (build-scope §11): year-ascending marks with
+ * The PFIC sec. 1296 ledger (build-scope sec. 11): year-ascending marks with
  * the acquisition-cost floor, a record flow prefilled from the
  * server's suggestion, and latest-only delete (the basis chain feeds
  * forward).
@@ -20,7 +20,7 @@ import { MtmMarkDialog } from './mtm-mark-dialog';
   template: `
     <div class="mtm-header">
       <p class="floor-line">
-        Acquisition cost (basis floor): {{ acquisitionCost() || '—' }}
+        Acquisition cost (basis floor): {{ acquisitionCost() || '-' }}
       </p>
       <button matButton="filled" (click)="recordMark()">
         <mat-icon>event_available</mat-icon>
@@ -80,7 +80,7 @@ import { MtmMarkDialog } from './mtm-mark-dialog';
       </table>
     } @else {
       <p class="empty-note">
-        No marks recorded yet — record the first year-end mark to start the ledger.
+        No marks recorded yet - record the first year-end mark to start the ledger.
       </p>
     }
   `,

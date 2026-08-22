@@ -7,18 +7,18 @@ import net.stewart.finance.domain.Money
 import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.SecurityId
 
-// The buy-side rebalance planner's scorer (FUNCTIONAL_SPEC §5.5,
-// §9.14) as pure functions. Nothing is persisted — the output is a
+// The buy-side rebalance planner's scorer (FUNCTIONAL_SPEC sec. 5.5,
+// sec. 9.14) as pure functions. Nothing is persisted - the output is a
 // shopping list. All amounts are in the reporting currency; mixing
 // currencies throws via the Money type.
 
-/** How trades are expressed. SELL is reserved (build-scope §3): the
+/** How trades are expressed. SELL is reserved (build-scope sec. 3): the
  *  shape must not foreclose sell-side planning, but scoring one today
  *  is rejected as unimplemented. */
 enum class TradeSide { BUY, SELL }
 
 /**
- * How a security is purchased (spec §5.5 — this distinction is
+ * How a security is purchased (spec sec. 5.5 - this distinction is
  * load-bearing in the planner math): mutual funds buy in dollar
  * amounts with shares derived; everything else buys whole shares with
  * cost derived.
@@ -47,7 +47,7 @@ data class PlannerSecurity(
  * One tentative trade. Under [PurchaseModality.PURCHASE_DOLLAR_AMOUNTS]
  * [cost] drives the trade (shares derived); under
  * [PurchaseModality.PURCHASE_WHOLE_SHARES] [shares] drives it (cost
- * derived) — pass the driving field, the other may be null.
+ * derived) - pass the driving field, the other may be null.
  */
 data class PlannedTrade(
     val side: TradeSide,
@@ -64,7 +64,7 @@ data class NormalizedTrade(
     val cost: Money,
 )
 
-/** A fund concentrated (≥ 0.9) in the class, with a suggested buy. */
+/** A fund concentrated (>= 0.9) in the class, with a suggested buy. */
 data class CandidateFund(
     val securityId: SecurityId,
     val ticker: String,
@@ -85,7 +85,7 @@ data class RebalanceClassScore(
     val afterFraction: Fraction,
     val target: Money,
     val targetFraction: Fraction,
-    /** current + spent − target (spec §5.5's residual error). */
+    /** current + spent - target (spec sec. 5.5's residual error). */
     val residual: Money,
     /** Disables the class's buy affordance in the UI. */
     val atOrOverTarget: Boolean,
@@ -99,21 +99,21 @@ data class RebalancePlan(
     val rebalanceTotal: Money,
     val addedFunds: Money,
     val spent: Money,
-    /** availableSweeps + addedFunds − spent ("Still to Spend"). */
+    /** availableSweeps + addedFunds - spent ("Still to Spend"). */
     val remaining: Money,
 )
 
-// The spec §5.5 candidate threshold: a security is suggested as a buy
+// The spec sec. 5.5 candidate threshold: a security is suggested as a buy
 // for a class only when at least this fraction of its weight map lies
-// in that class ("candidate funds … whose weight in that class is
-// ≥ 0.9, ordered by concentration").
+// in that class ("candidate funds ... whose weight in that class is
+// >= 0.9, ordered by concentration").
 private val CANDIDATE_CONCENTRATION = Fraction.of("0.9")
 
 /**
- * Scores the plan (spec §5.5). The rebalance total is current total +
+ * Scores the plan (spec sec. 5.5). The rebalance total is current total +
  * added funds when funds were added; otherwise buy-only mode: the
  * smallest portfolio value at which the most overweight non-Cash
- * class reaches its target without selling — max over classes of
+ * class reaches its target without selling - max over classes of
  * classValue / targetFraction, never below the current total (buying
  * from sweeps does not shrink the portfolio).
  *

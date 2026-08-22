@@ -1,7 +1,7 @@
 // E2E spec for PrivatePricesPage + PrivatePriceDialog
 // (docs/design/ui-testing.md, inventory "PrivatePricesPage").
-// The seeder gives GOLD two private prices — today−90 at $3,100.00 and
-// today−5 at $3,358.50 — and gives VTI (MARKET locus) none, which is
+// The seeder gives GOLD two private prices - today-90 at $3,100.00 and
+// today-5 at $3,358.50 - and gives VTI (MARKET locus) none, which is
 // where the server-side locus guard shows up.
 import { expect, test, type Page } from '@playwright/test';
 import { acceptConfirms, expectSnackbar, fillField, seedPortfolio } from '../support/material';
@@ -140,7 +140,7 @@ test('deletes a price after the native confirm', async ({ page }) => {
   // Emptying the history brings back the empty note.
   await page.getByRole('button', { name: 'Delete price' }).first().click();
   await expect(page.locator('.empty-note')).toHaveText(
-    'No prices yet — add the first with the button below.',
+    'No prices yet - add the first with the button below.',
   );
   await expect.poll(() => priceRows(page)).toHaveLength(0);
 });
@@ -161,21 +161,21 @@ test('EUR prices display in the security currency', async ({ page }) => {
   const lastYear = new Date().getFullYear() - 1;
   const rows = await priceRows(page);
   expect(rows).toEqual([
-    [iso(daysAgo(7)), '€104.00'],
-    [`${lastYear}-12-30`, '€100.00'],
-    [`${lastYear - 1}-12-30`, '€95.00'],
+    [iso(daysAgo(7)), '\u20ac104.00'],
+    [`${lastYear}-12-30`, '\u20ac100.00'],
+    [`${lastYear - 1}-12-30`, '\u20ac95.00'],
   ]);
 });
 
 test('a MARKET-locus security opens empty and the server rejects the add', async ({ page }) => {
   // The page has no client-side locus guard by design (inventory);
-  // §5.6 is enforced server-side.
+  // sec. 5.6 is enforced server-side.
   await gotoPrices(page, 'security.vti');
   await expect(page.locator('mat-card-title')).toHaveText(
     'Edit Privately Traded Price History for VTI',
   );
   await expect(page.locator('.empty-note')).toHaveText(
-    'No prices yet — add the first with the button below.',
+    'No prices yet - add the first with the button below.',
   );
 
   await page.getByRole('button', { name: 'Add price' }).click();

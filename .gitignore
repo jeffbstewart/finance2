@@ -1,4 +1,4 @@
-# Secrets — never in git (see CLAUDE.md and decisions/1-license-and-ip.md)
+# Secrets - never in git (see CLAUDE.md and decisions/1-license-and-ip.md)
 .env
 
 # Local data: database files, provider data, bankferry snapshot drops.
@@ -14,7 +14,7 @@ build/
 # Node
 web-app/node_modules
 
-# Generated code is never committed — both sides regenerate on build
+# Generated code is never committed - both sides regenerate on build
 web-app/src/proto-gen/
 
 # IDE

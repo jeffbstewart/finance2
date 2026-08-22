@@ -9,15 +9,15 @@ import java.util.Locale
 
 /**
  * An exact amount of one currency. Fixed scale 4
- * (docs/design/initial-build-scope.md §2); values fit a `NUMERIC(20,4)`
+ * (docs/design/initial-build-scope.md sec. 2); values fit a `NUMERIC(20,4)`
  * column by construction.
  *
  * Arithmetic policy: addition and subtraction are exact and require the
  * same currency ([CurrencyMismatchException] otherwise). Multiplication
  * by a [Quantity] or [Fraction] and every division round HALF_EVEN to
- * the result's canonical scale — the only places rounding occurs.
+ * the result's canonical scale - the only places rounding occurs.
  * Division by money yields a unitless [Fraction] and is the only
- * sanctioned money÷money operation; division by zero throws
+ * sanctioned money/money operation; division by zero throws
  * [ArithmeticException]. There is no conversion to or from binary
  * floating point.
  */
@@ -118,8 +118,8 @@ class Money private constructor(val amount: BigDecimal, val currency: CurrencyUn
     fun toWire(): String = amount.toPlainString()
 
     /**
-     * Accounting display: currency symbol, comma grouping, 2–4 decimal
-     * places, negatives in parentheses — e.g. `($1,234.5678)`.
+     * Accounting display: currency symbol, comma grouping, 2-4 decimal
+     * places, negatives in parentheses - e.g. `($1,234.5678)`.
      */
     fun display(): String {
         val format = DecimalFormat("#,##0.00##", DecimalFormatSymbols(Locale.US))
@@ -175,7 +175,7 @@ class Money private constructor(val amount: BigDecimal, val currency: CurrencyUn
                 t = t.substring(1, t.length - 1).trim()
             }
             if (t.startsWith("-")) {
-                if (negative) throw NumberFormatException("money text \"$text\" mixes (…) and - negation")
+                if (negative) throw NumberFormatException("money text \"$text\" mixes (...) and - negation")
                 negative = true
                 t = t.substring(1).trim()
             }

@@ -33,9 +33,9 @@ import net.stewart.finance.proto.UserInfo
 const val MAX_USERNAME_LENGTH = 100
 
 /**
- * The proto SessionService over auth-kotlin-toolkit (build-scope §8):
+ * The proto SessionService over auth-kotlin-toolkit (build-scope sec. 8):
  * cookie sessions, rate-limited login, and the first-run single-user
- * setup flow. All four RPCs are on the unauthenticated allowlist —
+ * setup flow. All four RPCs are on the unauthenticated allowlist - 
  * this service resolves the session cookie itself where it needs one
  * (the auth interceptor skips identity resolution for allowlisted
  * methods), applying the same Origin CSRF check the interceptor uses.
@@ -46,11 +46,11 @@ class SessionGrpcService(
     private val logins: LoginService,
     /**
      * The per-run setup token printed to the server log at boot when no
-     * user existed; null when the boot found a user (setup closed) —
+     * user existed; null when the boot found a user (setup closed) - 
      * a mid-run wipe then requires a restart to reopen setup.
      */
     private val setupToken: String?,
-    /** False only in cookie-insecure dev setups; true behind HAProxy (§10). */
+    /** False only in cookie-insecure dev setups; true behind HAProxy (sec. 10). */
     private val secureCookies: Boolean = true,
 ) : SessionServiceGrpcKt.SessionServiceCoroutineImplBase() {
 
@@ -72,7 +72,7 @@ class SessionGrpcService(
             throw StatusException(Status.INVALID_ARGUMENT.withDescription(it))
         }
         val displayName = request.displayName.trim().ifEmpty { username }
-        // The single-user ruling (build-scope §8): the first account is
+        // The single-user ruling (build-scope sec. 8): the first account is
         // the only account; once any user exists, registration is
         // closed for good. The lock closes the check-then-insert race.
         val user = synchronized(setupLock) {
@@ -90,7 +90,7 @@ class SessionGrpcService(
 
     override suspend fun login(request: LoginRequest): LoginResponse {
         val ip = CLIENT_IP_KEY.get()
-            ?: error("BUG: client IP missing — RequestMetaInterceptor not installed")
+            ?: error("BUG: client IP missing - RequestMetaInterceptor not installed")
         when (val result = logins.login(request.username, request.password, ip)) {
             is LoginResult.Success -> {
                 establishSession(result.user)
@@ -113,7 +113,7 @@ class SessionGrpcService(
         return LogoutResponse.getDefaultInstance()
     }
 
-    /** Username rules (ruling 2026-08-18): 1–100 chars, visible 7-bit ASCII. */
+    /** Username rules (ruling 2026-08-18): 1-100 chars, visible 7-bit ASCII. */
     private fun validateUsername(username: String) {
         if (username.isEmpty()) {
             throw StatusException(Status.INVALID_ARGUMENT.withDescription("username is required"))
@@ -141,7 +141,7 @@ class SessionGrpcService(
         if (!MessageDigest.isEqual(presented.toByteArray(), expected.toByteArray())) {
             throw StatusException(
                 Status.PERMISSION_DENIED.withDescription(
-                    "setup token missing or incorrect — it is printed in the server log at startup"
+                    "setup token missing or incorrect - it is printed in the server log at startup"
                 )
             )
         }
@@ -149,7 +149,7 @@ class SessionGrpcService(
 
     /**
      * The session cookie's token, honored only when the request's
-     * Origin (if any) matches the authority — the same CSRF posture
+     * Origin (if any) matches the authority - the same CSRF posture
      * the auth interceptor applies on authenticated RPCs.
      */
     private fun sessionToken(): String? {
@@ -162,7 +162,7 @@ class SessionGrpcService(
     private fun sessionUser(): AuthUser? = sessionToken()?.let { sessions.validateToken(it) }
 
     private fun responseCookies(): ResponseCookies = RESPONSE_COOKIES_KEY.get()
-        ?: error("BUG: response-cookie sink missing — RequestMetaInterceptor not installed")
+        ?: error("BUG: response-cookie sink missing - RequestMetaInterceptor not installed")
 
     private fun establishSession(user: AuthUser) {
         val token = sessions.createSession(user, USER_AGENT_KEY.get() ?: "unknown")

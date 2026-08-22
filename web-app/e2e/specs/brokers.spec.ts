@@ -38,7 +38,7 @@ test('sweeps are summed per broker in the reporting currency', async ({ page }) 
   expect(euroBank[2]).toBe('$290.00');
   expect(table.footer[2]).toBe('$845.25');
   // Holdings are still zero server-side (BrokerGrpcService: positions
-  // pricing lands in Phase 4/5) — pinning today's behavior.
+  // pricing lands in Phase 4/5) - pinning today's behavior.
   expect(vanguard[1]).toBe('$0.00');
   expect(table.footer[1]).toBe('$0.00');
 });

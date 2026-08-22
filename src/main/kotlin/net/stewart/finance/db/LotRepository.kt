@@ -24,8 +24,8 @@ data class LotRecord(
 )
 
 /**
- * Purchase lots — the tax record for taxable accounts (build-scope
- * §1). Money currency comes from the owning account's row in the same
+ * Purchase lots - the tax record for taxable accounts (build-scope
+ * sec. 1). Money currency comes from the owning account's row in the same
  * query, never from a caller.
  */
 class LotRepository(dataSource: DataSource) {
@@ -83,7 +83,7 @@ class LotRepository(dataSource: DataSource) {
         )
     }
 
-    /** Account and security are immutable (guard rail §5.9). */
+    /** Account and security are immutable (guard rail sec. 5.9). */
     fun update(
         id: LotId,
         dateBought: LocalDate,

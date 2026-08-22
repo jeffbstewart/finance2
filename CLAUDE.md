@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-finance2 is a single-user personal portfolio manager — the ground-up
+finance2 is a single-user personal portfolio manager - the ground-up
 rewrite of the legacy `finance` repo. Kotlin/Armeria backend, embedded
 H2 database, proto-typed API boundary with a generated TypeScript
 client, intended to become a public repository. The full plan, firm
@@ -21,7 +21,7 @@ repos.
 
 - **Server:** `ArmeriaAppServer` from
   [armeria-kotlin-toolkit](https://github.com/jeffbstewart/armeria-kotlin-toolkit)
-  — one HTTP/2 port serving gRPC (native + gRPC-Web, no proxy), REST,
+  - one HTTP/2 port serving gRPC (native + gRPC-Web, no proxy), REST,
   the SPA, and `/healthz`. Auth wiring comes from its
   `armeria-kotlin-toolkit-auth` module: every RPC not on the explicit
   unauthenticated allowlist is rejected.
@@ -36,10 +36,10 @@ repos.
   TypeScript Connect-ES client regenerates via
   `web-app/scripts/gen-proto.mjs` before every check/build. **Generated
   code is never committed.** No hand-written DTOs, no `any`-typed
-  fetch calls — a hallucinated field or RPC must fail compilation.
+  fetch calls - a hallucinated field or RPC must fail compilation.
 - **Toolkits are consumed as composite builds** from sibling checkouts
   (`../armeria-kotlin-toolkit`, `../h2-kotlin-toolkit`,
-  `../auth-kotlin-toolkit` — the first includes the third).
+  `../auth-kotlin-toolkit` - the first includes the third).
 
 ## Build and Run
 
@@ -56,10 +56,17 @@ cd web-app && npm ci && npm run check         # regenerate TS client + typecheck
   `json.Number`-style handling; provider SDK float fields are a known
   trap). The Phase 2 property-based test suite is the authority.
 - **Strong-typed domain IDs** (value classes with validated
-  construction), **real duration/date types** — no unit-suffixed
+  construction), **real duration/date types** - no unit-suffixed
   primitives, no bare-string IDs.
 - Multi-currency: no implicit cross-currency arithmetic; explicit
   conversion only through a dated FX rate.
+- **All committed text is 7-bit ASCII** (tab and LF are the only
+  control characters). No em dashes, section signs, arrows, curly
+  quotes, or currency symbols in source, docs, or comments: write
+  `-`, `sec.`, `->`, `"`, and `\u20ac`-style escapes where a string
+  needs the real character. Enforced by `scripts/check-ascii.sh`,
+  which CI runs first; the vendored Gradle wrapper, fonts, and favicon
+  are the only exemptions.
 
 ## Security
 
@@ -67,10 +74,10 @@ cd web-app && npm ci && npm run check         # regenerate TS client + typecheck
   `example.env` documents every variable and is fair game to read and
   edit.
 - Values from `.env` are never committed or logged.
-- **No provider data in git, ever** — API responses and bankferry
+- **No provider data in git, ever** - API responses and bankferry
   snapshot files live under `data/` (git-ignored). Committing provider
   data violates provider ToS (see decisions/1-license-and-ip.md).
-- finance2 holds **no Plaid credentials** — bankferry owns all Plaid
+- finance2 holds **no Plaid credentials** - bankferry owns all Plaid
   access and exports proto snapshots
   (docs/design/plaid-investments-pipeline.md).
 

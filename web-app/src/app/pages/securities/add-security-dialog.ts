@@ -10,8 +10,8 @@ import { api } from '../../core/api';
 import { Notify } from '../../core/notify';
 
 /**
- * Add security (spec §9.18): ticker plus currency; every other profile
- * field is edited manually afterwards on the details page (§6.3 — no
+ * Add security (spec sec. 9.18): ticker plus currency; every other profile
+ * field is edited manually afterwards on the details page (sec. 6.3 - no
  * auto-population), so the dialog navigates straight there.
  */
 @Component({
@@ -64,7 +64,7 @@ export class AddSecurityDialog {
         ticker: this.ticker.trim().toUpperCase(),
         currencyCode: this.currencyCode,
       });
-      this.notify.success(`${response.security?.ticker} added — fill in its profile`);
+      this.notify.success(`${response.security?.ticker} added - fill in its profile`);
       this.ref.close(true);
       await this.router.navigate(['/securities', response.security?.securityId]);
     } catch (err) {

@@ -12,9 +12,9 @@ import java.net.InetSocketAddress
 import org.slf4j.LoggerFactory
 
 /**
- * Deployment-topology enforcement (build-scope §10, rulings 2026-08-18
+ * Deployment-topology enforcement (build-scope sec. 10, rulings 2026-08-18
  * and 2026-08-19): every main-port request must arrive from a trusted
- * proxy — a request from any other peer is rejected outright, and a
+ * proxy - a request from any other peer is rejected outright, and a
  * request from the proxy that lacks the forwarded client address is a
  * bad request (a misconfigured proxy must fail loudly, not collapse
  * every client into one rate-limit bucket). The internal ops port is

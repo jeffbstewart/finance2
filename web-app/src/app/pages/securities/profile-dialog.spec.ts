@@ -1,5 +1,5 @@
 // Unit spec for ProfileDialog (docs/design/ui-testing.md, inventory
-// "SecurityDetailsPage → ProfileDialog"): prefill and UNSPECIFIED
+// "SecurityDetailsPage -> ProfileDialog"): prefill and UNSPECIFIED
 // defaulting, the three enum selects, the expense-ratio decimal
 // validator, and the submit/close/error paths.
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -140,7 +140,7 @@ describe('ProfileDialog', () => {
   }
 
   /** Opens a mat-select and returns its option elements. The panel is
-   *  found through the trigger's aria-controls — a just-closed panel
+   *  found through the trigger's aria-controls - a just-closed panel
    *  can still sit in the shared overlay container. */
   async function openSelect(
     fixture: { nativeElement: unknown; detectChanges(): void },
@@ -155,7 +155,7 @@ describe('ProfileDialog', () => {
     return Array.from(panel.querySelectorAll<HTMLElement>('mat-option'));
   }
 
-  /** Picks an option by its visible text — the values are enum numbers. */
+  /** Picks an option by its visible text - the values are enum numbers. */
   async function pickOption(
     fixture: { nativeElement: unknown; detectChanges(): void },
     label: string,
@@ -206,7 +206,7 @@ describe('ProfileDialog', () => {
       expect(submitButton(fixture).disabled).toBe(true);
       // BUG: the mat-error never reaches the screen. mat-form-field
       // only projects errors while the control's errorState is true,
-      // and this is a bare ngModel with no Angular validator — so the
+      // and this is a bare ngModel with no Angular validator - so the
       // user gets a disabled Submit and no explanation.
       expect(host(fixture).querySelector('mat-error')).toBeNull();
       expect(host(fixture).textContent).not.toContain('Enter a plain decimal like 0.0004');
@@ -233,7 +233,7 @@ describe('ProfileDialog', () => {
     ]);
     expect(await texts('Tax Treatment')).toEqual([
       'Purchase lots (capital gains)',
-      'Mark-to-market (PFIC §1296, ordinary income)',
+      'Mark-to-market (PFIC sec. 1296, ordinary income)',
     ]);
   });
 

@@ -48,11 +48,11 @@ import net.stewart.finance.proto.SnapshotStatus as SnapshotStatusProto
 import net.stewart.finance.proto.UploadSnapshotRequest
 import net.stewart.finance.proto.UploadSnapshotResponse
 
-/** Uploads larger than this are refused — snapshots are small. */
+/** Uploads larger than this are refused - snapshots are small. */
 private const val MAX_SNAPSHOT_BYTES = 20 * 1024 * 1024
 
 /**
- * ImportService (pipeline design §E, amended 2026-08-20): archive
+ * ImportService (pipeline design sec. E, amended 2026-08-20): archive
  * bankferry snapshots uploaded through the authenticated browser
  * session, link Plaid accounts to finance2 accounts, and run the
  * freely repeatable processor.

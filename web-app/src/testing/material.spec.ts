@@ -1,5 +1,5 @@
 // Proves the unit-lane drivers against a tiny host component, so the
-// helpers themselves are regression-tested — not just the pages that
+// helpers themselves are regression-tested - not just the pages that
 // use them.
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';

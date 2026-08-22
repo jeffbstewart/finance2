@@ -125,7 +125,7 @@ describe('ClassDetailsPage', () => {
   afterEach(() => restoreApi());
 
   /** The router binds `name` as a component input, so specs set it
-   *  before the first detectChanges — ngOnInit reads it. */
+   *  before the first detectChanges - ngOnInit reads it. */
   async function render(name: string): Promise<ComponentFixture<ClassDetailsPage>> {
     const fixture = TestBed.createComponent(ClassDetailsPage);
     fixture.componentRef.setInput('name', name);
@@ -201,7 +201,7 @@ describe('ClassDetailsPage', () => {
     const root = fixture.nativeElement as HTMLElement;
     expect(cells(root, 'tr[mat-row]')).toEqual([['Sweeps', '0', '100%', '$845.25']]);
     // BUG: the sweeps contribution carries no security, so the ticker
-    // cell links to /securities/0 and the pie slice's id is "0" — a
+    // cell links to /securities/0 and the pie slice's id is "0" - a
     // dead link into the security details page. Pinned as-is.
     expect(root.querySelector('td a')!.getAttribute('href')).toBe('/securities/0');
     expect(stubs(fixture, PieChartStub)[0].slices()[0].id).toBe('0');

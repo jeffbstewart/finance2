@@ -157,9 +157,9 @@ class PositionServiceTest {
         assertEquals(listOf("7", "3"), details.lotsList.map { it.sharesStillHeld.display })
         val saleRow = details.salesList.single()
         assertEquals("5", saleRow.shares.display)
-        // lot1: (30−10)×3 − $3 pro-rated − 3/5 of $9 = $51.60 long-term.
+        // lot1: (30-10)x3 - $3 pro-rated - 3/5 of $9 = $51.60 long-term.
         assertEquals("$51.60", saleRow.longTermGain.display)
-        // lot2: (30−20)×2 − 2/5 of $9 = $16.40 short-term.
+        // lot2: (30-20)x2 - 2/5 of $9 = $16.40 short-term.
         assertEquals("$16.40", saleRow.shortTermGain.display)
 
         // The tax report covers the sale, portfolio-scoped, USD-only.
@@ -220,8 +220,8 @@ class PositionServiceTest {
         }
         val row = positions.positionsList.single()
         assertEquals("4.5", row.shares.display)
-        assertEquals("$112.50", row.currentValue.display) // 4.5 × $25
-        assertEquals("$0.00", row.basis.display)          // no basis in tax-deferred (§1)
+        assertEquals("$112.50", row.currentValue.display) // 4.5 x $25
+        assertEquals("$0.00", row.basis.display)          // no basis in tax-deferred (sec. 1)
         assertEquals("manual", row.provenance.source)
 
         call {
@@ -311,7 +311,7 @@ class PositionServiceTest {
             // Flat CPI: adjusted cost columns equal nominal.
             assertEquals("$10.00", row.buyPricePerShare.display)
             assertEquals("$1.00", row.commission.display)
-            assertEquals("$21.00", row.basis.display) // 2×10 + 1
+            assertEquals("$21.00", row.basis.display) // 2x10 + 1
         } finally {
             lots.delete(lotId)
         }

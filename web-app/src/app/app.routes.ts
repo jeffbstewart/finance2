@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
 
-// Path routing with reloadable state (spec §8.2); everything except
+// Path routing with reloadable state (spec sec. 8.2); everything except
 // the welcome page sits behind the session guard inside the shell.
 export const routes: Routes = [
   { path: 'welcome', loadComponent: () => import('./welcome/welcome').then((m) => m.Welcome) },

@@ -9,7 +9,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { Notify } from '../core/notify';
 import { SessionStore } from '../core/session';
 
-/** The application shell (spec §8.2): top toolbar with the sign-in
+/** The application shell (spec sec. 8.2): top toolbar with the sign-in
  *  widget, a permanently open left nav with the five sections, and
  *  the routed content in a padded center column. */
 @Component({

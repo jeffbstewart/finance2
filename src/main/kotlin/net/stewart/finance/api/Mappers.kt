@@ -16,7 +16,7 @@ import net.stewart.finance.proto.FormattedMoney
 import net.stewart.finance.proto.Money as MoneyProto
 import net.stewart.finance.proto.Provenance
 
-// Domain → wire mapping. The exact value crosses as a decimal string
+// Domain -> wire mapping. The exact value crosses as a decimal string
 // (proto common.proto's no-float rule); sort_key is the one deliberate
 // double in the contract, a presentation sort key only.
 
@@ -33,7 +33,7 @@ fun Money.toFormatted(): FormattedMoney = FormattedMoney.newBuilder()
 
 fun Fraction.toProto(): DecimalProto = DecimalProto.newBuilder().setValue(toWire()).build()
 
-/** Fractions display as percentages (e.g. 0.2534 → "25.34%"). */
+/** Fractions display as percentages (e.g. 0.2534 -> "25.34%"). */
 fun Fraction.toFormattedPercent(): FormattedDecimal = FormattedDecimal.newBuilder()
     .setExact(toProto())
     .setDisplay(value.movePointRight(2).stripTrailingZeros().toPlainString() + "%")

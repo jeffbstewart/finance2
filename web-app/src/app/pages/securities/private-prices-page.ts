@@ -11,8 +11,8 @@ import { Notify } from '../../core/notify';
 import { PrivatePriceDialog } from './private-price-dialog';
 
 /**
- * Private price history editor (spec §9.12), MANUAL-locus securities
- * only — the server rejects it elsewhere (§5.6). Add/edit via dialog,
+ * Private price history editor (spec sec. 9.12), MANUAL-locus securities
+ * only - the server rejects it elsewhere (sec. 5.6). Add/edit via dialog,
  * delete confirms.
  */
 @Component({

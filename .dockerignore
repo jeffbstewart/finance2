@@ -1,6 +1,6 @@
 # Secrets never enter the build context, let alone the image.
 .env
-# Local data (database, provider data, snapshots) — runtime volume, not image.
+# Local data (database, provider data, snapshots) - runtime volume, not image.
 data/
 # Build outputs and caches: every stage regenerates what it needs.
 build/

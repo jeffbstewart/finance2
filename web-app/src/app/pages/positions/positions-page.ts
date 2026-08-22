@@ -18,12 +18,12 @@ import { BuyDialog } from './buy-dialog';
 import { HoldingDialog } from './holding-dialog';
 
 /**
- * Positions (spec §9.5–§9.6): one page for both scopes. With the
+ * Positions (spec sec. 9.5-sec. 9.6): one page for both scopes. With the
  * `account` query param it is "Positions at {broker} : {account}";
  * without, the portfolio-wide list (server sorts by current value
  * descending). Tax-deferred accounts enter position-level holdings
- * instead of purchases (build-scope §1). The account scope also shows
- * the account's unresolved import warnings (pipeline design §E).
+ * instead of purchases (build-scope sec. 1). The account scope also shows
+ * the account's unresolved import warnings (pipeline design sec. E).
  */
 @Component({
   selector: 'app-positions-page',

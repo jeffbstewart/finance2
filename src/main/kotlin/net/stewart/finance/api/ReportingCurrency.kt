@@ -9,8 +9,8 @@ import net.stewart.finance.domain.Money
 
 /**
  * Converts amounts into the reporting currency (USD) through dated FX
- * rates — the only sanctioned path between currencies (build-scope
- * §5). A missing rate is a FAILED_PRECONDITION, never a silent 1:1.
+ * rates - the only sanctioned path between currencies (build-scope
+ * sec. 5). A missing rate is a FAILED_PRECONDITION, never a silent 1:1.
  */
 class ReportingCurrency(
     private val fx: FxRepository,
@@ -18,7 +18,7 @@ class ReportingCurrency(
 ) {
     fun toReporting(amount: Money, asOf: LocalDate): Money {
         if (amount.currency == currency) return amount
-        // Zero needs no rate — it is zero in any currency.
+        // Zero needs no rate - it is zero in any currency.
         if (amount.isZero()) return zero()
         val rate = fx.latestRate(amount.currency, currency, asOf)
             ?: throw StatusException(

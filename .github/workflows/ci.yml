@@ -1,5 +1,5 @@
 # The presubmit suite (cloister docs/grange.md R3): the "verify" check
-# the main ruleset requires.  Zero secrets by policy (R6) — the forge
+# the main ruleset requires.  Zero secrets by policy (R6) - the forge
 # lint audits Actions secrets to empty.
 name: ci
 
@@ -17,6 +17,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: finance2
+      # Every tracked file is 7-bit ASCII (CLAUDE.md "House
+      # Conventions"); cheapest check, so it runs first.
+      - run: sh scripts/check-ascii.sh
+        working-directory: finance2
       - uses: actions/checkout@v4
         with:
           repository: jeffbstewart/armeria-kotlin-toolkit
@@ -37,7 +41,7 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
       # Kotlin side: regenerates proto stubs and compiles + tests
-      # against them — contract drift on the server is a build failure.
+      # against them - contract drift on the server is a build failure.
       - run: ./gradlew build --no-daemon
         working-directory: finance2
       - uses: actions/setup-node@v4
@@ -46,7 +50,7 @@ jobs:
       - run: npm ci
         working-directory: finance2/web-app
       # TS side: regenerates the Connect-ES client from proto/ and
-      # typechecks — contract drift in the client is a build failure.
+      # typechecks - contract drift in the client is a build failure.
       - run: npm run check
         working-directory: finance2/web-app
       # Dependency hygiene, CI-enforced from day one (end-state goal 2).

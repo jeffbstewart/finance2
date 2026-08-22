@@ -1,17 +1,17 @@
-// plaid_snapshot.proto — the bankferry→finance2 investments contract
+// plaid_snapshot.proto - the bankferry->finance2 investments contract
 // (docs/design/plaid-investments-pipeline.md).
 //
-// PRIMARY SOURCE: bankferry (ruling, Jeff 2026-07-17) — finance2
+// PRIMARY SOURCE: bankferry (ruling, Jeff 2026-07-17) - finance2
 // carries this verbatim clone for its own codegen; contract changes
 // land in bankferry first once its copy exists. Deliberately
 // self-contained (no imports) so the file clones between repos with
 // zero dependencies.
 //
-// Hard rules: no float/double anywhere near money or quantities —
+// Hard rules: no float/double anywhere near money or quantities - 
 // exact decimal strings end to end (bankferry fetches via raw-JSON
 // json.Number; the official SDKs decode money as floats). No secrets:
 // item_ref and account_ref are opaque identifiers, never access
-// tokens. Snapshot files hold real account data — they are never repo
+// tokens. Snapshot files hold real account data - they are never repo
 // content in either project.
 syntax = "proto3";
 
@@ -31,7 +31,7 @@ message InvestmentsSnapshot {
 
 message ItemSnapshot {
   string institution_entry = 1; // Plaid institution name, e.g. "Vanguard"
-  string item_ref = 2;          // opaque, stable per item — never the access token
+  string item_ref = 2;          // opaque, stable per item - never the access token
   repeated Account accounts = 3;
 }
 
@@ -39,7 +39,7 @@ message Account {
   string account_ref = 1;      // Plaid account_id (opaque)
   string name = 2;
   string official_name = 3;    // Plaid's longer name, when present
-  string mask = 4;             // last digits — the human's matching aid
+  string mask = 4;             // last digits - the human's matching aid
   string type = 5;             // e.g. "investment"
   string subtype = 6;          // e.g. "401k", "brokerage", "roth"
   Money institution_value = 7; // institution-reported total value
@@ -81,7 +81,7 @@ message InvestmentTransaction {
   Money fees = 10;
 }
 
-// Exact decimal string, e.g. "1234.5600" — never float/double.
+// Exact decimal string, e.g. "1234.5600" - never float/double.
 message Decimal {
   string value = 1;
 }

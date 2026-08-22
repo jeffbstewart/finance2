@@ -23,7 +23,7 @@ class CurrencyUnitTest {
     @Test
     fun `symbols render for display`() {
         assertEquals("$", CurrencyUnit.USD.symbol)
-        assertEquals("€", CurrencyUnit.EUR.symbol)
+        assertEquals("\u20ac", CurrencyUnit.EUR.symbol)
     }
 
     @Test

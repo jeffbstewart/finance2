@@ -7,12 +7,12 @@ import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 import net.stewart.finance.domain.Money
 
-// Inflation adjustment (FUNCTIONAL_SPEC §5.7): US CPI-U monthly index
+// Inflation adjustment (FUNCTIONAL_SPEC sec. 5.7): US CPI-U monthly index
 // points (FRED series CPIAUCSL), linearly interpolated for arbitrary
 // dates, with flat extrapolation for a bounded window around the data
 // (publication lag) and a hard error outside it. Applied at
-// presentation time in one consistent direction — the conversion is
-// amount × Index(destination) / Index(origin).
+// presentation time in one consistent direction - the conversion is
+// amount x Index(destination) / Index(origin).
 
 /** Months of flat extrapolation allowed before the first data point. */
 const val CPI_FLAT_MONTHS_BEFORE = 2L
@@ -24,8 +24,8 @@ private val INTERNAL = MathContext.DECIMAL64
 
 /**
  * A monthly CPI index series, each point anchored at the first of its
- * month. Missing months are permitted — the published CPIAUCSL series
- * really has a hole (October 2025, the federal-shutdown gap) — and
+ * month. Missing months are permitted - the published CPIAUCSL series
+ * really has a hole (October 2025, the federal-shutdown gap) - and
  * interpolation simply spans them: the index for a date between two
  * known points is linear in days across the whole span.
  */
@@ -75,7 +75,7 @@ class CpiSeries(points: Map<YearMonth, BigDecimal>) {
 
     /**
      * Re-expresses [amount] from [origin]-date dollars in
-     * [destination]-date dollars: amount × Index(destination) /
+     * [destination]-date dollars: amount x Index(destination) /
      * Index(origin), HALF_EVEN to money scale.
      */
     fun convert(amount: Money, origin: LocalDate, destination: LocalDate): Money {
@@ -88,13 +88,13 @@ class CpiSeries(points: Map<YearMonth, BigDecimal>) {
 /**
  * Parses a FRED-style CSV export ("DATE,CPIAUCSL" header, then
  * `yyyy-MM-dd,value` rows, dates on the first of each month). Rows
- * with FRED's "." marker or an empty value — how the shutdown-gap
- * month is published — are skipped. Values parse as exact decimals —
+ * with FRED's "." marker or an empty value - how the shutdown-gap
+ * month is published - are skipped. Values parse as exact decimals - 
  * never floats.
  */
 fun parseFredCsv(text: String): CpiSeries = CpiSeries(parseFredCsvPoints(text))
 
-/** The raw month→index points of a FRED CSV, for persistence. */
+/** The raw month->index points of a FRED CSV, for persistence. */
 fun parseFredCsvPoints(text: String): Map<YearMonth, BigDecimal> {
     val points = mutableMapOf<YearMonth, BigDecimal>()
     for ((lineNumber, raw) in text.lineSequence().withIndex()) {

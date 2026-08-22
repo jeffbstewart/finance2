@@ -21,9 +21,9 @@ export interface ProposedTrade {
 }
 
 /**
- * Rebalance-Buy (spec §9.14): pick from the class's candidate funds
- * (weight ≥ 0.9); the suggestion auto-fills, then Shares and Net Cost
- * mutually update through the read-only price — exact decimal
+ * Rebalance-Buy (spec sec. 9.14): pick from the class's candidate funds
+ * (weight >= 0.9); the suggestion auto-fills, then Shares and Net Cost
+ * mutually update through the read-only price - exact decimal
  * arithmetic, no floats. Nothing is persisted; the trade goes to the
  * cart.
  */
@@ -45,7 +45,7 @@ export interface ProposedTrade {
         <mat-select [ngModel]="candidate()" (ngModelChange)="pick($event)">
           @for (c of data.rebalanceClass.candidates; track c.securityId) {
             <mat-option [value]="c">
-              {{ c.ticker }} — {{ c.classWeight?.display }} in {{ data.rebalanceClass.name }}
+              {{ c.ticker }} - {{ c.classWeight?.display }} in {{ data.rebalanceClass.name }}
             </mat-option>
           }
         </mat-select>

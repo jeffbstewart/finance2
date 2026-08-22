@@ -1,5 +1,5 @@
 // Civil-date helpers for the wire's { year, month, day } shape
-// (FUNCTIONAL_SPEC §4.3: no time of day, no timezone).
+// (FUNCTIONAL_SPEC sec. 4.3: no time of day, no timezone).
 
 export interface CivilDate {
   year: number;

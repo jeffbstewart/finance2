@@ -2,7 +2,7 @@
 // "Core seams" and the cross-cutting date table): pure functions over
 // the wire's { year, month, day } shape. The clock is pinned with
 // vi.setSystemTime for todayCivil, and every Date here is built with
-// the local-time constructor so the spec is timezone-agnostic — the
+// the local-time constructor so the spec is timezone-agnostic - the
 // point of these helpers is that a civil date never drifts a day
 // through UTC.
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -78,7 +78,7 @@ describe('jsFromCivil', () => {
   });
 
   it('round-trips every civil date back through civilFromJs', () => {
-    // Datepicker dialogs (buy, private price, MTM) go civil → Date →
+    // Datepicker dialogs (buy, private price, MTM) go civil -> Date ->
     // civil on every edit; leap days, month ends and DST weekends all
     // have to survive.
     const dates: CivilDate[] = [
@@ -120,8 +120,8 @@ describe('todayCivil', () => {
     expect(todayCivil()).toEqual({ year: 2026, month: 1, day: 1 });
   });
 
-  it('stays on the local day late on New Year’s Eve', () => {
-    // classification-editor.ts stamps asOf: todayCivil() — a UTC-based
+  it("stays on the local day late on New Year's Eve", () => {
+    // classification-editor.ts stamps asOf: todayCivil() - a UTC-based
     // "today" would file the save under the wrong year here.
     pin(new Date(2026, 11, 31, 23, 59, 59));
     expect(isoDate(todayCivil())).toBe('2026-12-31');

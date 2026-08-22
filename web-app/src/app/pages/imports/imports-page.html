@@ -2,7 +2,7 @@
   <mat-card-header>
     <mat-card-title>bankferry Imports</mat-card-title>
     <mat-card-subtitle>
-      Upload an investments snapshot, link its accounts, then process — every step is revisitable.
+      Upload an investments snapshot, link its accounts, then process - every step is revisitable.
     </mat-card-subtitle>
     <span class="header-spacer"></span>
     <button matButton="filled" [disabled]="busy()" (click)="picker.click()">
@@ -72,7 +72,7 @@
         <ng-container matColumnDef="plaidName">
           <th mat-header-cell *matHeaderCellDef>Account</th>
           <td mat-cell *matCellDef="let a">
-            {{ a.name }}@if (a.mask) { <span class="mask">…{{ a.mask }}</span> }
+            {{ a.name }}@if (a.mask) { <span class="mask">...{{ a.mask }}</span> }
           </td>
         </ng-container>
         <ng-container matColumnDef="kind">
@@ -105,7 +105,7 @@
 
       <h3 class="section-title">Securities in {{ s.filename }}</h3>
       <p class="empty-note">
-        Tickers match on their own. A security with no ticker — a 401(k) trust fund — needs
+        Tickers match on their own. A security with no ticker - a 401(k) trust fund - needs
         a link to the finance2 security it is (add one with a ticker of your choosing and
         manual pricing first); its institution price is then recorded on each import.
       </p>

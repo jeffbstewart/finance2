@@ -9,8 +9,8 @@ import com.linecorp.armeria.server.ServiceRequestContext
 
 /**
  * The internal port serves *only* the ops endpoints (ruling
- * 2026-08-19): anything else arriving there — gRPC, the SPA, future
- * routes, which all share Armeria's route table across ports — is
+ * 2026-08-19): anything else arriving there - gRPC, the SPA, future
+ * routes, which all share Armeria's route table across ports - is
  * 404'd. The toolkit's internal-only decorator handles the mirror
  * direction (ops services 404 on the main port).
  */
