@@ -49,24 +49,23 @@ export interface TimeSeries {
  * Two-axis alignment. The right axis is scaled so that a series which
  * tracks the left one proportionally (a trust fund and the public
  * fund it mirrors) draws on top of it: the ratio right/left is taken
- * at every date both have, the median is the scale, and the right
- * axis range is the left range times that scale. Without an overlap
- * the axes scale independently.
+ * at every date both have, and the median is the scale. Both axes
+ * then share one range, expressed in each axis's own units, wide
+ * enough for EVERY point of both series - the left series converted
+ * into the right's units joins the right series' own extremes, so a
+ * mirror that kept moving after the last left observation stays on
+ * the chart instead of running off the top. Without an overlapping
+ * date the axes scale independently.
  */
 export function alignedAxes(
   left: TimeSeriesPoint[],
   right: TimeSeriesPoint[],
 ): { left: [number, number]; right: [number, number] } | null {
-  const span = (points: TimeSeriesPoint[]): [number, number] | null => {
-    const values = points.map((p) => p.value).filter((v) => Number.isFinite(v));
-    if (!values.length) return null;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const pad = (max - min || Math.abs(max) || 1) * 0.05;
-    return [min - pad, max + pad];
-  };
-  const leftSpan = span(left);
-  if (!leftSpan) return null;
+  const finite = (points: TimeSeriesPoint[]) =>
+    points.map((p) => p.value).filter((v) => Number.isFinite(v));
+  const leftValues = finite(left);
+  const rightValues = finite(right);
+  if (!leftValues.length) return null;
   const byDate = new Map(left.map((p) => [p.date, p.value]));
   const ratios = right
     .filter((p) => byDate.has(p.date) && byDate.get(p.date)! > 0 && p.value > 0)
@@ -74,7 +73,13 @@ export function alignedAxes(
     .sort((a, b) => a - b);
   if (!ratios.length) return null;
   const scale = ratios[Math.floor(ratios.length / 2)];
-  return { left: leftSpan, right: [leftSpan[0] * scale, leftSpan[1] * scale] };
+  // The union of both series in the right axis's units.
+  const inRight = leftValues.map((v) => v * scale).concat(rightValues);
+  const min = Math.min(...inRight);
+  const max = Math.max(...inRight);
+  const pad = (max - min || Math.abs(max) || 1) * 0.05;
+  const right_: [number, number] = [min - pad, max + pad];
+  return { left: [right_[0] / scale, right_[1] / scale], right: right_ };
 }
 
 /**

@@ -14,6 +14,18 @@ import org.slf4j.LoggerFactory
 private const val RECENT_DAYS = 45L
 
 /**
+ * How much history a security should have (the details chart wants
+ * five years and more). The first fetch asks from here explicitly:
+ * Tiingo's daily endpoint answers a request with no start date with
+ * the latest day only, and EODHD's free tier with one year, so
+ * "inception" was never what arrived. A security whose oldest bar is
+ * newer than this horizon is backfilled on its next refresh - once
+ * per TTL, so a provider that simply cannot go deeper costs one
+ * extra request a cycle, not a loop.
+ */
+private const val HISTORY_YEARS = 10L
+
+/**
  * The market-data module of spec sec. 6.1, minus the daemon: DB-persisted
  * caching with a multi-hour TTL, per-security request coalescing,
  * gentle per-provider request spacing, and typed-quota failover
@@ -37,10 +49,11 @@ class MarketData(
 
     /**
      * Ensures the security's bars are fresh (fetched within [ttl]).
-     * First-ever fetch pulls full history; later ones pull the recent
-     * window. Concurrent callers for the same security coalesce onto
-     * one upstream fetch. No-op for MANUAL-locus securities and when
-     * no provider is configured.
+     * First-ever fetch pulls [HISTORY_YEARS] of history, as does a
+     * refresh of a security whose history is shallower than that;
+     * otherwise a refresh pulls the recent window. Concurrent callers
+     * for the same security coalesce onto one upstream fetch. No-op
+     * for MANUAL-locus securities and when no provider is configured.
      */
     fun ensureFresh(security: SecurityRow) {
         if (security.pricingLocus != PricingLocus.MARKET || sources.isEmpty()) return
@@ -48,10 +61,16 @@ class MarketData(
         val lock = perSecurityLocks.computeIfAbsent(security.id.value) { Any() }
         synchronized(lock) {
             if (isFresh(security)) return // a coalesced caller already fetched
-            val startDate = if (repo.hasAny(security.id)) {
-                LocalDate.now().minusDays(RECENT_DAYS)
-            } else {
-                null // full history on first acquaintance
+            val today = LocalDate.now()
+            val deepStart = today.minusYears(HISTORY_YEARS)
+            val earliest = repo.earliestDate(security.id)
+            val startDate = when {
+                earliest == null -> deepStart // first acquaintance
+                earliest.isAfter(deepStart.plusMonths(1)) -> {
+                    log.info("{}: history starts {}; backfilling from {}", security.feedTicker, earliest, deepStart)
+                    deepStart
+                }
+                else -> today.minusDays(RECENT_DAYS)
             }
             var lastFailure: Exception? = null
             for (source in sources) {
@@ -59,10 +78,7 @@ class MarketData(
                     space(source)
                     val bars = source.dailyBars(security.feedTicker, startDate)
                     repo.upsertBars(security.id, bars, source.id)
-                    log.info(
-                        "{}: {} bars for {} from {}",
-                        source.id, bars.size, security.feedTicker, startDate ?: "inception"
-                    )
+                    log.info("{}: {} bars for {} from {}", source.id, bars.size, security.feedTicker, startDate)
                     return
                 } catch (e: QuotaExceededException) {
                     log.warn("{} quota exceeded for {}; trying next provider", source.id, security.ticker)

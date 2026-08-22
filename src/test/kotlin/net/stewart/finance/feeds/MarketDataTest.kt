@@ -62,16 +62,18 @@ class MarketDataTest {
     }
 
     @Test
-    fun `first fetch is full history, refetch is recent, fresh is a no-op`() {
+    fun `first fetch is ten years, a shallow history backfills, a deep one refreshes recent`() {
         val security = marketSecurity("VTI")
         val source = FakeSource(MarketSource.TIINGO) { _, _ ->
             listOf(bar("2026-08-18", "100.50"), bar("2026-08-19", "101.25"))
         }
         val market = MarketData(repo, listOf(source), requestSpacing = Duration.ZERO)
+        val deepStart = LocalDate.now().minusYears(10)
 
         market.ensureFresh(security)
         assertEquals(1, source.calls)
-        assertNull(source.lastStart, "first acquaintance pulls full history")
+        // Explicit, never null: Tiingo answers "no start date" with one day.
+        assertEquals(deepStart, source.lastStart, "first acquaintance asks for ten years")
         assertEquals(
             net.stewart.finance.domain.Money.of("101.25", CurrencyUnit.USD),
             repo.latestBySecurity(PortfolioId(1)).getValue(security.id),
@@ -81,7 +83,9 @@ class MarketDataTest {
         market.ensureFresh(security)
         assertEquals(1, source.calls)
 
-        // Backdate freshness: the next call refetches, recent window only.
+        // Backdate freshness. The provider only ever gave two recent
+        // days, so the history is shallow: the refetch backfills from
+        // the deep start rather than pulling the recent window.
         db.dataSource.connection.use { conn ->
             conn.createStatement().executeUpdate(
                 "UPDATE market_prices SET fetched_at = DATEADD(DAY, -2, CURRENT_TIMESTAMP)"
@@ -89,7 +93,18 @@ class MarketDataTest {
         }
         market.ensureFresh(security)
         assertEquals(2, source.calls)
-        assertEquals(LocalDate.now().minusDays(45), source.lastStart)
+        assertEquals(deepStart, source.lastStart, "shallow history backfills")
+
+        // Once a bar near the deep start exists, a refresh is the recent window.
+        repo.upsertBars(security.id, listOf(bar(deepStart.plusDays(3).toString(), "50.00")), MarketSource.TIINGO)
+        db.dataSource.connection.use { conn ->
+            conn.createStatement().executeUpdate(
+                "UPDATE market_prices SET fetched_at = DATEADD(DAY, -2, CURRENT_TIMESTAMP)"
+            )
+        }
+        market.ensureFresh(security)
+        assertEquals(3, source.calls)
+        assertEquals(LocalDate.now().minusDays(45), source.lastStart, "deep history refreshes recent only")
     }
 
     @Test

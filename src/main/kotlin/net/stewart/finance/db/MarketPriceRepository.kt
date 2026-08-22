@@ -153,6 +153,15 @@ class MarketPriceRepository(dataSource: DataSource) {
 
     fun hasAny(securityId: SecurityId): Boolean = lastFetchedAt(securityId) != null
 
+    /** The oldest bar held, or null when none - how deep the history goes. */
+    fun earliestDate(securityId: SecurityId): LocalDate? =
+        jdbi.withHandle<LocalDate?, Exception> { handle ->
+            handle.createQuery("SELECT MIN(price_date) AS earliest FROM market_prices WHERE security_id = :securityId")
+                .bind("securityId", securityId.value)
+                .map { rs, _ -> rs.getObject("earliest", LocalDate::class.java) }
+                .one()
+        }
+
     private fun ResultSet.currency(): CurrencyUnit = CurrencyUnit.parse(getString("currency").trim())
 
     private fun java.math.BigDecimal.money(): java.math.BigDecimal =
