@@ -1,4 +1,4 @@
--- Mark-to-market (PFIC sec. 1296) tax treatment (build-scope sec. 11).
+-- Mark-to-market (PFIC §1296) tax treatment (build-scope §11).
 --
 -- tax_treatment is an open VARCHAR like the other securities enums:
 -- server code parses it loudly; a future value is an additive
