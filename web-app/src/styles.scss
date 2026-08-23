@@ -2,14 +2,49 @@
 // expressed in Material 3 terms - violet primary, rose tertiary.
 @use '@angular/material' as mat;
 
-// Vendored fonts (Apache-2.0; see public/fonts/README.md) - the SPA
-// makes no third-party requests and works offline.
+// Vendored fonts (see public/fonts/README.md for licenses) - the SPA
+// makes no third-party requests and works offline. Hack is the
+// display face: a monospace with real bold/italic, so figures line
+// up in every table without per-column tabular-nums tricks. Roboto
+// stays vendored as the fallback.
 @font-face {
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 300 500;
   font-display: swap;
   src: url('/app/fonts/roboto-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/app/fonts/hack-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/app/fonts/hack-bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/app/fonts/hack-italic.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/app/fonts/hack-bolditalic.woff2') format('woff2');
 }
 
 @font-face {
@@ -42,7 +77,7 @@ html {
       primary: mat.$violet-palette,
       tertiary: mat.$rose-palette,
     ),
-    typography: Roboto,
+    typography: Hack,
     density: 0,
   ));
 }
@@ -51,7 +86,7 @@ html,
 body {
   height: 100%;
   margin: 0;
-  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  font-family: Hack, Roboto, 'Helvetica Neue', monospace;
   background: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
 }
