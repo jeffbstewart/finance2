@@ -146,11 +146,18 @@ fun main() {
     if (priceSources.isEmpty()) {
         log.warn("no market-data provider keys configured - MARKET-locus pricing is dormant")
     }
+    // Every valuation (brokers, accounts, positions, allocation) blocks
+    // on PricingService.ensureFresh, and after a restart past the 12h
+    // TTL that is one spaced provider fetch per MARKET security - tens
+    // of seconds during which those pages look empty. So the first
+    // prefetch pass runs here, before the listen port opens; provider
+    // failure is logged and degrades pricing, never startup (spec
+    // sec. 10). With no provider keys the pass is a no-op.
     val securitiesRepo = SecurityRepository(db.dataSource)
     val marketData = MarketData(MarketPriceRepository(db.dataSource), priceSources)
     PeriodicJob("market-price-prefetch", java.time.Duration.ofDays(1)) {
         marketData.refreshAll(securitiesRepo.listAllMarket())
-    }.start()
+    }.startAfterFirstPass()
 
     // Test harnesses need a deterministic first boot: with test
     // support enabled, SETUP_TOKEN overrides the random per-run token.

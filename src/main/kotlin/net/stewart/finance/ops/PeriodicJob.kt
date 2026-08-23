@@ -30,6 +30,25 @@ class PeriodicJob(
 
     fun start() {
         check(executor == null) { "job \"$name\" already started" }
+        schedule(initialDelay)
+    }
+
+    /**
+     * Runs the first pass on the calling thread (failures logged, never
+     * thrown), then schedules the rest one [period] out. Use this when
+     * the first pass does work that requests would otherwise stall on:
+     * the listen port stays closed until it returns.
+     */
+    fun startAfterFirstPass() {
+        check(executor == null) { "job \"$name\" already started" }
+        val startedAt = System.nanoTime()
+        log.info("job \"{}\" running its first pass before startup continues", name)
+        runOnce()
+        log.info("job \"{}\" first pass done in {} ms", name, (System.nanoTime() - startedAt) / 1_000_000)
+        schedule(initialDelay = period)
+    }
+
+    private fun schedule(initialDelay: Duration) {
         executor = Executors.newSingleThreadScheduledExecutor { runnable ->
             Thread(runnable, name).apply { isDaemon = true }
         }.also {
