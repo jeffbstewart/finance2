@@ -128,3 +128,19 @@ test('logout revokes the session and lands on the welcome page', async ({ browse
     await context.close();
   }
 });
+
+test('the content pane scrolls all the way to the last control', async ({ page }) => {
+  // The allocation page is taller than any viewport; its Trading
+  // Plans button is the last thing on it. The pane used to overhang
+  // the sidenav container by its own padding (48px), so the bottom
+  // of every page was clipped off and unreachable.
+  await page.goto('/app/allocation');
+  const door = page.locator('mat-card-actions a');
+  await door.scrollIntoViewIfNeeded();
+  await expect(door).toBeInViewport({ ratio: 1 });
+  const overhang = await page.evaluate(() => {
+    const content = document.querySelector('.shell-content')!.getBoundingClientRect();
+    return content.bottom - window.innerHeight;
+  });
+  expect(overhang).toBeLessThanOrEqual(0);
+});
