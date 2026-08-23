@@ -13,7 +13,6 @@ syntax = "proto3";
 package finance;
 
 import "common.proto";
-import "allocation.proto";
 
 option java_package = "net.stewart.finance.proto";
 option java_multiple_files = true;
