@@ -140,17 +140,17 @@ changed since, the code wins.
 - **TargetDialog**: same sum-to-100 validator family, message
   "Percents must sum to 100 (currently X)".
 
-### RebalancePage - `/allocation/rebalance`
-- RPCs: `positions.getPurchaseFormInfo` (accounts **unfiltered** - 
-  includes tax-deferred), `allocation.scoreRebalance` on account
-  pick / funds blur / Enter / cart change.
-- States: auto-select + auto-score when exactly one account; invalid
-  funds string silently skips rescore (stale results); empty state
-  until scored; cart table only when non-empty; per-class buy button
-  disabled at/over target or without candidates; nothing persists.
-- **RebalanceBuyDialog**: no RPCs - pure client math; candidate
-  select with **object** option values; Shares <-> Net Cost mutually
-  recompute via exact decimal mul/div; price readonly.
+### PlansPage - `/allocation/plans`; PlanPage - `/allocation/plans/:id`
+
+- **PlansPage**: `plans.listPlans` (archived toggle), `plans.createPlan`
+  then navigate to the new plan.
+- **PlanPage**: `plans.getPlan`, `accounts.listAccounts`,
+  `securities.listSecurities` on load; `plans.setPlanSteps` on every
+  add/edit/remove/move (the server re-scores); `plans.markPlanPrinted`
+  before `window.print()`; `plans.setPlanStatus`, `plans.deletePlan`.
+- **PlanStepDialog**: `plans.getSellCandidates` (ordered, captioned)
+  or `plans.getBuyCandidates` when opened from a class row; pure form
+  otherwise. Closes with a `PlanStepInput`.
 
 ### ClassDetailsPage - `/allocation/class/:name`
 - RPC: `allocation.getAllocation` (finds its class by name).

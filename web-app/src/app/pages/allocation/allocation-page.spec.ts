@@ -265,11 +265,11 @@ describe('AllocationPage', () => {
     ]);
   });
 
-  it('offers the rebalance planner in the card actions', async () => {
+  it('offers the trading plans in the card actions', async () => {
     const fixture = await render();
     const action = (fixture.nativeElement as HTMLElement).querySelector('mat-card-actions a')!;
-    expect(action.getAttribute('href')).toBe('/allocation/rebalance');
-    expect(action.textContent).toContain('Rebalance through Purchases');
+    expect(action.getAttribute('href')).toBe('/allocation/plans');
+    expect(action.textContent).toContain('Trading Plans');
   });
 
   it('hides the target prompt when a target is stored', async () => {

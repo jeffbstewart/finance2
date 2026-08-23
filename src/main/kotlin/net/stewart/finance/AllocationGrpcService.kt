@@ -28,28 +28,18 @@ import net.stewart.finance.domain.SecurityId
 import net.stewart.finance.domain.SecurityType
 import net.stewart.finance.domain.UserId
 import net.stewart.finance.proto.AllocationServiceGrpcKt
-import net.stewart.finance.proto.CandidateFund
 import net.stewart.finance.proto.ClassAllocation
 import net.stewart.finance.proto.ClassContributor
 import net.stewart.finance.proto.GetAllocationRequest
 import net.stewart.finance.proto.GetAllocationResponse
-import net.stewart.finance.proto.RebalanceClass
-import net.stewart.finance.proto.ScoreRebalanceRequest
-import net.stewart.finance.proto.ScoreRebalanceResponse
 import net.stewart.finance.proto.SetTargetAllocationRequest
 import net.stewart.finance.proto.SetTargetAllocationResponse
-import net.stewart.finance.proto.TradeSide as TradeSideProto
 import net.stewart.finance.rules.AllocationReport
 import net.stewart.finance.rules.CLOSED_TOLERANCE
 import net.stewart.finance.rules.ClassifiedPosition
-import net.stewart.finance.rules.PlannedTrade
-import net.stewart.finance.rules.PlannerSecurity
-import net.stewart.finance.rules.PurchaseModality
-import net.stewart.finance.rules.TradeSide
 import net.stewart.finance.rules.currentAllocation
 import net.stewart.finance.rules.drift
 import net.stewart.finance.rules.position
-import net.stewart.finance.rules.scoreRebalance
 import net.stewart.finance.rules.Lot as RulesLot
 import net.stewart.finance.rules.Sale as RulesSale
 import net.stewart.finance.rules.SaleAllocation as RulesSaleAllocation
@@ -58,10 +48,10 @@ import net.stewart.finance.rules.SaleAllocation as RulesSaleAllocation
 private val TARGET_SUM_TOLERANCE = Fraction.of("0.0001")
 
 /**
- * AllocationService (spec sec. 5.4-sec. 5.5, sec. 9.13-sec. 9.15): the allocation
- * dashboard, target editing, and the buy-side rebalance scorer over
- * the rules engines. All dollar figures are in the reporting currency
- * (build-scope sec. 5); ScoreRebalance persists nothing.
+ * AllocationService (spec sec. 5.4, sec. 9.13-sec. 9.15): the allocation
+ * dashboard and target editing over the rules engines. All dollar
+ * figures are in the reporting currency (build-scope sec. 5). Planning
+ * trades against the target is TradingPlanService's job.
  */
 class AllocationGrpcService(
     private val portfolios: PortfolioRepository,
@@ -144,103 +134,6 @@ class AllocationGrpcService(
         return SetTargetAllocationResponse.getDefaultInstance()
     }
 
-    override suspend fun scoreRebalance(request: ScoreRebalanceRequest): ScoreRebalanceResponse {
-        val portfolioId = portfolio()
-        val today = LocalDate.now()
-        if (request.accountId <= 0) throw invalid("destination account id is required")
-        val destination = accounts.find(AccountId(request.accountId), portfolioId)
-            ?: throw StatusException(Status.NOT_FOUND.withDescription("no account ${request.accountId}"))
-        val targetByName = targets.get(portfolioId)
-        if (targetByName.isEmpty()) {
-            throw StatusException(
-                Status.FAILED_PRECONDITION.withDescription("set a target allocation before planning a rebalance")
-            )
-        }
-        val valued = valuedPositions(portfolioId, today)
-        val report = buildReport(portfolioId, assetClasses.names().toList(), valued, today)
-
-        // The planner's candidate pool: priced, classified securities,
-        // with prices converted to the reporting currency.
-        val weightsBySecurity = classifications.assetClassWeightsBySecurity(portfolioId)
-        val candidateRows = securities.list(portfolioId, includeHidden = false)
-        val prices = pricing.latestBySecurity(portfolioId, candidateRows)
-        val plannerSecurities = candidateRows.mapNotNull { row ->
-            val price = prices[row.id] ?: return@mapNotNull null
-            val weights = weightsBySecurity[row.id] ?: return@mapNotNull null
-            PlannerSecurity(
-                securityId = row.id,
-                ticker = row.ticker,
-                price = reporting.toReporting(price, today),
-                purchaseModality = if (row.securityType.boughtInDollars) {
-                    PurchaseModality.PURCHASE_DOLLAR_AMOUNTS
-                } else {
-                    PurchaseModality.PURCHASE_WHOLE_SHARES
-                },
-                weights = weights,
-            )
-        }
-
-        val trades = request.tradesList.map { trade ->
-            when (trade.side) {
-                TradeSideProto.BUY -> Unit
-                TradeSideProto.SELL -> throw StatusException(
-                    Status.UNIMPLEMENTED.withDescription(
-                        "sell-side planning is reserved but not implemented (build-scope sec. 3)"
-                    )
-                )
-                else -> throw invalid("trade side is required")
-            }
-            if (trade.securityId <= 0) throw invalid("trade security id is required")
-            PlannedTrade(
-                side = TradeSide.BUY,
-                securityId = SecurityId(trade.securityId),
-                shares = trade.shares.value.trim().ifEmpty { null }?.let { parseQuantity(it, "trade shares") },
-                cost = trade.cost.value.trim().ifEmpty { null }?.let { parseReportingMoney(it, "trade cost") },
-            )
-        }
-        val addedFunds = request.addedFunds.value.trim().ifEmpty { "0" }
-            .let { parseReportingMoney(it, "added funds") }
-        if (addedFunds.signum() < 0) throw invalid("added funds must not be negative")
-        val availableSweeps = reporting.toReporting(destination.sweep, today)
-
-        val plan = try {
-            scoreRebalance(report, targetByName, plannerSecurities, trades, availableSweeps, addedFunds)
-        } catch (e: IllegalArgumentException) {
-            throw invalid(e.message ?: "invalid rebalance plan")
-        }
-
-        val builder = ScoreRebalanceResponse.newBuilder()
-            .setCurrentTotal(plan.currentTotal.toFormatted())
-            .setAddedFunds(plan.addedFunds.toFormatted())
-            .setSpent(plan.spent.toFormatted())
-            .setRemaining(plan.remaining.toFormatted())
-        for (score in plan.classes) {
-            val classBuilder = RebalanceClass.newBuilder()
-                .setName(score.className)
-                .setBeforeFraction(score.beforeFraction.toFormattedPercent())
-                .setAfterFraction(score.afterFraction.toFormattedPercent())
-                .setTargetFraction(score.targetFraction.toFormattedPercent())
-                .setResidual(score.residual.toFormatted())
-                .setAtOrOverTarget(score.atOrOverTarget)
-            for (candidate in score.candidates) {
-                classBuilder.addCandidates(
-                    CandidateFund.newBuilder()
-                        .setSecurityId(candidate.securityId.value)
-                        .setTicker(candidate.ticker)
-                        .setClassWeight(candidate.classWeight.toFormattedPercent())
-                        .setSuggestedShares(
-                            net.stewart.finance.proto.Decimal.newBuilder()
-                                .setValue(candidate.suggestedShares.toWire())
-                        )
-                        .setPricePerShare(candidate.pricePerShare.toFormatted())
-                        .setCost(candidate.cost.toFormatted())
-                )
-            }
-            builder.addClasses(classBuilder)
-        }
-        return builder.build()
-    }
-
     /** Per-security shares and reporting-currency value, lots + holdings merged. */
     private data class ValuedPosition(
         val security: SecurityRow,
@@ -309,18 +202,6 @@ class AllocationGrpcService(
         val sweeps = accounts.list(portfolioId, brokerId = null, includeHidden = false)
             .fold(reporting.zero()) { acc, account -> acc + reporting.toReporting(account.sweep, today) }
         return currentAllocation(classNames, positions, sweeps)
-    }
-
-    private fun parseQuantity(raw: String, field: String): Quantity = try {
-        Quantity.of(raw)
-    } catch (e: Exception) {
-        throw invalid("$field is not a valid quantity: \"$raw\"")
-    }
-
-    private fun parseReportingMoney(raw: String, field: String): Money = try {
-        Money.of(raw, reporting.currency)
-    } catch (e: Exception) {
-        throw invalid("$field is not a valid amount: \"$raw\"")
     }
 
     private fun portfolio(): PortfolioId =

@@ -16,7 +16,7 @@ import { TargetDialog } from './target-dialog';
  * Allocation dashboard (spec sec. 9.13): current and target pies, the
  * current-vs-target percent bars, the delta-dollar bars ("Asset
  * Changes Required Without Investing"), the class table, and the door
- * into the rebalance planner. When no target is stored the server
+ * into the trading plans. When no target is stored the server
  * says so and the UI prompts - it never invents one (sec. 5.4).
  */
 @Component({

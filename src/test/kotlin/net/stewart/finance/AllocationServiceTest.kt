@@ -28,11 +28,8 @@ import net.stewart.finance.domain.Quantity
 import net.stewart.finance.domain.UserId
 import net.stewart.finance.proto.Decimal
 import net.stewart.finance.proto.GetAllocationRequest
-import net.stewart.finance.proto.PlannedTrade
-import net.stewart.finance.proto.ScoreRebalanceRequest
 import net.stewart.finance.proto.SetTargetAllocationRequest
 import net.stewart.finance.proto.TargetEntry
-import net.stewart.finance.proto.TradeSide
 import net.stewart.h2toolkit.H2TestDatabaseExtension
 import org.junit.jupiter.api.extension.RegisterExtension
 import kotlin.test.Test
@@ -129,7 +126,7 @@ class AllocationServiceTest {
     }
 
     @Test
-    fun `dashboard, target editing, and rebalance scoring`() {
+    fun `dashboard and target editing`() {
         val f = fixture
 
         // Before any target: current buckets only, no invented default.
@@ -145,16 +142,6 @@ class AllocationServiceTest {
         // carries its share count.
         assertEquals("Sweeps", byName.getValue("Cash").contributorsList.single().ticker)
         assertEquals("20", byName.getValue("US Stock").contributorsList.single().shares.display)
-
-        // Rebalance planning requires a target.
-        assertEquals(
-            Status.Code.FAILED_PRECONDITION,
-            statusOf {
-                service.scoreRebalance(
-                    ScoreRebalanceRequest.newBuilder().setAccountId(f.taxableId).build()
-                )
-            },
-        )
 
         // Targets must sum to 1.
         assertEquals(
@@ -185,48 +172,6 @@ class AllocationServiceTest {
         assertEquals("$200.00", targetedByName.getValue("Bond").delta.display)
         assertEquals("($300.00)", targetedByName.getValue("Cash").delta.display)
 
-        // Score a plan: buy 4 VTI ($100) from the taxable account's sweeps.
-        val plan = call {
-            service.scoreRebalance(
-                ScoreRebalanceRequest.newBuilder()
-                    .setAccountId(f.taxableId)
-                    .addTrades(
-                        PlannedTrade.newBuilder()
-                            .setSide(TradeSide.BUY)
-                            .setSecurityId(fixtureVtiId())
-                            .setShares(decimal("4"))
-                    )
-                    .build()
-            )
-        }
-        assertEquals("$1,000.00", plan.currentTotal.display)
-        assertEquals("$100.00", plan.spent.display)
-        assertEquals("$300.00", plan.remaining.display) // 400 sweeps - 100
-        val planByName = plan.classesList.associateBy { it.name }
-        assertEquals("60%", planByName.getValue("US Stock").afterFraction.display)
-        assertTrue(planByName.getValue("US Stock").atOrOverTarget)
-        // Bond needs $200 more; BND at $80 suggests floor(200/80) = 2 shares.
-        val bondCandidate = planByName.getValue("Bond").candidatesList.single { it.ticker == "BND" }
-        assertEquals("2.00000000", bondCandidate.suggestedShares.value)
-        assertEquals("$160.00", bondCandidate.cost.display)
-
-        // Sell-side stays reserved.
-        assertEquals(
-            Status.Code.UNIMPLEMENTED,
-            statusOf {
-                service.scoreRebalance(
-                    ScoreRebalanceRequest.newBuilder()
-                        .setAccountId(f.taxableId)
-                        .addTrades(
-                            PlannedTrade.newBuilder()
-                                .setSide(TradeSide.SELL)
-                                .setSecurityId(fixtureVtiId())
-                                .setShares(decimal("1"))
-                        )
-                        .build()
-                )
-            },
-        )
     }
 
     private fun entry(className: String, fraction: String): TargetEntry =

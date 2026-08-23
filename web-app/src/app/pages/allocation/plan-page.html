@@ -1,0 +1,217 @@
+<mat-card appearance="outlined" class="plan-card">
+  @if (summary(); as s) {
+    <mat-card-header>
+      <mat-card-title>{{ s.name }}</mat-card-title>
+      <mat-card-subtitle>
+        Created {{ timestamp(s.createdAt) }}
+        @if (s.lastPrintedAt) { | Last printed {{ timestamp(s.lastPrintedAt) }} }
+        @if (archived()) { | <span class="hidden-tag">archived</span> }
+      </mat-card-subtitle>
+      <span class="header-spacer"></span>
+      <a matButton routerLink="/allocation/plans" class="no-print">
+        <mat-icon>arrow_back</mat-icon>
+        Plans
+      </a>
+      <button matButton="filled" class="no-print" (click)="print()" aria-label="Print plan">
+        <mat-icon>print</mat-icon>
+        Print
+      </button>
+      <button matIconButton class="no-print" [matMenuTriggerFor]="planMenu" aria-label="Plan actions">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #planMenu="matMenu">
+        @if (archived()) {
+          <button mat-menu-item (click)="setArchived(false)"><mat-icon>unarchive</mat-icon><span>Reopen</span></button>
+        } @else {
+          <button mat-menu-item (click)="setArchived(true)"><mat-icon>archive</mat-icon><span>Archive</span></button>
+        }
+        <button mat-menu-item (click)="deletePlan()"><mat-icon>delete</mat-icon><span>Delete</span></button>
+      </mat-menu>
+    </mat-card-header>
+  }
+  <mat-card-content>
+    @if (projection(); as p) {
+      <div class="totals">
+        <div class="readonly-stat">
+          <div class="stat-label">Current total</div>
+          <div class="stat-value">{{ p.currentTotal?.display }}</div>
+        </div>
+        <div class="readonly-stat">
+          <div class="stat-label">After the plan</div>
+          <div class="stat-value">{{ p.projectedTotal?.display }}</div>
+        </div>
+        <div class="readonly-stat">
+          <div class="stat-label">Cash in from outside</div>
+          <div class="stat-value">{{ p.externalIn?.display }}</div>
+        </div>
+        <div class="readonly-stat">
+          <div class="stat-label">Cash out to outside</div>
+          <div class="stat-value">{{ p.externalOut?.display }}</div>
+        </div>
+        <div class="readonly-stat">
+          <div class="stat-label">Executable as written</div>
+          <div class="stat-value" [class.problem]="!p.executable">{{ p.executable ? 'Yes' : 'No - see steps' }}</div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Allocation after the plan</h3>
+      <table mat-table [dataSource]="p.classes" class="classes">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Class</th>
+          <td mat-cell *matCellDef="let c">{{ c.name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="before">
+          <th mat-header-cell *matHeaderCellDef class="num">Before</th>
+          <td mat-cell *matCellDef="let c" class="num">{{ c.beforeFraction?.display }} <span class="tag">{{ c.before?.display }}</span></td>
+        </ng-container>
+        <ng-container matColumnDef="after">
+          <th mat-header-cell *matHeaderCellDef class="num">After</th>
+          <td mat-cell *matCellDef="let c" class="num">{{ c.afterFraction?.display }} <span class="tag">{{ c.after?.display }}</span></td>
+        </ng-container>
+        <ng-container matColumnDef="target">
+          <th mat-header-cell *matHeaderCellDef class="num">Target</th>
+          <td mat-cell *matCellDef="let c" class="num">{{ c.targetFraction?.display || '-' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="delta">
+          <th mat-header-cell *matHeaderCellDef class="num">After - target</th>
+          <td mat-cell *matCellDef="let c" class="num">{{ c.delta?.display || '-' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="no-print"></th>
+          <td mat-cell *matCellDef="let c" class="row-actions no-print">
+            <button matButton [disabled]="busy() || archived()" (click)="sellFrom(c)" [attr.aria-label]="'Sell from ' + c.name">Sell...</button>
+            <button matButton [disabled]="busy() || archived()" (click)="buyInto(c)" [attr.aria-label]="'Buy into ' + c.name">Buy...</button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="classColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: classColumns"></tr>
+      </table>
+
+      <h3 class="section-title">Steps, in order</h3>
+      <div class="controls-row no-print">
+        <button matButton [disabled]="busy() || archived()" (click)="addStep(StepKind.STEP_BUY)"><mat-icon>add_shopping_cart</mat-icon> Buy</button>
+        <button matButton [disabled]="busy() || archived()" (click)="addStep(StepKind.STEP_SELL)"><mat-icon>sell</mat-icon> Sell</button>
+        <button matButton [disabled]="busy() || archived()" (click)="addStep(StepKind.STEP_TRANSFER)"><mat-icon>swap_horiz</mat-icon> Transfer</button>
+        <button matButton [disabled]="busy() || archived()" (click)="addStep(StepKind.STEP_ADD_EXTERNAL)"><mat-icon>south_west</mat-icon> Add from outside</button>
+        <button matButton [disabled]="busy() || archived()" (click)="addStep(StepKind.STEP_DRAW_EXTERNAL)"><mat-icon>north_east</mat-icon> Draw to outside</button>
+      </div>
+      @if (steps().length) {
+        <table mat-table [dataSource]="steps()" class="steps screen-only">
+          <ng-container matColumnDef="position">
+            <th mat-header-cell *matHeaderCellDef>#</th>
+            <td mat-cell *matCellDef="let s">{{ s.position }}</td>
+          </ng-container>
+          <ng-container matColumnDef="kind">
+            <th mat-header-cell *matHeaderCellDef>Step</th>
+            <td mat-cell *matCellDef="let s">{{ kindLabel(s) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="account">
+            <th mat-header-cell *matHeaderCellDef>Account</th>
+            <td mat-cell *matCellDef="let s">{{ accountLabel(s) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="security">
+            <th mat-header-cell *matHeaderCellDef>Security</th>
+            <td mat-cell *matCellDef="let s">{{ s.ticker }}</td>
+          </ng-container>
+          <ng-container matColumnDef="shares">
+            <th mat-header-cell *matHeaderCellDef class="num">Shares</th>
+            <td mat-cell *matCellDef="let s" class="num">{{ s.shares?.display }}</td>
+          </ng-container>
+          <ng-container matColumnDef="amount">
+            <th mat-header-cell *matHeaderCellDef class="num">Amount</th>
+            <td mat-cell *matCellDef="let s" class="num">{{ s.amount?.display }}</td>
+          </ng-container>
+          <ng-container matColumnDef="price">
+            <th mat-header-cell *matHeaderCellDef class="num">Plan price</th>
+            <td mat-cell *matCellDef="let s" class="num">{{ s.planPrice?.display }}</td>
+          </ng-container>
+          <ng-container matColumnDef="gain">
+            <th mat-header-cell *matHeaderCellDef class="num">Est. gain (ST / LT)</th>
+            <td mat-cell *matCellDef="let s" class="num">
+              @if (s.estShortTermGain || s.estLongTermGain) {
+                {{ s.estShortTermGain?.display || '-' }} / {{ s.estLongTermGain?.display || '-' }}
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="note">
+            <th mat-header-cell *matHeaderCellDef>Note</th>
+            <td mat-cell *matCellDef="let s">
+              {{ s.input?.note }}
+              @for (problem of s.problems; track $index) {
+                <div class="problem"><mat-icon inline>warning</mat-icon> {{ problem }}</div>
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let s" class="row-actions">
+              <button matIconButton [disabled]="busy() || archived() || s.position === 1" (click)="move(s, -1)" aria-label="Move up"><mat-icon>arrow_upward</mat-icon></button>
+              <button matIconButton [disabled]="busy() || archived() || s.position === steps().length" (click)="move(s, 1)" aria-label="Move down"><mat-icon>arrow_downward</mat-icon></button>
+              <button matIconButton [disabled]="busy() || archived()" (click)="editStep(s)" aria-label="Edit step"><mat-icon>edit</mat-icon></button>
+              <button matIconButton [disabled]="busy() || archived()" (click)="removeStep(s)" aria-label="Remove step"><mat-icon>delete</mat-icon></button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="stepColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: stepColumns" [class.has-problem]="row.problems.length"></tr>
+        </table>
+
+        <!-- The printed checklist: grouped by account, in execution order. -->
+        <div class="print-only checklist">
+          @for (group of stepsByAccount(); track group.account) {
+            <h4>{{ group.account }}</h4>
+            <ol>
+              @for (s of group.steps; track s.position) {
+                <li>
+                  <span class="box"></span>
+                  {{ s.position }}. {{ kindLabel(s) }}
+                  @if (s.ticker) { {{ s.ticker }} }
+                  @if (s.shares) { {{ s.shares.display }} shares }
+                  {{ s.amount?.display }}
+                  @if (s.planPrice) { at approximately {{ s.planPrice.display }} }
+                  @if (s.toAccountName) { to {{ s.toAccountName }} }
+                  @if (s.input?.note) { - {{ s.input?.note }} }
+                  @for (problem of s.problems; track $index) { <em>({{ problem }})</em> }
+                </li>
+              }
+            </ol>
+          }
+        </div>
+      } @else {
+        <p class="empty-note">No steps yet. Before and After are identical until you add one.</p>
+      }
+
+      <h3 class="section-title">Accounts</h3>
+      <table mat-table [dataSource]="p.accounts" class="accounts">
+        <ng-container matColumnDef="account">
+          <th mat-header-cell *matHeaderCellDef>Account</th>
+          <td mat-cell *matCellDef="let a">{{ a.brokerName }} : {{ a.name }} <span class="tag">{{ a.taxDeferred ? 'tax-deferred' : 'taxable' }}</span></td>
+        </ng-container>
+        <ng-container matColumnDef="sweepBefore">
+          <th mat-header-cell *matHeaderCellDef class="num">Sweep before</th>
+          <td mat-cell *matCellDef="let a" class="num">{{ a.sweepBefore?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="sweepAfter">
+          <th mat-header-cell *matHeaderCellDef class="num">Sweep after</th>
+          <td mat-cell *matCellDef="let a" class="num" [class.problem]="(a.sweepAfter?.sortKey ?? 0) < 0">{{ a.sweepAfter?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="valueBefore">
+          <th mat-header-cell *matHeaderCellDef class="num">Value before</th>
+          <td mat-cell *matCellDef="let a" class="num">{{ a.valueBefore?.display }}</td>
+        </ng-container>
+        <ng-container matColumnDef="valueAfter">
+          <th mat-header-cell *matHeaderCellDef class="num">Value after</th>
+          <td mat-cell *matCellDef="let a" class="num">{{ a.valueAfter?.display }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="accountColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: accountColumns"></tr>
+      </table>
+
+      <p class="footnote">
+        Priced {{ timestamp(p.pricedAt) }}. Estimates at plan price; no tax rates assumed.
+        finance2 does not execute trades - record the actual fills on the Positions page afterwards.
+      </p>
+    } @else {
+      <p class="empty-note">Loading the plan...</p>
+    }
+  </mat-card-content>
+</mat-card>

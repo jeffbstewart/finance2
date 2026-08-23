@@ -1,0 +1,126 @@
+@use './allocation-page.scss';
+
+.plan-card {
+  mat-card-header {
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 8px 0 16px;
+}
+
+table {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.num {
+  text-align: right;
+}
+
+.tag {
+  margin-left: 6px;
+  font-size: 11px;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.problem {
+  color: #b3261e;
+}
+
+.has-problem td {
+  background: rgba(179, 38, 30, 0.06);
+}
+
+.row-actions {
+  white-space: nowrap;
+}
+
+.footnote {
+  margin-top: 16px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.print-only {
+  display: none;
+}
+
+.checklist {
+  h4 {
+    margin: 16px 0 4px;
+    font-size: 14px;
+  }
+
+  ol {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+  }
+
+  li {
+    padding: 3px 0;
+  }
+
+  .box {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border: 1px solid #000;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+}
+
+// The printed plan is one document: the projection first (that is the
+// conversation), then the checklist grouped by account, then the
+// footer. Controls, the nav, and the toolbar go away; the interactive
+// steps table is replaced by the checklist.
+@media print {
+  :host {
+    display: block;
+  }
+
+  .no-print,
+  .screen-only,
+  mat-card-actions,
+  button {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .plan-card {
+    box-shadow: none;
+    border: 0;
+  }
+
+  .totals {
+    gap: 32px;
+  }
+
+  table,
+  th,
+  td {
+    font-size: 11px;
+  }
+
+  .has-problem td {
+    background: none;
+  }
+
+  .footnote {
+    margin-top: 24px;
+    border-top: 1px solid #000;
+    padding-top: 8px;
+    opacity: 1;
+  }
+}
