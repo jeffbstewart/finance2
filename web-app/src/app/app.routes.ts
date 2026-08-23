@@ -51,9 +51,14 @@ export const routes: Routes = [
           import('./pages/allocation/allocation-page').then((m) => m.AllocationPage),
       },
       {
-        path: 'allocation/rebalance',
+        path: 'allocation/plans',
         loadComponent: () =>
-          import('./pages/allocation/rebalance-page').then((m) => m.RebalancePage),
+          import('./pages/allocation/plans-page').then((m) => m.PlansPage),
+      },
+      {
+        path: 'allocation/plans/:id',
+        loadComponent: () =>
+          import('./pages/allocation/plan-page').then((m) => m.PlanPage),
       },
       {
         path: 'allocation/class/:name',

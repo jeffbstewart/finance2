@@ -4,6 +4,27 @@
   height: 100%;
 }
 
+// A printed page is the routed content alone (the trading plan is the
+// one thing that prints): no toolbar, no nav, no fixed heights.
+@media print {
+  :host {
+    display: block;
+    height: auto;
+  }
+
+  .shell-toolbar,
+  .shell-nav {
+    display: none !important;
+  }
+
+  .shell-container,
+  .shell-content {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+}
+
 .shell-toolbar {
   background: var(--mat-sys-primary);
   color: var(--mat-sys-on-primary);

@@ -1,8 +1,8 @@
-// AllocationService: the allocation dashboard, target editing, and
-// the buy-side rebalance planner (FUNCTIONAL_SPEC sec. 5.4-sec. 5.5,
-// sec. 9.13-sec. 9.15). All dollar figures are in the reporting currency, USD
-// (build-scope sec. 5). ScoreRebalance persists nothing - the output is a
-// shopping list.
+// AllocationService: the allocation dashboard and target editing
+// (FUNCTIONAL_SPEC sec. 5.4, sec. 9.13-sec. 9.15). All dollar figures are
+// in the reporting currency, USD (build-scope sec. 5). Planning trades
+// against the target is TradingPlanService's job (trading_plan.proto,
+// docs/design/trading-plan.md).
 syntax = "proto3";
 
 package finance;
@@ -11,14 +11,6 @@ import "common.proto";
 
 option java_package = "net.stewart.finance.proto";
 option java_multiple_files = true;
-
-// SELL is reserved: sell-side planning is not built at launch, and the
-// contract must not foreclose it (build-scope sec. 3).
-enum TradeSide {
-  TRADE_SIDE_UNSPECIFIED = 0;
-  BUY = 1;
-  SELL = 2;
-}
 
 message ClassContributor {
   int64 security_id = 1;
@@ -64,59 +56,7 @@ message SetTargetAllocationRequest {
 
 message SetTargetAllocationResponse {}
 
-// One tentative trade in the plan. Mutual funds are bought in dollars
-// (cost drives shares); everything else in whole shares (shares drive
-// cost) - FUNCTIONAL_SPEC sec. 5.5.
-message PlannedTrade {
-  TradeSide side = 1;
-  int64 security_id = 2;
-  Decimal shares = 3;
-  Decimal cost = 4;
-}
-
-// A fund whose weight in the class is >= 0.9, with a suggested
-// whole-share purchase (FUNCTIONAL_SPEC sec. 5.5).
-message CandidateFund {
-  int64 security_id = 1;
-  string ticker = 2;
-  FormattedDecimal class_weight = 3;
-  Decimal suggested_shares = 4;
-  FormattedMoney price_per_share = 5;
-  FormattedMoney cost = 6;
-}
-
-message RebalanceClass {
-  string name = 1;
-  FormattedDecimal before_fraction = 2;
-  FormattedDecimal after_fraction = 3; // with the plan's trades applied
-  FormattedDecimal target_fraction = 4;
-  FormattedMoney residual = 5; // current + spent - target
-  // Disables the class's buy affordance when at or over target.
-  bool at_or_over_target = 6;
-  repeated CandidateFund candidates = 7;
-}
-
-message ScoreRebalanceRequest {
-  // Destination account; its sweeps fund the purchases.
-  int64 account_id = 1;
-  // Hypothetical new cash. Unset/zero = buy-only mode: the total is
-  // the smallest portfolio value at which the most overweight
-  // non-Cash class reaches target without selling (FUNCTIONAL_SPEC
-  // sec. 5.5).
-  Decimal added_funds = 2;
-  repeated PlannedTrade trades = 3;
-}
-
-message ScoreRebalanceResponse {
-  repeated RebalanceClass classes = 1;
-  FormattedMoney current_total = 2;
-  FormattedMoney added_funds = 3;
-  FormattedMoney spent = 4;
-  FormattedMoney remaining = 5;
-}
-
 service AllocationService {
   rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse);
   rpc SetTargetAllocation(SetTargetAllocationRequest) returns (SetTargetAllocationResponse);
-  rpc ScoreRebalance(ScoreRebalanceRequest) returns (ScoreRebalanceResponse);
 }
