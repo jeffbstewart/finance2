@@ -72,6 +72,11 @@
 .shell-content {
   padding: 24px;
   max-width: 1200px;
+  // Material sizes the content pane height: 100% of the container,
+  // content-box; without this the padding pushes the pane 48px past
+  // the container's overflow: hidden edge and the last 48px of every
+  // page can never scroll into view.
+  box-sizing: border-box;
 }
 
 .shell-user-details {
