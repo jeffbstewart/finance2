@@ -57,14 +57,14 @@ test('allocation dashboard scores the seeded portfolio against its target', asyn
   expect(table.footer).toEqual(['Total', PORTFOLIO_TOTAL, '', '', '', '']);
 });
 
-test('draws the four dashboard charts and the rebalance door', async ({ page }) => {
+test('draws the four dashboard charts and the plans door', async ({ page }) => {
   await page.goto('/app/allocation');
   await expect(page.locator('.chart-grid .chart-cell')).toHaveCount(4);
   await expect(page.locator('app-pie-chart')).toHaveCount(2);
   await expect(page.locator('app-grouped-bar-chart')).toHaveCount(2);
   await expect(page.locator('mat-card-actions a')).toHaveAttribute(
     'href',
-    '/app/allocation/rebalance',
+    '/app/allocation/plans',
   );
 });
 
