@@ -82,18 +82,25 @@ Priority order by value: **Smithy's Stocks > Mac's Mutual Funds >
 Bob's Bonds Brokerage**. (Institution names in this document are
 fictional stand-ins for the real ones.)
 
-Evidence gathered 2026-07-17 (public sources; see caveats):
-
-| Institution | Investments support | Evidence | Caveats |
-|---|---|---|---|
-| **Smithy's Stocks** | **Yes** - Plaid's own institution page lists supported products "Assets, Balance, Transactions, **Investments**" | Plaid institution page; Plaid changelog: Smithy's Stocks **migrated to OAuth**, improving link reliability | Smithy's Stocks brokerage vs. retirement ("Smithy's Stocks Retirement Plans") are historically **separate institution entries**; which entry covers which of Jeff's accounts must be confirmed |
-| **Mac's Mutual Funds** | **Yes** (secondary sources) - listed among Plaid Investments-supported brokerages; OAuth with Plaid live | [Plaid OAuth guide](https://plaid.com/docs/link/oauth/); third-party supported-broker list; Plaid newsletter | **Mac's Mutual Funds OAuth access is gated**: it must be explicitly requested in the Plaid dashboard and can take **up to six weeks after Production approval**. Whether bankferry's current (trial / limited-production) tier can get that access at all is the key open check |
-| **Bob's Bonds Brokerage** | **Yes** - Plaid's institution page for "Bob's Bonds Client Services" lists "Assets, Balance, Transactions, **Investments**" | Plaid institution page | Multiple Bob's Bonds entries exist (client services, a plan-administrator entry, an equity-plan portal). Which one matches Jeff's relationship must be confirmed |
+Evidence gathered 2026-07-17 from public sources (Plaid's per-institution
+pages and changelog, the [Plaid OAuth guide](https://plaid.com/docs/link/oauth/),
+third-party supported-broker lists): all three target institutions list
+**Investments** among their supported products, and all three link via
+OAuth. Two findings carry into the design. First, one institution's OAuth
+access is **gated**: it must be explicitly requested in the Plaid dashboard
+and can take **up to six weeks after Production approval**, and whether
+bankferry's current (trial / limited-production) tier can get that access
+at all is the key open check. Second, two institutions have **multiple
+Plaid entries** (brokerage vs. retirement-plan recordkeeper; client
+services vs. plan administrator vs. equity-plan portal), and which entry
+covers which real account must be confirmed. The per-institution evidence
+table that used to sit here was dropped when the real names were scrubbed
+from this document; with stand-in names it carried no information.
 
 **Caveats on this evidence:** Plaid's institution marketing pages are
 generated and can lag or overstate per-account-type data quality;
 "Investments supported" says nothing about whether a specific 401(k)
-recordkeeper relationship returns holdings. Treat the table as
+recordkeeper relationship returns holdings. Treat this evidence as
 sufficient to justify the design work, not as final validation.
 
 **Definitive verification, in cost order (before burning anything):**
