@@ -78,15 +78,17 @@ one of those disappears under proto export.
 
 Before any of this executes, we need a reason to believe Plaid's
 **Investments** product actually covers the target institutions.
-Priority order by value: **Vanguard > Schwab > Morgan Stanley**.
+Priority order by value: **Smithy's Stocks > Mac's Mutual Funds >
+Bob's Bonds Brokerage**. (Institution names in this document are
+fictional stand-ins for the real ones.)
 
 Evidence gathered 2026-07-17 (public sources; see caveats):
 
 | Institution | Investments support | Evidence | Caveats |
 |---|---|---|---|
-| **Vanguard** | **Yes** - Plaid's own institution page lists supported products "Assets, Balance, Transactions, **Investments**" | [plaid.com/institutions/vanguard](https://plaid.com/institutions/vanguard/); Plaid changelog: Vanguard **migrated to OAuth Feb 19, 2025**, improving link reliability | Vanguard brokerage vs. retirement ("My Vanguard Plan") are historically **separate institution entries**; which entry covers which of Jeff's accounts must be confirmed |
-| **Charles Schwab** | **Yes** (secondary sources) - listed among Plaid Investments-supported brokerages; Schwab<->Plaid OAuth live since 2021 | [Plaid OAuth guide](https://plaid.com/docs/link/oauth/); [TradesViz supported-broker list](https://www.tradesviz.com/plaid-supported-brokers/); [Plaid newsletter June 2021](https://plaid.com/blog/newsletter-june-2021/) | **Schwab OAuth access is gated**: it must be explicitly requested in the Plaid dashboard and can take **up to six weeks after Production approval**. Whether bankferry's current (trial / limited-production) tier can get Schwab access at all is the key open check |
-| **Morgan Stanley** | **Yes** - Plaid's institution page for "Morgan Stanley Client Serv" lists "Assets, Balance, Transactions, **Investments**" | [plaid.com/institutions/morgan-stanley-client-serv](https://plaid.com/institutions/morgan-stanley-client-serv/) | Multiple Morgan Stanley entries exist (Client Serv, Alight-Morgan Stanley, Solium Shareworks). Which one matches Jeff's relationship must be confirmed |
+| **Smithy's Stocks** | **Yes** - Plaid's own institution page lists supported products "Assets, Balance, Transactions, **Investments**" | Plaid institution page; Plaid changelog: Smithy's Stocks **migrated to OAuth**, improving link reliability | Smithy's Stocks brokerage vs. retirement ("Smithy's Stocks Retirement Plans") are historically **separate institution entries**; which entry covers which of Jeff's accounts must be confirmed |
+| **Mac's Mutual Funds** | **Yes** (secondary sources) - listed among Plaid Investments-supported brokerages; OAuth with Plaid live | [Plaid OAuth guide](https://plaid.com/docs/link/oauth/); third-party supported-broker list; Plaid newsletter | **Mac's Mutual Funds OAuth access is gated**: it must be explicitly requested in the Plaid dashboard and can take **up to six weeks after Production approval**. Whether bankferry's current (trial / limited-production) tier can get that access at all is the key open check |
+| **Bob's Bonds Brokerage** | **Yes** - Plaid's institution page for "Bob's Bonds Client Services" lists "Assets, Balance, Transactions, **Investments**" | Plaid institution page | Multiple Bob's Bonds entries exist (client services, a plan-administrator entry, an equity-plan portal). Which one matches Jeff's relationship must be confirmed |
 
 **Caveats on this evidence:** Plaid's institution marketing pages are
 generated and can lag or overstate per-account-type data quality;
@@ -99,17 +101,19 @@ sufficient to justify the design work, not as final validation.
 1. **Sandbox institution-directory query - zero slot cost.** A small
    bankferry-side script calls `/institutions/search` (sandbox
    credentials, no Item creation) filtered to `products=["investments"]`
-   for each of: Vanguard, My Vanguard Plan, Charles Schwab, Morgan
-   Stanley (all entries). This yields Plaid's authoritative per-entry
-   product flags plus OAuth status. Human-run (sandbox creds live in
-   the OS keyring).
-2. **Dashboard check** for Schwab OAuth availability on the current
-   account tier, and trial Investments product availability.
+   for each of: Smithy's Stocks, Smithy's Stocks Retirement Plans,
+   Mac's Mutual Funds, Bob's Bonds Brokerage (all entries). This
+   yields Plaid's authoritative per-entry product flags plus OAuth
+   status. Human-run (sandbox creds live in the OS keyring).
+2. **Dashboard check** for Mac's Mutual Funds OAuth availability on
+   the current account tier, and trial Investments product
+   availability.
 3. **One production link per institution - costs one slot each, ~3 of
-   ~10.** Only after 1-2 pass, in value order (Vanguard first), each
-   run human-initiated behind the security-key touch. If Vanguard
-   returns good holdings data, the design is validated; Schwab and
-   Morgan Stanley follow as budget and gating allow.
+   ~10.** Only after 1-2 pass, in value order (Smithy's Stocks
+   first), each run human-initiated behind the security-key touch. If
+   Smithy's Stocks returns good holdings data, the design is
+   validated; Mac's Mutual Funds and Bob's Bonds Brokerage follow as
+   budget and gating allow.
 
 **Slot-budget ledger:** the design should assume ~3 production slots for
 the three institutions plus headroom for re-links; the enrollment tool
@@ -201,7 +205,7 @@ message InvestmentsSnapshot {
   repeated ItemSnapshot items;
 }
 message ItemSnapshot {
-  string institution_entry;      // Plaid institution name, e.g. "Vanguard"
+  string institution_entry;      // Plaid institution name, e.g. "Smithy's Stocks"
   string item_ref;               // opaque, stable per item - NOT the access token
   repeated Account accounts;
 }
@@ -250,8 +254,8 @@ public-repo hygiene goal.
 3. **bankferry PRs**: add the Investments product to enrollment, then
    the D export command. No refactoring beyond what those two changes
    require.
-4. **Production links**, human-initiated, value order: Vanguard ->
-   Schwab (pending OAuth gating) -> Morgan Stanley.
+4. **Production links**, human-initiated, value order: Smithy's Stocks ->
+   Mac's Mutual Funds (pending OAuth gating) -> Bob's Bonds Brokerage.
 5. **finance2 importer (E)** lands with Phase 3/4 schema work.
 
 ## Rulings and open questions
@@ -277,9 +281,10 @@ enrollment + a separate export command."
 Still open:
 
 - **Institution entries:** which Plaid entry matches each real
-  relationship - Vanguard brokerage vs "My Vanguard Plan" for the
-  401(k)? Which of the three Morgan Stanley entries (Client Serv,
-  Alight, Solium Shareworks)? Answered by the step-1 sandbox directory
+  relationship - Smithy's Stocks brokerage vs "Smithy's Stocks
+  Retirement Plans" for the 401(k)? Which of the three Bob's Bonds
+  entries (client services, plan administrator, equity-plan portal)?
+  Answered by the step-1 sandbox directory
   query plus Jeff's knowledge of the accounts.
 
 ## Amendment: Docker-era handoff (ruling, Jeff 2026-08-20)

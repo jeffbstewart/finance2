@@ -167,7 +167,7 @@ existing machinery, nothing bespoke -
 4. **Phase 6 - UI**, against the generated client.
 
 The Plaid track's gating step (sandbox institution-directory query in
-bankferry, then the Vanguard production link) proceeds independently.
+bankferry, then the first production link) proceeds independently.
 
 ## 8. Authentication: auth-kotlin-toolkit, not Google OAuth (ruling, Jeff 2026-08-18)
 
