@@ -1,0 +1,169 @@
+# The presubmit suite (forge-lint docs/requirements.md R3): the "verify" check
+# the main ruleset requires.  Zero secrets by policy (R6) - the forge
+# lint audits Actions secrets to empty.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      # Composite-build siblings: the toolkit family checks out beside
+      # finance2 (armeria-kotlin-toolkit itself includes auth-kotlin-toolkit).
+      - uses: actions/checkout@v4
+        with:
+          path: finance2
+      # Every tracked file is 7-bit ASCII (CLAUDE.md "House
+      # Conventions"); cheapest check, so it runs first.
+      - run: sh scripts/check-ascii.sh
+        working-directory: finance2
+      - uses: actions/checkout@v4
+        with:
+          repository: jeffbstewart/armeria-kotlin-toolkit
+          path: armeria-kotlin-toolkit
+      - uses: actions/checkout@v4
+        with:
+          repository: jeffbstewart/auth-kotlin-toolkit
+          path: auth-kotlin-toolkit
+      - uses: actions/checkout@v4
+        with:
+          repository: jeffbstewart/h2-kotlin-toolkit
+          path: h2-kotlin-toolkit
+      # Committed Gradle wrappers must match Gradle's published checksums.
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      # Kotlin side: regenerates proto stubs and compiles + tests
+      # against them - contract drift on the server is a build failure.
+      - run: ./gradlew build --no-daemon
+        working-directory: finance2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+        working-directory: finance2/web-app
+      # TS side: regenerates the Connect-ES client from proto/ and
+      # typechecks - contract drift in the client is a build failure.
+      - run: npm run check
+        working-directory: finance2/web-app
+      # Dependency hygiene, CI-enforced from day one (end-state goal 2).
+      - run: npm audit
+        working-directory: finance2/web-app
+      # UI unit lane (docs/design/ui-testing.md): vitest over fake
+      # in-memory backends.
+      - run: npm test -- --no-watch
+        working-directory: finance2/web-app
+      # UI e2e lane: Playwright boots the real server (test support
+      # on, scratch DB) and drives the seeded portfolio in Chromium.
+      - run: npx playwright install --with-deps chromium
+        working-directory: finance2/web-app
+      - run: npm run e2e
+        working-directory: finance2/web-app
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results
+          path: finance2/web-app/e2e/.results/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: finance2/build/reports/tests/
+
+      # The forge's own merge-path protections (forge-lint docs/requirements.md
+      # R1-R8), asserted against this repo's pinned expectations.  The
+      # workflow token cannot read collaborator roles or Actions secrets,
+      # so those report UNVERIFIED (-allow-unverified downgrades them to
+      # warnings); the operator runs the same lint with an admin token
+      # for the full verdict.  Any readable rule that drifts still fails
+      # the PR.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Forge lint (merge-path protections)
+        env:
+          FORGE_LINT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: go run github.com/jeffbstewart/forge-lint/cmd/forge-lint@v0.1.0 -config .github/forge-lint.yaml -allow-unverified
+        working-directory: finance2
+
+  # The container image builds from the same sources (README.md "Run
+  # with Docker"); the Dockerfile clones its own toolkit siblings, so
+  # the plain checkout is the whole context. Every run builds and
+  # boot-checks; a push to main then publishes the checked image to
+  # GHCR as ghcr.io/<owner>/finance2:latest (what Portainer tracks) and
+  # :sha-<short> (for pinning). The only credential is GITHUB_TOKEN -
+  # no Actions secrets, per policy.
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/finance2
+    steps:
+      - uses: actions/checkout@v4
+      # The build stamp (README "Which build is this?"): the PR number a
+      # human remembers, the commit's own time, the short commit. On a
+      # push to main the PR is read off the merge commit's subject; on a
+      # pull_request run it is the PR itself and the commit is the PR
+      # head (checkout gives a synthetic merge commit there).
+      - name: Build stamp
+        id: stamp
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pr="${{ github.event.pull_request.number }}"
+            sha="${{ github.event.pull_request.head.sha }}"
+          else
+            pr=$(git log -1 --pretty=%s | sed -nE 's/^Merge pull request #([0-9]+) .*/\1/p')
+            sha="${GITHUB_SHA}"
+          fi
+          echo "pr=${pr}" >> "$GITHUB_OUTPUT"
+          echo "sha=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "time=$(git log -1 --format=%cI)" >> "$GITHUB_OUTPUT"
+          echo "stamp: PR #${pr:-?} ${sha:0:7} $(git log -1 --format=%cI)"
+      - run: |
+          docker build --tag finance2:ci \
+            --build-arg BUILD_PR="${{ steps.stamp.outputs.pr }}" \
+            --build-arg BUILD_COMMIT="${{ steps.stamp.outputs.sha }}" \
+            --build-arg BUILD_TIME="${{ steps.stamp.outputs.time }}" .
+      # A built image must boot and pass its own health check with a
+      # throwaway database, proving the runtime stage is wired up.
+      - run: |
+          docker run -d --name finance2 --cap-drop ALL --security-opt no-new-privileges:true --read-only --tmpfs /tmp -e H2_PASSWORD=ci -e H2_FILE_PASSWORD=ci -e COOKIE_SECURE=false -p 9090:9090 -p 9091:9091 finance2:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9091/healthz; then break; fi; sleep 2
+          done
+          # No `| grep -q` here: under pipefail a quitting grep SIGPIPEs
+          # the producer and fails the step with nothing in the log.
+          curl -fsS http://127.0.0.1:9091/healthz
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:9090/app/)" = 200
+          docker logs finance2 2>&1 | grep -i 'setup token'
+          # The stamp made it into the running server.
+          test "$(docker exec finance2 printenv FINANCE2_BUILD_COMMIT)" = "${{ steps.stamp.outputs.sha }}"
+          # The process runs as the unprivileged image user, never root,
+          # with no capabilities (same flags as docker-compose.yml).
+          test "$(docker exec finance2 id -u)" = 10001
+          test "$(docker exec finance2 grep CapEff /proc/1/status | awk '{print $2}')" = 0000000000000000
+      - run: docker logs finance2
+        if: always()
+      - name: Publish to GHCR (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag finance2:ci "$IMAGE:latest"
+          docker tag finance2:ci "$IMAGE:sha-${GITHUB_SHA::7}"
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:sha-${GITHUB_SHA::7}"
+          # A PR-numbered tag, the handle a human remembers.
+          if [ -n "${{ steps.stamp.outputs.pr }}" ]; then
+            docker tag finance2:ci "$IMAGE:pr-${{ steps.stamp.outputs.pr }}"
+            docker push "$IMAGE:pr-${{ steps.stamp.outputs.pr }}"
+          fi

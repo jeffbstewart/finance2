@@ -1,0 +1,37 @@
+table {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.num {
+  text-align: right;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #7a4f01;
+  background: rgba(249, 168, 37, 0.25);
+  text-decoration: none;
+}
+
+.hidden-tag {
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.page-fab {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+}

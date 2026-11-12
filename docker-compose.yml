@@ -1,0 +1,97 @@
+# Durable single-host deployment (README.md "Run with Docker").
+#
+#   cp example.env .env   # fill in the H2 passwords, proxies, API keys
+#   docker compose up -d              # pulls the published image
+#   docker compose logs -f finance2   # first run prints the setup token
+#
+# The image is published by CI on every merge to main as
+# ghcr.io/jeffbstewart/finance2:latest (and :sha-<short>, :pr-<N> for
+# pinning), stamped with the PR it came from (see the foot of the UI's
+# nav). This file never builds: pull_policy is always, so a Portainer
+# update pulls whether or not "re-pull image" is ticked, and nothing a
+# stack does can tag a local build with the registry's name. To build
+# from a checkout use the developer override, which tags finance2:local:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# Everything comes from the environment - Portainer's stack variables,
+# or a .env beside this file for the compose CLI (read for ${...}
+# substitution only; there is deliberately no env_file). Defaults are
+# shown inline, so this file can be used as published:
+#
+#   H2_PASSWORD, H2_FILE_PASSWORD   database credentials (REQUIRED)
+#   TRUSTED_PROXIES                 HAProxy address(es); see example.env
+#   COOKIE_SECURE                   true unless a plain-HTTP dev setup
+#   TIINGO_API_KEY, EODHD_API_KEY   optional market-data providers
+#   FINANCE2_IMAGE          image to run (ghcr.io/jeffbstewart/finance2:latest);
+#                           set a :sha-<short> tag to pin a release
+#   FINANCE2_DATA           host directory for the encrypted database
+#                           (REQUIRED - compose refuses to start without it)
+#   FINANCE2_PORT           host port for the HAProxy-facing server (9090)
+#   FINANCE2_INTERNAL_PORT  host port for /healthz + /metrics, LAN-direct (9091)
+#   FINANCE2_MEM_LIMIT      container memory ceiling (512m); the JVM sizes
+#                           its heap from it (MaxRAMPercentage=75)
+#   FINANCE2_PIDS_LIMIT     process/thread ceiling (256)
+#   FINANCE2_UID / _GID     unprivileged uid:gid the server runs as
+#                           (10001:10001); give FINANCE2_DATA to it
+#   FINANCE2_SUBNET         the stack's own network (172.28.0.0/24); its
+#                           gateway (.1) is the peer address a same-host
+#                           proxy arrives from - see TRUSTED_PROXIES
+#
+# Peer addresses: a proxy on another host keeps its own address (set
+# TRUSTED_PROXIES to it); a proxy on this same host appears as the
+# gateway of this stack's network. That network is pinned to
+# FINANCE2_SUBNET below so the gateway stays put when the stack is
+# re-created - otherwise Docker hands out a fresh subnet each time and
+# the proxy's address drifts (172.18.0.1, 172.19.0.1, ...) out of the
+# trusted set. TRUSTED_PROXIES also accepts the whole range
+# (172.28.0.0/24) if you would rather not care which gateway it is.
+services:
+  finance2:
+    image: ${FINANCE2_IMAGE:-ghcr.io/jeffbstewart/finance2:latest}
+    pull_policy: always
+    container_name: finance2
+    restart: unless-stopped
+    # Never root. The image's own user is 10001; override to match the
+    # owner of FINANCE2_DATA on the host.
+    user: "${FINANCE2_UID:-10001}:${FINANCE2_GID:-10001}"
+    # Drop every privilege: no capabilities, no privilege escalation, a
+    # read-only root filesystem. The server writes only to /data (the
+    # database) and /tmp (JVM scratch, tmpfs).
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      # Inside the container the database always lives on the bind
+      # mount; the listening ports are fixed and mapped below.
+      DB_PATH: /data/finance2
+      PORT: "9090"
+      INTERNAL_PORT: "9091"
+      H2_PASSWORD: "${H2_PASSWORD:?set H2_PASSWORD (the H2 SA password)}"
+      H2_FILE_PASSWORD: "${H2_FILE_PASSWORD:?set H2_FILE_PASSWORD (the database file encryption password)}"
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      TIINGO_API_KEY: "${TIINGO_API_KEY:-}"
+      EODHD_API_KEY: "${EODHD_API_KEY:-}"
+    ports:
+      - "${FINANCE2_PORT:-9090}:9090"
+      - "${FINANCE2_INTERNAL_PORT:-9091}:9091"
+    volumes:
+      # Host directory, not a Docker-managed volume: the database is a
+      # file the operator backs up like any other.
+      - "${FINANCE2_DATA:?set FINANCE2_DATA to the host directory that holds the database}:/data"
+    # Limits a NAS container manager (Synology) can enforce: memory and
+    # pids, each about twice the measured steady state (~115 JVM threads,
+    # under 300 MiB RSS). CPU is left to the host scheduler.
+    mem_limit: ${FINANCE2_MEM_LIMIT:-512m}
+    memswap_limit: ${FINANCE2_MEM_LIMIT:-512m}
+    pids_limit: ${FINANCE2_PIDS_LIMIT:-256}
+
+# The stack's network on a fixed subnet, so the gateway a same-host
+# proxy arrives from is stable across re-creations (see the header).
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${FINANCE2_SUBNET:-172.28.0.0/24}

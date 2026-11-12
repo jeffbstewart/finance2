@@ -1,0 +1,107 @@
+// Global theme (spec sec. 8.1): Material Design, classic indigo/pink look
+// expressed in Material 3 terms - violet primary, rose tertiary.
+@use '@angular/material' as mat;
+
+// Vendored fonts (see public/fonts/README.md for licenses) - the SPA
+// makes no third-party requests and works offline. Hack is the
+// display face: a monospace with real bold/italic, so figures line
+// up in every table without per-column tabular-nums tricks. Roboto
+// stays vendored as the fallback.
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: swap;
+  src: url('/app/fonts/roboto-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/app/fonts/hack-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/app/fonts/hack-bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/app/fonts/hack-italic.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/app/fonts/hack-bolditalic.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/app/fonts/material-icons.woff2') format('woff2');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+html {
+  color-scheme: light;
+  @include mat.theme((
+    color: (
+      primary: mat.$violet-palette,
+      tertiary: mat.$rose-palette,
+    ),
+    typography: Hack,
+    density: 0,
+  ));
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Hack, Roboto, 'Helvetica Neue', monospace;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+// Material's outlined form field floats its label ~7px ABOVE the
+// field's border box. Dialog content and our wide-table card content
+// are scroll containers (overflow: auto / overflow-x: auto - which
+// clips vertically too) with no top padding, so a form field on the
+// first row loses the top half of its label. Reserve the overhang
+// globally. The last selector exists because Material zeroes the top
+// padding whenever content follows a dialog title
+// (.mat-mdc-dialog-container .mat-mdc-dialog-title + ..., 0-3-0) - the
+// extra type selector outranks it (0-3-1) without !important.
+mat-dialog-content.mat-mdc-dialog-content,
+mat-card-content.mat-mdc-card-content,
+.mat-mdc-dialog-container .mat-mdc-dialog-title + mat-dialog-content.mat-mdc-dialog-content {
+  padding-top: 8px;
+}

@@ -1,0 +1,62 @@
+// AllocationService: the allocation dashboard and target editing
+// (FUNCTIONAL_SPEC sec. 5.4, sec. 9.13-sec. 9.15). All dollar figures are
+// in the reporting currency, USD (build-scope sec. 5). Planning trades
+// against the target is TradingPlanService's job (trading_plan.proto,
+// docs/design/trading-plan.md).
+syntax = "proto3";
+
+package finance;
+
+import "common.proto";
+
+option java_package = "net.stewart.finance.proto";
+option java_multiple_files = true;
+
+message ClassContributor {
+  int64 security_id = 1;
+  string ticker = 2;
+  FormattedDecimal shares = 3;
+  // The fraction of this position allocated to the class.
+  FormattedDecimal class_weight = 4;
+  FormattedMoney contribution = 5;
+}
+
+message ClassAllocation {
+  // Classes are identified by their seeded name; numeric ids are a
+  // database implementation detail that never crosses the wire.
+  string name = 1;
+  FormattedMoney current = 2;
+  FormattedDecimal current_fraction = 3;
+  FormattedMoney target = 4;
+  FormattedDecimal target_fraction = 5;
+  FormattedMoney delta = 6; // target - current, in dollars
+  repeated ClassContributor contributors = 7;
+}
+
+message GetAllocationRequest {}
+
+message GetAllocationResponse {
+  repeated ClassAllocation classes = 1;
+  FormattedMoney portfolio_total = 2;
+  // False when no target allocation is stored: the UI prompts to set
+  // one; the server never invents a default (FUNCTIONAL_SPEC sec. 5.4).
+  bool target_set = 3;
+}
+
+message TargetEntry {
+  // The seeded class name (see ClassAllocation.name).
+  string asset_class = 1;
+  Decimal fraction = 2;
+}
+
+// Fractions must sum to 1 (+/-0.0001), enforced at write time.
+message SetTargetAllocationRequest {
+  repeated TargetEntry entries = 1;
+}
+
+message SetTargetAllocationResponse {}
+
+service AllocationService {
+  rpc GetAllocation(GetAllocationRequest) returns (GetAllocationResponse);
+  rpc SetTargetAllocation(SetTargetAllocationRequest) returns (SetTargetAllocationResponse);
+}

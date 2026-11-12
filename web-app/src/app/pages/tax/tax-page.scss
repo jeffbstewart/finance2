@@ -1,0 +1,38 @@
+mat-card-content {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.num {
+  text-align: right;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.validation-error {
+  color: #b3261e;
+  font-size: 13px;
+}
+
+.empty-note {
+  opacity: 0.7;
+}
+
+.totals-line {
+  font-weight: 500;
+}
+
+.footnote {
+  opacity: 0.7;
+  font-size: 12px;
+}

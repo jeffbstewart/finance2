@@ -1,0 +1,14 @@
+# Developer override: build the image from this checkout instead of
+# pulling the published one.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# The result is tagged finance2:local - never the registry's name, so a
+# local build can never shadow the CI image a Portainer stack pulls -
+# and it identifies itself as "dev build" in the UI (no build stamp).
+# docker-compose.yml on its own never builds (README "Run with Docker").
+services:
+  finance2:
+    build: .
+    image: finance2:local
+    pull_policy: never
